@@ -11,17 +11,11 @@ public partial class TorrentNameParser
     /// <summary>
     /// 无码标记正则表达式
     /// </summary>
-    [GeneratedRegex(@"-[UC]")]
+    [GeneratedRegex(@"-(?:UC|U)(?=$|[^A-Za-z0-9])", RegexOptions.IgnoreCase)]
     private static partial Regex UncensoredRegex();
 
     /// <summary>
-    /// 字幕标记正则表达式
-    /// </summary>
-    [GeneratedRegex(@"(?:[\u4e00-\u9fa5]+字幕|字幕|[\u4e00-\u9fa5]+|中文字幕)|-\s*C\s*-", RegexOptions.IgnoreCase)]
-    private static partial Regex SubtitleRegex();
-
-    /// <summary>
-    /// 解析种子名称，提取无码和字幕信息
+    /// 解析种子名称，提取无码信息（字幕不从标题推断）
     /// </summary>
     /// <param name="torrentName">种子名称</param>
     /// <returns>解析后的种子信息</returns>
@@ -30,7 +24,7 @@ public partial class TorrentNameParser
         var uncensoredType = UncensoredMarkerType.None;
         bool hasSubtitle = false;
 
-        // 检测无码标记 -UC, -U, -C
+        // 检测无码标记 -UC, -U
         var match = UncensoredRegex().Match(torrentName);
         if (match.Success)
         {
@@ -38,23 +32,20 @@ public partial class TorrentNameParser
             if (marker.Equals("-UC", StringComparison.OrdinalIgnoreCase))
             {
                 uncensoredType = UncensoredMarkerType.UC;
-                hasSubtitle = true; // -UC 包含字幕
             }
             else if (marker.Equals("-U", StringComparison.OrdinalIgnoreCase))
             {
                 uncensoredType = UncensoredMarkerType.U;
             }
-            else if (marker.Equals("-C", StringComparison.OrdinalIgnoreCase))
-            {
-                uncensoredType = UncensoredMarkerType.C;
-                hasSubtitle = true; // -C 表示字幕
-            }
         }
 
-        // 检测字幕标记（如果不是 -UC 或 -C）
-        if (!hasSubtitle)
+        // 种子名中包含“无码/無碼/uncensored”也视为无码
+        if (uncensoredType == UncensoredMarkerType.None &&
+            (torrentName.Contains("无码", StringComparison.OrdinalIgnoreCase) ||
+             torrentName.Contains("無碼", StringComparison.OrdinalIgnoreCase) ||
+             torrentName.Contains("uncensored", StringComparison.OrdinalIgnoreCase)))
         {
-            hasSubtitle = SubtitleRegex().IsMatch(torrentName);
+            uncensoredType = UncensoredMarkerType.U;
         }
 
         return (uncensoredType, hasSubtitle);
@@ -98,17 +89,21 @@ public partial class TorrentNameParser
     /// <returns>标准化的番号 (如 XXX-123)</returns>
     public string NormalizeJavId(string javId)
     {
-        // 移除空格和下划线，转为大写
-        var normalized = javId.Replace(" ", "").Replace("_", "-").ToUpper();
+        var normalized = javId.Trim().Replace("_", "-").ToUpper();
+        var noSpaces = normalized.Replace(" ", "");
 
-        // 匹配常见番号格式
+        // 先匹配完整番号格式
         // 如: ABC-123, SSIS-001, FC2-1234567
-        var match = Regex.Match(normalized, @"^[A-Z0-9]+-\d+$");
+        var match = Regex.Match(noSpaces, @"^[A-Z0-9]+-\d+$");
         if (match.Success)
-        {
             return match.Value;
-        }
 
-        return normalized;
+        // 再从标题中提取番号（如: IPZZ-408-UC.torrent.无码破解 -> IPZZ-408）
+        var extractable = Regex.Replace(normalized, @"[^A-Z0-9-]+", " ");
+        match = Regex.Match(extractable, @"\b[A-Z0-9]+-\d+\b");
+        if (match.Success)
+            return match.Value;
+
+        return noSpaces;
     }
 }

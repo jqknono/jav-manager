@@ -1,5 +1,6 @@
 using JavManager.Core.Models;
 using JavManager.Utils;
+using Microsoft.Extensions.Configuration;
 
 namespace JavManager.Services;
 
@@ -9,10 +10,12 @@ namespace JavManager.Services;
 public class TorrentSelectionService
 {
     private readonly WeightCalculator _weightCalculator;
+    private readonly bool _hideOtherTorrents;
 
-    public TorrentSelectionService(WeightCalculator weightCalculator)
+    public TorrentSelectionService(WeightCalculator weightCalculator, IConfiguration configuration)
     {
         _weightCalculator = weightCalculator;
+        _hideOtherTorrents = configuration.GetValue<bool?>("Console:HideOtherTorrents") ?? true;
     }
 
     /// <summary>
@@ -25,11 +28,8 @@ public class TorrentSelectionService
         if (torrents.Count == 0)
             return null;
 
-        if (torrents.Count == 1)
-            return torrents.First();
-
-        // 使用权重计算器选择最佳种子
-        return _weightCalculator.SelectBest(torrents);
+        var sorted = GetSortedTorrents(torrents);
+        return sorted.FirstOrDefault();
     }
 
     /// <summary>
@@ -42,7 +42,13 @@ public class TorrentSelectionService
         if (torrents.Count == 0)
             return torrents;
 
-        return _weightCalculator.CalculateAndSort(torrents);
+        var sorted = _weightCalculator.CalculateAndSort(torrents);
+        if (!_hideOtherTorrents)
+            return sorted;
+
+        return sorted
+            .Where(t => t.HasUncensoredMarker || t.HasSubtitle || t.HasHd)
+            .ToList();
     }
 
     /// <summary>
@@ -55,8 +61,13 @@ public class TorrentSelectionService
         var sorted = GetSortedTorrents(torrents);
         var sb = new System.Text.StringBuilder();
 
-        sb.AppendLine($"找到 {torrents.Count} 个种子源:");
+        sb.AppendLine($"找到 {sorted.Count} 个种子源:");
+        if (_hideOtherTorrents && sorted.Count != torrents.Count)
+            sb.AppendLine("（已过滤其它）");
         sb.AppendLine();
+
+        if (sorted.Count == 0)
+            return sb.ToString();
 
         for (int i = 0; i < sorted.Count; i++)
         {

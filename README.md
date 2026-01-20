@@ -3,8 +3,9 @@
 ## 外部服务依赖
 
 - local search engine
-  - https://www.voidtools.com/everything-1.5a/
-  - https://www.voidtools.com/support/everything/http/
+  - everything: https://www.voidtools.com/everything-1.5a/
+  - http plugin: https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799
+  - http api: https://www.voidtools.com/support/everything/http/
 - remote db
   - https://javdb.com/
 - torrent client

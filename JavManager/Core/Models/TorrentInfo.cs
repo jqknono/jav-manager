@@ -26,7 +26,7 @@ public class TorrentInfo
     public long Size { get; set; }
 
     /// <summary>
-    /// 是否有"无码"标记 (-UC, -U, -C)
+    /// 是否有"无码"标记 (-UC, -U)
     /// </summary>
     public bool HasUncensoredMarker { get; set; }
 
@@ -61,6 +61,16 @@ public class TorrentInfo
     public string SourceSite { get; set; } = string.Empty;
 
     /// <summary>
+    /// 下载进度（0-1），仅对下载器来源有效
+    /// </summary>
+    public double? Progress { get; set; }
+
+    /// <summary>
+    /// 下载器状态，仅对下载器来源有效
+    /// </summary>
+    public string? State { get; set; }
+
+    /// <summary>
     /// 权重分数
     /// </summary>
     public double WeightScore { get; set; }
@@ -85,9 +95,4 @@ public enum UncensoredMarkerType
     /// -U (无码)
     /// </summary>
     U,
-
-    /// <summary>
-    /// -C (字幕)
-    /// </summary>
-    C
 }

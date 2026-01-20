@@ -18,6 +18,27 @@ public class DownloadService
         _config = config;
     }
 
+    private static string? NormalizeExistingDirectoryPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var expanded = Environment.ExpandEnvironmentVariables(path.Trim());
+
+        try
+        {
+            if (!Path.IsPathRooted(expanded))
+                return null;
+
+            var fullPath = Path.GetFullPath(expanded);
+            return Directory.Exists(fullPath) ? fullPath : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// 添加下载任务
     /// </summary>
@@ -35,7 +56,8 @@ public class DownloadService
         try
         {
             // 使用配置的默认值
-            savePath ??= _config.DefaultSavePath;
+            var candidateSavePath = savePath ?? _config.DefaultSavePath;
+            savePath = NormalizeExistingDirectoryPath(candidateSavePath);
             category ??= _config.DefaultCategory;
             tags ??= _config.DefaultTags;
 

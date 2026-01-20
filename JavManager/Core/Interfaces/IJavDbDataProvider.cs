@@ -14,6 +14,8 @@ public interface IJavDbDataProvider
     /// <returns>搜索结果</returns>
     Task<JavSearchResult> SearchAsync(string javId);
 
+    Task<List<JavSearchResult>> SearchCandidatesAsync(string javId);
+
     /// <summary>
     /// 获取视频详情
     /// </summary>

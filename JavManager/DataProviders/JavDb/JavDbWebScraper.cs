@@ -3,6 +3,7 @@ using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
 using JavManager.Utils;
+using System.Net;
 
 namespace JavManager.DataProviders.JavDb;
 
@@ -56,6 +57,22 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
     /// </summary>
     public async Task<JavSearchResult> SearchAsync(string javId)
     {
+        var candidates = await SearchCandidatesAsync(javId);
+        if (candidates.Count == 0)
+            return new JavSearchResult { JavId = javId };
+
+        var selected = ChooseBestCandidate(candidates, javId);
+        Console.WriteLine($"[DEBUG] 选择结果: JavId={selected.JavId}, DetailUrl={selected.DetailUrl}");
+
+        var result = await GetDetailAsync(selected.DetailUrl);
+        if (string.IsNullOrWhiteSpace(result.JavId))
+            result.JavId = javId;
+
+        return result;
+    }
+
+    public async Task<List<JavSearchResult>> SearchCandidatesAsync(string javId)
+    {
         // 尝试所有可用的 URL
         var urls = new List<string> { _config.BaseUrl };
         urls.AddRange(_config.MirrorUrls);
@@ -94,36 +111,42 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                 var searchResults = _htmlParser.ParseSearchResults(html);
                 Console.WriteLine($"[DEBUG] 解析到搜索结果数量: {searchResults.Count}");
 
-                // 如果没有结果，返回空结果
                 if (searchResults.Count == 0)
+                    return new List<JavSearchResult>();
+
+                // 统一详情链接为绝对 URL（保持镜像域名一致）
+                foreach (var r in searchResults)
                 {
-                    return new JavSearchResult { JavId = javId };
+                    if (!string.IsNullOrWhiteSpace(r.DetailUrl) &&
+                        !r.DetailUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                        !r.DetailUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        r.DetailUrl = $"{baseUrlTrimmed}{r.DetailUrl}";
+                    }
                 }
 
-                // 获取第一个结果的详情和种子链接
-                var firstResult = searchResults.First();
-                Console.WriteLine($"[DEBUG] 第一个结果: JavId={firstResult.JavId}, DetailUrl={firstResult.DetailUrl}");
-                var detailUrl = $"{baseUrlTrimmed}{firstResult.DetailUrl}";
-                var detailResponse = await _curlClient.GetAsync(detailUrl, searchUrl);
-                detailResponse.EnsureSuccessStatusCode();
-                var detailHtml = detailResponse.Body;
+                // 去重
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var deduped = new List<JavSearchResult>();
+                foreach (var r in searchResults)
+                {
+                    var key = string.IsNullOrWhiteSpace(r.DetailUrl) ? $"{r.Title}|{r.JavId}" : r.DetailUrl;
+                    if (seen.Add(key))
+                        deduped.Add(r);
+                }
 
-                var result = _htmlParser.ParseDetailPage(detailHtml);
-                result.JavId = javId;
-                result.DetailUrl = detailUrl;
+                if (deduped.Count > 0)
+                {
+                    var first = deduped.First();
+                    Console.WriteLine($"[DEBUG] 第一个结果: JavId={first.JavId}, DetailUrl={first.DetailUrl}");
+                }
 
-                // 解析种子链接
-                var torrents = ParseTorrentLinks(detailHtml);
-                Console.WriteLine($"[DEBUG] 解析到种子数量: {torrents.Count}");
-                result.Torrents = torrents;
-
-                return result;
+                return deduped;
             }
             catch (Exception ex)
             {
                 lastError = $"{baseUrl}: {ex.Message}";
                 Console.WriteLine($"[DEBUG] 异常: {lastError}");
-                // 尝试下一个 URL
                 continue;
             }
         }
@@ -138,7 +161,20 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
     {
         var baseUrl = _config.BaseUrl.TrimEnd('/');
 
-        var response = await _curlClient.GetAsync(detailUrl, baseUrl);
+        // 允许传入相对路径
+        if (!detailUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !detailUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            detailUrl = $"{baseUrl}{detailUrl}";
+        }
+
+        var referer = baseUrl;
+        if (Uri.TryCreate(detailUrl, UriKind.Absolute, out var uri))
+        {
+            referer = uri.GetLeftPart(UriPartial.Authority);
+        }
+
+        var response = await _curlClient.GetAsync(detailUrl, referer);
         response.EnsureSuccessStatusCode();
         var html = response.Body;
 
@@ -176,6 +212,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     continue;
 
                 var magnetLink = magnetNode.GetAttributeValue("href", "");
+                magnetLink = WebUtility.HtmlDecode(magnetLink);
                 if (string.IsNullOrEmpty(magnetLink) || !magnetLink.StartsWith("magnet:"))
                     continue;
 
@@ -242,11 +279,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     }
                 }
 
-                // 兜底：部分标题本身包含标记
-                if (!hasSubtitle && title.Contains("字幕", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasSubtitle = true;
-                }
+                // 字幕以 JavDB 返回信息为准（不从标题推断）
                 if (!hasHd &&
                     (title.Contains("HD", StringComparison.OrdinalIgnoreCase) ||
                      title.Contains("1080", StringComparison.OrdinalIgnoreCase) ||
@@ -256,6 +289,12 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     hasHd = true;
                 }
 
+                var (titleUncensoredType, _) = _nameParser.Parse(title);
+                hasUncensored = hasUncensored || titleUncensoredType != UncensoredMarkerType.None;
+                var uncensoredMarkerType = hasUncensored
+                    ? hasSubtitle ? UncensoredMarkerType.UC : UncensoredMarkerType.U
+                    : UncensoredMarkerType.None;
+
                 var torrentInfo = new TorrentInfo
                 {
                     Title = title,
@@ -263,9 +302,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     Size = size,
                     HasSubtitle = hasSubtitle,
                     HasUncensoredMarker = hasUncensored,
-                    UncensoredMarkerType = hasUncensored && hasSubtitle
-                        ? UncensoredMarkerType.UC
-                        : hasUncensored ? UncensoredMarkerType.U : UncensoredMarkerType.None,
+                    UncensoredMarkerType = uncensoredMarkerType,
                     HasHd = hasHd,
                     SourceSite = "JavDB"
                 };
@@ -351,6 +388,36 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         var match = System.Text.RegularExpressions.Regex.Match(magnetLink, @"btih:([a-fA-F0-9]+)");
         return match.Success ? match.Groups[1].Value.ToLowerInvariant() : "";
     }
+
+    private JavSearchResult ChooseBestCandidate(List<JavSearchResult> candidates, string query)
+    {
+        if (candidates.Count == 1)
+            return candidates[0];
+
+        var normalizedQuery = _nameParser.NormalizeJavId(query);
+
+        foreach (var c in candidates)
+        {
+            var id = _nameParser.NormalizeJavId(string.IsNullOrWhiteSpace(c.JavId) ? c.Title : c.JavId);
+            if (IsValidJavId(id) && id.Equals(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                return c;
+
+            var idFromTitle = _nameParser.NormalizeJavId(c.Title);
+            if (IsValidJavId(idFromTitle) && idFromTitle.Equals(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                return c;
+        }
+
+        var match = candidates.FirstOrDefault(c =>
+            !string.IsNullOrWhiteSpace(c.Title) &&
+            c.Title.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase));
+        return match ?? candidates[0];
+    }
+
+    private static bool IsValidJavId(string javId)
+        => System.Text.RegularExpressions.Regex.IsMatch(
+            javId,
+            @"^[A-Z0-9]+-\d+$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     public void Dispose()
     {

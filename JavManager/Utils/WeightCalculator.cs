@@ -1,4 +1,3 @@
-using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Models;
 
 namespace JavManager.Utils;
@@ -8,9 +7,7 @@ namespace JavManager.Utils;
 /// </summary>
 public class WeightCalculator
 {
-    public WeightCalculator(WeightsConfig config)
-    {
-    }
+    public WeightCalculator() { }
 
     /// <summary>
     /// 计算种子权重分数
@@ -43,8 +40,11 @@ public class WeightCalculator
         }
 
         return torrents
-            .OrderByDescending(t => t.WeightScore) // 标记数量
-            .ThenByDescending(t => t.Size)         // 同标记数下，优先更大
+            .OrderByDescending(t => t.HasUncensoredMarker)
+            .ThenByDescending(t => t.HasSubtitle)
+            .ThenByDescending(t => t.HasHd)
+            .ThenByDescending(t => t.WeightScore) // 同优先级时，再看标记数量
+            .ThenByDescending(t => t.Size)         // 同优先级下，优先更大
             .ToList();
     }
 

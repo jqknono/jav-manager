@@ -120,6 +120,72 @@ public class JavSearchService
     /// <summary>
     /// 强制下载（跳过本地检查）
     /// </summary>
+    public async Task<JavSearchProcessResult> ProcessSelectedTorrentAsync(
+        string javId,
+        TorrentInfo selectedTorrent,
+        bool forceDownload = false)
+    {
+        var result = new JavSearchProcessResult
+        {
+            JavId = javId,
+            SelectedTorrent = selectedTorrent
+        };
+
+        try
+        {
+            result.Message.AppendLine($"选择种子: {selectedTorrent.Title}");
+            var markers = new List<string>();
+            if (selectedTorrent.HasHd) markers.Add("高清");
+            if (selectedTorrent.HasUncensoredMarker) markers.Add("无码");
+            if (selectedTorrent.HasSubtitle) markers.Add("字幕");
+            var markerText = markers.Count > 0 ? string.Join(", ", markers) : "无";
+            result.Message.AppendLine($"标记: {markerText} (共 {selectedTorrent.WeightScore:0} 个)");
+            result.Message.AppendLine();
+
+            if (!forceDownload)
+            {
+                result.Message.AppendLine("检查本地文件...");
+                var localFiles = await _localFileService.CheckLocalFilesAsync(javId);
+
+                if (localFiles.Count > 0)
+                {
+                    result.LocalFilesFound = true;
+                    result.LocalFiles = localFiles;
+                    result.Message.AppendLine(_localFileService.FormatLocalFileInfo(localFiles));
+                    result.Message.AppendLine("本地文件已存在，请选择操作：");
+                    result.Message.AppendLine("  1. 跳过下载");
+                    result.Message.AppendLine("  2. 强制下载");
+                    result.Success = true;
+                    return result;
+                }
+
+                result.Message.AppendLine("本地文件不存在，开始下载...");
+            }
+
+            var downloadSuccess = await _downloadService.AddDownloadAsync(selectedTorrent);
+
+            if (downloadSuccess)
+            {
+                result.Success = true;
+                result.Downloaded = true;
+                result.Message.AppendLine($"下载任务已添加: {selectedTorrent.Title}");
+            }
+            else
+            {
+                result.Success = false;
+                result.Message.AppendLine("添加下载任务失败。");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message.AppendLine($"处理失败: {ex.Message}");
+            return result;
+        }
+    }
+
     public async Task<JavSearchProcessResult> ForceDownloadAsync(string javId)
     {
         return await ProcessAsync(javId, forceDownload: true);
@@ -144,8 +210,8 @@ public class JavSearchService
                 return result;
             }
 
-            result.Success = true;
             result.AvailableTorrents = _selectionService.GetSortedTorrents(searchResult.Torrents);
+            result.Success = result.AvailableTorrents.Count > 0;
             result.Message.AppendLine(_selectionService.FormatTorrentInfo(searchResult.Torrents));
 
             return result;

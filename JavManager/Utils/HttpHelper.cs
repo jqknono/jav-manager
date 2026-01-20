@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 
 namespace JavManager.Utils;
@@ -10,10 +11,18 @@ public class HttpHelper
 {
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, string> _defaultHeaders;
+    private readonly CookieContainer _cookieContainer;
 
     public HttpHelper(TimeSpan? timeout = null)
     {
-        _httpClient = new HttpClient
+        _cookieContainer = new CookieContainer();
+        var handler = new HttpClientHandler
+        {
+            UseCookies = true,
+            CookieContainer = _cookieContainer
+        };
+
+        _httpClient = new HttpClient(handler)
         {
             Timeout = timeout ?? TimeSpan.FromSeconds(30)
         };
@@ -61,6 +70,21 @@ public class HttpHelper
     public async Task<string> PostAsync(string url, Dictionary<string, string> formData, Dictionary<string, string>? headers = null)
     {
         var content = new FormUrlEncodedContent(formData);
+        var request = CreateRequest(HttpMethod.Post, url, headers, content);
+        return await SendRequestAsync(request);
+    }
+
+    /// <summary>
+    /// ?? POST ?? (multipart/form-data)
+    /// </summary>
+    public async Task<string> PostMultipartAsync(string url, Dictionary<string, string> formData, Dictionary<string, string>? headers = null)
+    {
+        var content = new MultipartFormDataContent();
+        foreach (var (key, value) in formData)
+        {
+            content.Add(new StringContent(value ?? string.Empty, Encoding.UTF8), key);
+        }
+
         var request = CreateRequest(HttpMethod.Post, url, headers, content);
         return await SendRequestAsync(request);
     }

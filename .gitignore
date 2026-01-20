@@ -1,3 +1,6 @@
 JavManager/obj/
-
 JavManager/bin/Debug/
+JavManager/bin/Release/
+JavManager.Tests/obj/
+JavManager.Tests/bin/Debug/
+JavManager.Tests/bin/Release/

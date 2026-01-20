@@ -5,6 +5,7 @@ using JavManager.Core.Models;
 using JavManager.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace JavManager.DataProviders.QBittorrent;
 
@@ -45,8 +46,10 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
             var url = $"{_baseUrl}/api/v2/auth/login";
             var response = await _httpHelper.PostAsync(url, formData);
 
-            // SID Cookie 会通过 Set-Cookie 返回，这里需要从响应头获取
-            // 由于 HttpHelper 封装限制，我们简化处理，在后续请求中携带认证
+            if (!IsOkResponse(response))
+                throw new InvalidOperationException($"qBittorrent login rejected: {NormalizeResponseText(response)}");
+
+            _sidCookie = "1";
 
             _loginTime = DateTime.UtcNow;
         }
@@ -77,6 +80,8 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
 
         try
         {
+            magnetLink = NormalizeMagnetLink(magnetLink);
+            var infoHash = TryExtractInfoHash(magnetLink);
             var formData = new Dictionary<string, string>
             {
                 { "urls", magnetLink }
@@ -92,7 +97,12 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 formData["tags"] = tags;
 
             var url = $"{_baseUrl}/api/v2/torrents/add";
-            await _httpHelper.PostAsync(url, formData);
+            var response = await _httpHelper.PostMultipartAsync(url, formData);
+            if (!IsOkResponse(response))
+                throw new InvalidOperationException($"qBittorrent rejected torrent: {NormalizeResponseText(response)}");
+
+            if (infoHash != null && !await TorrentExistsAsync(infoHash))
+                throw new InvalidOperationException("qBittorrent did not add the torrent (not found in torrent list after add).");
 
             return true;
         }
@@ -127,7 +137,9 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 formData["tags"] = tags;
 
             var url = $"{_baseUrl}/api/v2/torrents/add";
-            await _httpHelper.PostAsync(url, formData);
+            var response = await _httpHelper.PostMultipartAsync(url, formData);
+            if (!IsOkResponse(response))
+                throw new InvalidOperationException($"qBittorrent rejected torrent URL(s): {NormalizeResponseText(response)}");
 
             return true;
         }
@@ -135,6 +147,59 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         {
             throw new InvalidOperationException($"Failed to add torrent from URL: {ex.Message}", ex);
         }
+    }
+
+    private static string NormalizeMagnetLink(string magnetLink)
+    {
+        if (string.IsNullOrWhiteSpace(magnetLink))
+            return string.Empty;
+
+        return WebUtility.HtmlDecode(magnetLink).Trim();
+    }
+
+    private static bool IsOkResponse(string responseBody)
+    {
+        var text = NormalizeResponseText(responseBody);
+        if (string.IsNullOrEmpty(text))
+            return true;
+
+        return text.Equals("ok.", StringComparison.OrdinalIgnoreCase)
+               || text.Equals("ok", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeResponseText(string responseBody)
+        => (responseBody ?? string.Empty).Trim();
+
+    private async Task<bool> TorrentExistsAsync(string infoHash)
+    {
+        try
+        {
+            var url = $"{_baseUrl}/api/v2/torrents/info?hashes={Uri.EscapeDataString(infoHash)}";
+            var response = await _httpHelper.GetAsync(url);
+            var jsonArray = JArray.Parse(response);
+            return jsonArray.Count > 0;
+        }
+        catch
+        {
+            // If verification fails, do not mask a successful add.
+            return true;
+        }
+    }
+
+    private static string? TryExtractInfoHash(string magnetLink)
+    {
+        if (string.IsNullOrWhiteSpace(magnetLink))
+            return null;
+
+        // magnet:?xt=urn:btih:<hash>
+        var match = System.Text.RegularExpressions.Regex.Match(
+            magnetLink,
+            @"(?i)\bxt=urn:btih:([a-f0-9]{40}|[a-z2-7]{32})\b");
+
+        if (!match.Success)
+            return null;
+
+        return match.Groups[1].Value.ToLowerInvariant();
     }
 
     /// <summary>
@@ -234,6 +299,8 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                     Seeders = item["num_seeds"]?.ToObject<int>() ?? 0,
                     Leechers = item["num_leechs"]?.ToObject<int>() ?? 0,
                     MagnetLink = item["magnet_uri"]?.ToString() ?? string.Empty,
+                    Progress = item["progress"]?.ToObject<double?>(),
+                    State = item["state"]?.ToString(),
                     SourceSite = "qBittorrent"
                 });
             }
@@ -263,35 +330,56 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
-        try
-        {
-            // 尝试登录来验证连接
-            var formData = new Dictionary<string, string>
-            {
-                { "username", _config.UserName },
-                { "password", _config.Password }
-            };
+        // 健康检查重试（主要应对网络/DNS 等瞬时问题）
+        const int maxAttempts = 3;
+        Exception? lastException = null;
 
-            var url = $"{_baseUrl}/api/v2/auth/login";
-            await _httpHelper.PostAsync(url, formData);
-
-            return new HealthCheckResult
-            {
-                ServiceName = ((IHealthChecker)this).ServiceName,
-                IsHealthy = true,
-                Message = "连接正常",
-                Url = _baseUrl
-            };
-        }
-        catch (Exception ex)
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            return new HealthCheckResult
+            try
             {
-                ServiceName = ((IHealthChecker)this).ServiceName,
-                IsHealthy = false,
-                Message = $"连接失败: {ex.Message}",
-                Url = _baseUrl
-            };
+                // 尝试登录来验证连接
+                var formData = new Dictionary<string, string>
+                {
+                    { "username", _config.UserName },
+                    { "password", _config.Password }
+                };
+
+                var url = $"{_baseUrl}/api/v2/auth/login";
+                var response = await _httpHelper.PostAsync(url, formData);
+                if (!IsOkResponse(response))
+                {
+                    return new HealthCheckResult
+                    {
+                        ServiceName = ((IHealthChecker)this).ServiceName,
+                        IsHealthy = false,
+                        Message = $"登录被拒绝: {NormalizeResponseText(response)}",
+                        Url = _baseUrl
+                    };
+                }
+
+                return new HealthCheckResult
+                {
+                    ServiceName = ((IHealthChecker)this).ServiceName,
+                    IsHealthy = true,
+                    Message = attempt == 1 ? "连接正常" : $"连接正常（重试 {attempt - 1} 次后成功）",
+                    Url = _baseUrl
+                };
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                if (attempt < maxAttempts)
+                    await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt));
+            }
         }
+
+        return new HealthCheckResult
+        {
+            ServiceName = ((IHealthChecker)this).ServiceName,
+            IsHealthy = false,
+            Message = $"连接失败（重试 {maxAttempts} 次）: {lastException?.Message}",
+            Url = _baseUrl
+        };
     }
 }

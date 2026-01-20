@@ -23,8 +23,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
         _httpHelper = new HttpHelper(TimeSpan.FromSeconds(10));
 
         // 构建基础 URL
-        var port = _config.Port.HasValue ? $":{_config.Port}" : "";
-        _baseUrl = $"{_config.BaseUrl.TrimEnd('/')}{port}";
+        _baseUrl = $"{_config.BaseUrl.TrimEnd('/')}";
 
         // 设置认证
         if (_config.UseAuthentication)
@@ -96,14 +95,41 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
                 FileName = name,
                 FullPath = string.IsNullOrEmpty(path) ? name : System.IO.Path.Combine(path, name),
                 Size = size,
-                ModifiedDate = modifiedDateTicks > 0 
-                    ? DateTimeOffset.FromUnixTimeSeconds(modifiedDateTicks).DateTime 
-                    : DateTime.MinValue,
+                ModifiedDate = ParseEverythingDateModified(modifiedDateTicks),
                 FileType = fileType
             });
         }
 
         return results;
+    }
+
+    public static DateTime ParseEverythingDateModified(long value)
+    {
+        if (value <= 0)
+            return DateTime.MinValue;
+
+        var minUnixSeconds = DateTimeOffset.MinValue.ToUnixTimeSeconds();
+        var maxUnixSeconds = DateTimeOffset.MaxValue.ToUnixTimeSeconds();
+        if (value >= minUnixSeconds && value <= maxUnixSeconds)
+            return DateTimeOffset.FromUnixTimeSeconds(value).LocalDateTime;
+
+        // Everything HTTP API may return Windows FILETIME
+        try
+        {
+            return DateTime.FromFileTimeUtc(value).ToLocalTime();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        // Fallback: some APIs use unix milliseconds
+        var minUnixMs = DateTimeOffset.MinValue.ToUnixTimeMilliseconds();
+        var maxUnixMs = DateTimeOffset.MaxValue.ToUnixTimeMilliseconds();
+        if (value >= minUnixMs && value <= maxUnixMs)
+            return DateTimeOffset.FromUnixTimeMilliseconds(value).LocalDateTime;
+
+        return DateTime.MinValue;
     }
 
     /// <summary>
@@ -147,34 +173,53 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
-        try
-        {
-            // 发送一个简单查询来测试连接
-            var url = $"{_baseUrl}/?s=test&json=1&count=1";
-            var response = await _httpHelper.GetAsync(url);
+        // 健康检查重试（主要应对网络/DNS 等瞬时问题）
+        const int maxAttempts = 3;
+        Exception? lastException = null;
 
-            // 尝试解析响应
-            var json = JObject.Parse(response);
-            if (json["results"] == null)
-                throw new InvalidOperationException("Invalid response format");
-
-            return new HealthCheckResult
-            {
-                ServiceName = ((IHealthChecker)this).ServiceName,
-                IsHealthy = true,
-                Message = "服务正常",
-                Url = _baseUrl
-            };
-        }
-        catch (Exception ex)
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            return new HealthCheckResult
+            try
             {
-                ServiceName = ((IHealthChecker)this).ServiceName,
-                IsHealthy = false,
-                Message = $"连接失败: {ex.Message}",
-                Url = _baseUrl
-            };
+                // 发送一个简单查询来测试连接
+                var url = $"{_baseUrl}/?s=test&json=1&count=1";
+                var response = await _httpHelper.GetAsync(url);
+
+                // 尝试解析响应
+                var json = JObject.Parse(response);
+                if (json["results"] == null)
+                {
+                    return new HealthCheckResult
+                    {
+                        ServiceName = ((IHealthChecker)this).ServiceName,
+                        IsHealthy = false,
+                        Message = "响应格式错误（缺少 results 字段）",
+                        Url = _baseUrl
+                    };
+                }
+
+                return new HealthCheckResult
+                {
+                    ServiceName = ((IHealthChecker)this).ServiceName,
+                    IsHealthy = true,
+                    Message = attempt == 1 ? "服务正常" : $"服务正常（重试 {attempt - 1} 次后成功）",
+                    Url = _baseUrl
+                };
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                if (attempt < maxAttempts)
+                    await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt));
+            }
         }
+
+        return new HealthCheckResult
+        {
+            ServiceName = ((IHealthChecker)this).ServiceName,
+            IsHealthy = false,
+            Message = $"连接失败（重试 {maxAttempts} 次）: {lastException?.Message}",
+            Url = _baseUrl
+        };
     }
 }

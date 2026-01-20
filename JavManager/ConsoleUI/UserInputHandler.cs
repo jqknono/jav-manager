@@ -8,35 +8,22 @@ namespace JavManager.ConsoleUI;
 public class UserInputHandler
 {
     /// <summary>
-    /// 获取用户输入的番号
+    /// 获取用户输入（命令或番号）
     /// </summary>
     public string GetJavId()
     {
-        Console.Write("请输入番号 (如 XXX-123, 输入 'quit' 退出): ");
+        Console.Write("请输入命令或番号 (输入 h 查看命令, 输入 q 退出): ");
         var input = Console.ReadLine()?.Trim() ?? string.Empty;
 
         // 退出命令
-        if (input.Equals("quit", StringComparison.OrdinalIgnoreCase) ||
+        if (input.Equals("q", StringComparison.OrdinalIgnoreCase) ||
+            input.Equals("quit", StringComparison.OrdinalIgnoreCase) ||
             input.Equals("exit", StringComparison.OrdinalIgnoreCase))
         {
             return "quit";
         }
 
-        // 验证输入
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            Console.WriteLine("输入不能为空。");
-            return GetJavId();
-        }
-
-        // 基本格式验证
-        if (!System.Text.RegularExpressions.Regex.IsMatch(input, @"^[A-Z0-9]+-\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-        {
-            Console.WriteLine("番号格式不正确，应为类似 XXX-123 的格式。");
-            return GetJavId();
-        }
-
-        return input.ToUpper();
+        return input;
     }
 
     /// <summary>
@@ -67,11 +54,59 @@ public class UserInputHandler
     /// <summary>
     /// 确认操作
     /// </summary>
-    public bool Confirm(string message)
+    public int? GetTorrentIndexSelection(int maxIndex)
     {
-        Console.Write($"{message} (y/n): ");
-        var input = Console.ReadLine()?.Trim().ToLower();
-        return input == "y" || input == "yes";
+        if (maxIndex <= 0)
+            return null;
+
+        while (true)
+        {
+            Console.Write($"请选择下载第几个？ (1-{maxIndex}, 回车默认选择第一个, 0 取消): ");
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(input))
+                return 1;
+
+            if (input == "0")
+                return null;
+
+            if (!int.TryParse(input, out var index) || index < 1 || index > maxIndex)
+            {
+                Console.WriteLine($"输入无效，请输入 1-{maxIndex}，或直接回车默认选择第一个。");
+                continue;
+            }
+
+            return index;
+        }
+    }
+
+    /// <summary>
+    /// 选择搜索结果序号（JavDB 搜索结果）
+    /// </summary>
+    public int? GetSearchResultIndexSelection(int maxIndex)
+    {
+        if (maxIndex <= 0)
+            return null;
+
+        while (true)
+        {
+            Console.Write($"请选择搜索结果第几个？ (1-{maxIndex}, 回车默认选择第一个, 0 取消): ");
+            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(input))
+                return 1;
+
+            if (input == "0")
+                return null;
+
+            if (!int.TryParse(input, out var index) || index < 1 || index > maxIndex)
+            {
+                Console.WriteLine($"输入无效，请输入 1-{maxIndex} 或直接回车默认选择第一个。");
+                continue;
+            }
+
+            return index;
+        }
     }
 
     /// <summary>
