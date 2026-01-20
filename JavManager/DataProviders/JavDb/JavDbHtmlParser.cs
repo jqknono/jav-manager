@@ -21,7 +21,7 @@ public class JavDbHtmlParser
             doc.LoadHtml(html);
 
             // 查找视频项（JavDB 的搜索结果在 .item-grid 中）
-            var items = doc.DocumentNode.SelectNodes("//div[contains(@class, 'item')]");
+            var items = doc.DocumentNode.SelectNodes("//div[contains(@class, 'item') and .//a[contains(@class, 'box')]]");
 
             if (items == null)
                 return results;
@@ -34,7 +34,9 @@ public class JavDbHtmlParser
                     continue;
 
                 var detailUrl = linkNode.GetAttributeValue("href", "");
-                var title = linkNode.GetAttributeValue("title", "");
+                var titleAttr = linkNode.GetAttributeValue("title", "");
+                var titleText = NormalizeInlineText(linkNode.InnerText);
+                var title = !string.IsNullOrWhiteSpace(titleAttr) ? titleAttr : titleText;
 
                 // 提取封面图
                 var imgNode = item.SelectSingleNode(".//img[contains(@class, 'video-cover')]");
@@ -42,9 +44,17 @@ public class JavDbHtmlParser
                               imgNode?.GetAttributeValue("src", "") ?? "";
 
                 // 提取番号
-                var javIdNode = item.SelectSingleNode(".//div[contains(@class, 'uid') or contains(@class, 'video-id')]");
-                var javId = javIdNode?.InnerText.Trim() ??
-                            ExtractJavIdFromTitle(title);
+                var javIdNode = item.SelectSingleNode(
+                    ".//*[contains(concat(' ', normalize-space(@class), ' '), ' uid ') or " +
+                    "contains(concat(' ', normalize-space(@class), ' '), ' video-id ') or " +
+                    "contains(concat(' ', normalize-space(@class), ' '), ' video-uid ') or " +
+                    "contains(concat(' ', normalize-space(@class), ' '), ' video_id ')]");
+
+                var javId =
+                    ExtractJavIdFromText(NormalizeInlineText(javIdNode?.InnerText)) ??
+                    ExtractJavIdFromText(NormalizeInlineText(item.InnerText)) ??
+                    ExtractJavIdFromText(title) ??
+                    string.Empty;
 
                 results.Add(new JavSearchResult
                 {
@@ -111,7 +121,21 @@ public class JavDbHtmlParser
     private string ExtractJavIdFromTitle(string title)
     {
         // 匹配常见番号格式: ABC-123, SSIS-001, FC2-1234567
-        var match = System.Text.RegularExpressions.Regex.Match(title, @"([A-Z0-9]+-\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        return match.Success ? match.Value.ToUpper() : title;
+        return ExtractJavIdFromText(title) ?? title;
     }
+
+    private static string? ExtractJavIdFromText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            text,
+            @"([A-Z0-9]+-\d+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Value.ToUpperInvariant() : null;
+    }
+
+    private static string NormalizeInlineText(string? text)
+        => (HtmlEntity.DeEntitize(text ?? string.Empty) ?? string.Empty).Trim();
 }
