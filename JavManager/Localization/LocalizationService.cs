@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Resources;
+using Microsoft.Extensions.Configuration;
 
 namespace JavManager.Localization;
 
@@ -21,21 +22,38 @@ public class LocalizationService
     /// </summary>
     public bool IsChinese => _culture.TwoLetterISOLanguageName == "zh";
 
-    public LocalizationService()
+    public LocalizationService(IConfiguration? configuration = null)
     {
         _resourceManager = new ResourceManager(
             "JavManager.Localization.Strings",
             typeof(LocalizationService).Assembly);
 
-        _culture = DetectCulture();
+        _culture = DetectCulture(configuration);
     }
 
     /// <summary>
-    /// Always use English for all logs and output
+    /// Detect output culture (English/Chinese only).
     /// </summary>
-    private static CultureInfo DetectCulture()
+    private static CultureInfo DetectCulture(IConfiguration? configuration)
     {
-        // Force English for all logs and output
+        var language = configuration?.GetValue<string>("Console:Language");
+        if (string.IsNullOrWhiteSpace(language))
+            return new CultureInfo("en"); // default: English
+
+        language = language.Trim();
+        if (language.Equals("auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var ui = CultureInfo.CurrentUICulture;
+            return ui.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase)
+                ? new CultureInfo("zh")
+                : new CultureInfo("en");
+        }
+
+        if (language.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+            return new CultureInfo("zh");
+        if (language.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+            return new CultureInfo("en");
+
         return new CultureInfo("en");
     }
 
@@ -200,6 +218,27 @@ public static class L
     public const string LocalDedupException = "LocalDedupException";
     public const string DownloaderUnavailableSkipped = "DownloaderUnavailableSkipped";
     public const string DownloaderException = "DownloaderException";
+    public const string LogSelectedTorrent = "LogSelectedTorrent";
+    public const string LogTorrentMarkers = "LogTorrentMarkers";
+    public const string LogCheckingLocalFiles = "LogCheckingLocalFiles";
+    public const string LogStartDownload = "LogStartDownload";
+    public const string LogDownloadTaskAddedWithTitle = "LogDownloadTaskAddedWithTitle";
+    public const string LogAddToQueueFailedShowingMagnet = "LogAddToQueueFailedShowingMagnet";
+    public const string LogSearchingCache = "LogSearchingCache";
+    public const string LogCacheFoundTorrents = "LogCacheFoundTorrents";
+    public const string LogCacheHitAt = "LogCacheHitAt";
+    public const string LogSearchingRemote = "LogSearchingRemote";
+    public const string LogRemoteFoundTorrents = "LogRemoteFoundTorrents";
+    public const string LogSavedToCache = "LogSavedToCache";
+    public const string LogNoTorrentsForId = "LogNoTorrentsForId";
+    public const string LogNoAvailableTorrents = "LogNoAvailableTorrents";
+    public const string LogSearchFailedWithMessage = "LogSearchFailedWithMessage";
+    public const string LogProcessFailedWithMessage = "LogProcessFailedWithMessage";
+
+    // === JavDB 爬虫错误 ===
+    public const string JavDbHomeRequestFailed = "JavDbHomeRequestFailed";
+    public const string JavDbSearchRequestFailed = "JavDbSearchRequestFailed";
+    public const string JavDbHttpRequestFailed = "JavDbHttpRequestFailed";
 
     // === 缓存 ===
     public const string CacheStatsTitle = "CacheStatsTitle";

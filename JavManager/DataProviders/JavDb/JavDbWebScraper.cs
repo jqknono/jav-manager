@@ -92,7 +92,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                 var homeResponse = await _curlClient.GetAsync(baseUrlTrimmed);
                 if (!homeResponse.IsSuccessStatusCode)
                 {
-                    lastError = $"首页请求失败: {homeResponse.StatusCode}";
+                    lastError = _loc.GetFormat(L.JavDbHomeRequestFailed, homeResponse.StatusCode);
                     if (homeResponse.StatusCode == 403)
                         continue;
                     homeResponse.EnsureSuccessStatusCode();
@@ -103,7 +103,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                 var searchResponse = await _curlClient.GetAsync(searchUrl, baseUrlTrimmed);
                 if (!searchResponse.IsSuccessStatusCode)
                 {
-                    lastError = $"搜索请求失败: {searchResponse.StatusCode}";
+                    lastError = _loc.GetFormat(L.JavDbSearchRequestFailed, searchResponse.StatusCode);
                     if (searchResponse.StatusCode == 403)
                         continue;
                     searchResponse.EnsureSuccessStatusCode();
@@ -155,7 +155,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             }
         }
 
-        throw new InvalidOperationException($"JavDB HTTP 请求失败: {lastError}");
+        throw new InvalidOperationException(_loc.GetFormat(L.JavDbHttpRequestFailed, lastError));
     }
 
     /// <summary>

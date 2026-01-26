@@ -63,11 +63,14 @@ class Program
         {
             ConfigureConsoleEncoding();
 
+            // 构建配置（尽早构建，以支持语言/遥测等配置）
+            var config = BuildConfiguration();
+
             // 初始化本地化服务（尽早初始化以支持命令行帮助显示）
-            _loc = new LocalizationService();
+            _loc = new LocalizationService(config);
 
             // 初始化遥测服务（尽早初始化以捕获启动事件）
-            var telemetryConfig = BuildConfiguration().GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
+            var telemetryConfig = config.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
             _telemetry = new TelemetryService(telemetryConfig.Endpoint, telemetryConfig.Enabled);
             _telemetry.TrackStartup();
 
@@ -97,11 +100,8 @@ class Program
                 return;
             }
 
-            // 构建配置
-            var config = BuildConfiguration();
-
             // 创建主机
-            var host = CreateHostBuilder(config).Build();
+            var host = CreateHostBuilder(config, _loc).Build();
 
             // 初始化服务
             var services = host.Services;
@@ -596,7 +596,7 @@ class Program
     /// <summary>
     /// 创建主机构建器
     /// </summary>
-    static IHostBuilder CreateHostBuilder(IConfiguration configuration)
+    static IHostBuilder CreateHostBuilder(IConfiguration configuration, LocalizationService localizationService)
     {
         return Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
@@ -620,8 +620,8 @@ class Program
                 services.AddSingleton(downloadConfig);
                 services.AddSingleton(localCacheConfig);
 
-                // 注册本地化服务
-                services.AddSingleton<LocalizationService>();
+                // 注册本地化服务（使用 Main 中初始化的实例，确保语言一致）
+                services.AddSingleton(localizationService);
 
                 // 注册工具类
                 services.AddSingleton<TorrentNameParser>();

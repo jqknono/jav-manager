@@ -2,61 +2,51 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - Directory.Build.props
-  workflow_dispatch: {}
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.2.3). Leave empty when triggered by tag push."
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  tag:
+  meta:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
-      created: ${{ steps.create_tag.outputs.created }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Read version
-        id: version
+      - name: Read tag/version
+        id: meta
         shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           set -euo pipefail
-          version="$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props || true)"
-          if [[ -z "${version}" ]]; then
-            echo "Failed to read <Version> from Directory.Build.props" >&2
+          tag="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          if [[ -z "${tag}" ]]; then
+            echo "GITHUB_REF_NAME is empty" >&2
             exit 1
           fi
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-          echo "tag=v${version}" >> "${GITHUB_OUTPUT}"
-
-      - name: Create and push tag (if missing)
-        id: create_tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ steps.version.outputs.tag }}"
-          if git rev-parse "${tag}" >/dev/null 2>&1; then
-            echo "Tag ${tag} already exists; skipping."
-            echo "created=false" >> "${GITHUB_OUTPUT}"
-            exit 0
+          if [[ "${tag}" != v* ]]; then
+            echo "Expected tag like v1.2.3, got: ${tag}. If you ran workflow_dispatch, pass inputs.tag." >&2
+            exit 1
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${tag}" -m "${tag}"
-          git push origin "${tag}"
-          echo "created=true" >> "${GITHUB_OUTPUT}"
+          version="${tag#v}"
+          if [[ -z "${version}" ]]; then
+            echo "Failed to parse version from tag: ${tag}" >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
   build:
-    needs: tag
-    if: needs.tag.outputs.created == 'true'
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +65,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.meta.outputs.tag }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -94,7 +86,7 @@ jobs:
             -r "${{ matrix.rid }}" \
             --output "${out_dir}" \
             --self-contained true \
-            -p:Version="${{ needs.tag.outputs.version }}" \
+            -p:Version="${{ needs.meta.outputs.version }}" \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:IncludeAllContentForSelfExtract=true \
@@ -141,7 +133,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="${{ needs.tag.outputs.version }}"
+          version="${{ needs.meta.outputs.version }}"
           rid="${{ matrix.rid }}"
           out_dir="artifacts/publish/${rid}"
           bin_dir="artifacts/binaries"
@@ -162,26 +154,71 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JavManager_${{ needs.tag.outputs.version }}_${{ matrix.rid }}
+          name: JavManager_${{ needs.meta.outputs.version }}_${{ matrix.rid }}
           path: artifacts/binaries/*
           if-no-files-found: error
 
   release:
-    needs: [ tag, build ]
-    if: needs.tag.outputs.created == 'true'
+    needs: [ meta, build ]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout (for release notes)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.meta.outputs.tag }}
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts/download
 
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.meta.outputs.tag }}"
+          version="${{ needs.meta.outputs.version }}"
+
+          git fetch --tags --force
+          prev_tag="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+
+          {
+            echo "# ${tag}"
+            echo
+            if [[ -n "${prev_tag}" ]]; then
+              echo "## Changes since ${prev_tag}"
+              echo
+              git log --no-merges --pretty=format:'- %s (%h)' "${prev_tag}..${tag}" || true
+              echo
+              echo
+              echo "Compare: https://github.com/${GITHUB_REPOSITORY}/compare/${prev_tag}...${tag}"
+            else
+              echo "## Changes"
+              echo
+              git log --no-merges --pretty=format:'- %s (%h)' "${tag}" || true
+            fi
+            echo
+            echo "## Assets"
+            echo
+            echo "- Prebuilt self-contained binaries for multiple platforms/RIDs."
+            echo "- `SHA256SUMS.txt` for verification."
+          } > RELEASE_NOTES.md
+
+      - name: Create SHA256SUMS.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd artifacts/download && find . -maxdepth 3 -type f -print0 | sort -z | xargs -0 sha256sum) > SHA256SUMS.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          name: ${{ needs.tag.outputs.tag }}
-          generate_release_notes: true
-          files: artifacts/download/**/*
+          tag_name: ${{ needs.meta.outputs.tag }}
+          name: ${{ needs.meta.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            artifacts/download/**/*
+            SHA256SUMS.txt
           fail_on_unmatched_files: true
-

@@ -56,7 +56,7 @@ public class HealthCheckBehaviorTests
     {
         var checker1 = new BlockingHealthChecker("svc-1");
         var checker2 = new BlockingHealthChecker("svc-2");
-        var service = new HealthCheckService(new IHealthChecker[] { checker1, checker2 });
+        var service = new HealthCheckService(new IHealthChecker[] { checker1, checker2 }, new LocalizationService());
 
         var task = service.CheckAllAsync();
 

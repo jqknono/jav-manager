@@ -1,3 +1,4 @@
+using System.IO;
 using Spectre.Console;
 using JavManager.Core.Models;
 using JavManager.Core.Interfaces;
@@ -12,6 +13,11 @@ namespace JavManager.ConsoleUI;
 public class DisplayService
 {
     private readonly LocalizationService _loc;
+
+    private const string LogInfoPrefix = "[INFO] ";
+    private const string LogWarnPrefix = "[WARN] ";
+    private const string LogErrorPrefix = "[ERROR] ";
+    private const string LogSuccessPrefix = "[OK] ";
 
     public DisplayService(LocalizationService localizationService)
     {
@@ -122,8 +128,58 @@ public class DisplayService
         {
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[grey]────────────────────────────────────────[/]");
-            AnsiConsole.Write(result.Message.ToString());
+            RenderProcessLog(result.Message.ToString());
             AnsiConsole.MarkupLine("[grey]────────────────────────────────────────[/]");
+        }
+    }
+
+    private static void RenderProcessLog(string text)
+    {
+        using var reader = new StringReader(text);
+        string? line;
+
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (line.Length == 0)
+            {
+                AnsiConsole.WriteLine();
+                continue;
+            }
+
+            var color = "grey";
+            var content = line;
+
+            if (content.StartsWith(LogInfoPrefix, StringComparison.Ordinal))
+            {
+                color = "grey";
+                content = content.Substring(LogInfoPrefix.Length);
+            }
+            else if (content.StartsWith(LogWarnPrefix, StringComparison.Ordinal))
+            {
+                color = "yellow";
+                content = content.Substring(LogWarnPrefix.Length);
+            }
+            else if (content.StartsWith(LogErrorPrefix, StringComparison.Ordinal))
+            {
+                color = "red";
+                content = content.Substring(LogErrorPrefix.Length);
+            }
+            else if (content.StartsWith(LogSuccessPrefix, StringComparison.Ordinal))
+            {
+                color = "green";
+                content = content.Substring(LogSuccessPrefix.Length);
+            }
+
+            if (string.IsNullOrEmpty(content))
+            {
+                AnsiConsole.WriteLine();
+                continue;
+            }
+
+            if (content.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
+                color = "cyan";
+
+            AnsiConsole.MarkupLine($"[{color}]{Markup.Escape(content)}[/]");
         }
     }
 

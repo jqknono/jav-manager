@@ -1,4 +1,5 @@
 using JavManager.Core.Interfaces;
+using JavManager.Localization;
 
 namespace JavManager.Services;
 
@@ -8,10 +9,12 @@ namespace JavManager.Services;
 public class HealthCheckService
 {
     private readonly IEnumerable<IHealthChecker> _healthCheckers;
+    private readonly LocalizationService _loc;
 
-    public HealthCheckService(IEnumerable<IHealthChecker> healthCheckers)
+    public HealthCheckService(IEnumerable<IHealthChecker> healthCheckers, LocalizationService localizationService)
     {
         _healthCheckers = healthCheckers;
+        _loc = localizationService;
     }
 
     /// <summary>
@@ -32,7 +35,7 @@ public class HealthCheckService
                     {
                         ServiceName = checker.ServiceName,
                         IsHealthy = false,
-                        Message = $"健康检查异常: {ex.Message}"
+                        Message = _loc.GetFormat(L.HealthCheckException, ex.Message)
                     };
                 }
             })

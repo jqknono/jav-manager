@@ -1,6 +1,8 @@
+using System.IO;
 using System.Text;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Localization;
 
 namespace JavManager.Services;
 
@@ -15,6 +17,12 @@ public class JavSearchService
     private readonly LocalFileCheckService _localFileService;
     private readonly DownloadService _downloadService;
     private readonly ServiceAvailability _serviceAvailability;
+    private readonly LocalizationService _loc;
+
+    private const string LogInfoPrefix = "[INFO] ";
+    private const string LogWarnPrefix = "[WARN] ";
+    private const string LogErrorPrefix = "[ERROR] ";
+    private const string LogSuccessPrefix = "[OK] ";
 
     public JavSearchService(
         IJavDbDataProvider javDbProvider,
@@ -22,6 +30,7 @@ public class JavSearchService
         LocalFileCheckService localFileService,
         DownloadService downloadService,
         ServiceAvailability serviceAvailability,
+        LocalizationService localizationService,
         IJavLocalCacheProvider? cacheProvider = null)
     {
         _javDbProvider = javDbProvider;
@@ -29,8 +38,27 @@ public class JavSearchService
         _localFileService = localFileService;
         _downloadService = downloadService;
         _serviceAvailability = serviceAvailability;
+        _loc = localizationService;
         _cacheProvider = cacheProvider;
     }
+
+    private static void AppendLog(StringBuilder sb, string prefix, string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
+        using var reader = new StringReader(message);
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            sb.AppendLine(prefix + line);
+        }
+    }
+
+    private static void LogInfo(StringBuilder sb, string message) => AppendLog(sb, LogInfoPrefix, message);
+    private static void LogWarning(StringBuilder sb, string message) => AppendLog(sb, LogWarnPrefix, message);
+    private static void LogError(StringBuilder sb, string message) => AppendLog(sb, LogErrorPrefix, message);
+    private static void LogSuccess(StringBuilder sb, string message) => AppendLog(sb, LogSuccessPrefix, message);
 
     /// <summary>
     /// 执行完整的搜索和下载流程
@@ -50,12 +78,12 @@ public class JavSearchService
             
             if (!forceRemote && _cacheProvider != null)
             {
-                result.Message.AppendLine($"正在从本地缓存搜索 {javId}...");
+                LogInfo(result.Message, _loc.GetFormat(L.LogSearchingCache, javId));
                 searchResult = await _cacheProvider.GetAsync(javId);
                 
                 if (searchResult != null && searchResult.Torrents.Count > 0)
                 {
-                    result.Message.AppendLine($"[本地缓存] 找到 {searchResult.Torrents.Count} 个种子源。");
+                    LogInfo(result.Message, _loc.GetFormat(L.LogCacheFoundTorrents, searchResult.Torrents.Count));
                     result.Message.AppendLine();
                 }
                 else
@@ -70,27 +98,27 @@ public class JavSearchService
                 if (!_serviceAvailability.RemoteSearchAvailable)
                 {
                     result.Success = false;
-                    result.Message.AppendLine("JavDB 服务异常：不支持远程搜索能力。");
+                    LogError(result.Message, _loc.Get(L.JavDbUnavailable));
                     return result;
                 }
 
-                result.Message.AppendLine($"正在从远端搜索 {javId}...");
+                LogInfo(result.Message, _loc.GetFormat(L.LogSearchingRemote, javId));
                 searchResult = await _javDbProvider.SearchAsync(javId);
 
                 if (searchResult.Torrents.Count == 0)
                 {
                     result.Success = false;
-                    result.Message.AppendLine($"未找到 {javId} 的种子。");
+                    LogError(result.Message, _loc.GetFormat(L.LogNoTorrentsForId, javId));
                     return result;
                 }
 
-                result.Message.AppendLine($"[远端] 找到 {searchResult.Torrents.Count} 个种子源。");
+                LogInfo(result.Message, _loc.GetFormat(L.LogRemoteFoundTorrents, searchResult.Torrents.Count));
                 
                 // 保存到本地缓存
                 if (_cacheProvider != null)
                 {
                     await _cacheProvider.SaveAsync(searchResult);
-                    result.Message.AppendLine("已缓存到本地数据库。");
+                    LogInfo(result.Message, _loc.Get(L.LogSavedToCache));
                 }
                 
                 result.Message.AppendLine();
@@ -99,30 +127,27 @@ public class JavSearchService
             if (searchResult.Torrents.Count == 0)
             {
                 result.Success = false;
-                result.Message.AppendLine($"未找到 {javId} 的种子。");
+                LogError(result.Message, _loc.GetFormat(L.LogNoTorrentsForId, javId));
                 return result;
             }
-
-            result.Message.AppendLine($"找到 {searchResult.Torrents.Count} 个种子源。");
-            result.Message.AppendLine();
 
             // 步骤 2: 选择最佳种子
             var selectedTorrent = _selectionService.SelectBestTorrent(searchResult.Torrents);
             if (selectedTorrent == null)
             {
                 result.Success = false;
-                result.Message.AppendLine("没有可用的种子。");
+                LogError(result.Message, _loc.Get(L.LogNoAvailableTorrents));
                 return result;
             }
 
             result.SelectedTorrent = selectedTorrent;
-            result.Message.AppendLine($"选择种子: {selectedTorrent.Title}");
+            LogInfo(result.Message, _loc.GetFormat(L.LogSelectedTorrent, selectedTorrent.Title));
             var markers = new List<string>();
-            if (selectedTorrent.HasHd) markers.Add("高清");
-            if (selectedTorrent.HasUncensoredMarker) markers.Add("无码");
-            if (selectedTorrent.HasSubtitle) markers.Add("字幕");
-            var markerText = markers.Count > 0 ? string.Join(", ", markers) : "无";
-            result.Message.AppendLine($"标记: {markerText} (共 {selectedTorrent.WeightScore:0} 个)");
+            if (selectedTorrent.HasHd) markers.Add(_loc.Get(L.MarkerHD));
+            if (selectedTorrent.HasUncensoredMarker) markers.Add(_loc.Get(L.MarkerUncensored));
+            if (selectedTorrent.HasSubtitle) markers.Add(_loc.Get(L.MarkerSubtitle));
+            var markerText = markers.Count > 0 ? string.Join(", ", markers) : _loc.Get(L.MarkerNone);
+            LogInfo(result.Message, _loc.GetFormat(L.LogTorrentMarkers, markerText, selectedTorrent.WeightScore));
             result.Message.AppendLine();
 
             // 步骤 3: 检查本地文件
@@ -131,20 +156,19 @@ public class JavSearchService
                 if (!_serviceAvailability.LocalDedupAvailable)
                 {
                     result.LocalDedupSkipped = true;
-                    result.Message.AppendLine("本地搜索去重不可用（Everything 服务异常），已跳过本地检查。");
+                    LogWarning(result.Message, _loc.Get(L.LocalDedupUnavailableSkipped));
                 }
                 else
                 {
                     try
                     {
-                        result.Message.AppendLine("检查本地文件...");
+                        LogInfo(result.Message, _loc.Get(L.LogCheckingLocalFiles));
                         var localFiles = await _localFileService.CheckLocalFilesAsync(javId);
 
                         if (localFiles.Count > 0)
                         {
                             result.LocalFilesFound = true;
                             result.LocalFiles = localFiles;
-                            result.Message.AppendLine(_localFileService.FormatLocalFileInfo(localFiles));
                             result.Success = true;
                             return result;
                         }
@@ -152,11 +176,11 @@ public class JavSearchService
                     catch (Exception ex)
                     {
                         result.LocalDedupSkipped = true;
-                        result.Message.AppendLine($"本地搜索去重不可用（Everything 异常）：{ex.Message}");
+                        LogWarning(result.Message, _loc.GetFormat(L.LocalDedupException, ex.Message));
                     }
                 }
 
-                result.Message.AppendLine("本地文件不存在或未检查，开始下载...");
+                LogInfo(result.Message, _loc.Get(L.LogStartDownload));
             }
 
             // 步骤 4: 执行下载
@@ -165,8 +189,8 @@ public class JavSearchService
                 result.Success = true;
                 result.DownloadQueueSkipped = true;
                 result.MagnetLink = selectedTorrent.MagnetLink;
-                result.Message.AppendLine("下载器不可用（qBittorrent 服务异常），未自动加入下载队列。");
-                result.Message.AppendLine("请手动使用磁力链接下载：");
+                LogWarning(result.Message, _loc.Get(L.DownloaderUnavailableSkipped));
+                LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                 result.Message.AppendLine(result.MagnetLink);
                 return result;
             }
@@ -178,14 +202,15 @@ public class JavSearchService
                 {
                     result.Success = true;
                     result.Downloaded = true;
-                    result.Message.AppendLine($"下载任务已添加: {selectedTorrent.Title}");
+                    LogSuccess(result.Message, _loc.GetFormat(L.LogDownloadTaskAddedWithTitle, selectedTorrent.Title));
                 }
                 else
                 {
                     result.Success = true;
                     result.DownloadQueueSkipped = true;
                     result.MagnetLink = selectedTorrent.MagnetLink;
-                    result.Message.AppendLine("未能自动加入下载队列，已显示磁力链接：");
+                    LogWarning(result.Message, _loc.Get(L.LogAddToQueueFailedShowingMagnet));
+                    LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                     result.Message.AppendLine(result.MagnetLink);
                 }
             }
@@ -194,8 +219,8 @@ public class JavSearchService
                 result.Success = true;
                 result.DownloadQueueSkipped = true;
                 result.MagnetLink = selectedTorrent.MagnetLink;
-                result.Message.AppendLine($"下载器异常，未能自动加入下载队列：{ex.Message}");
-                result.Message.AppendLine("已显示磁力链接：");
+                LogWarning(result.Message, _loc.GetFormat(L.DownloaderException, ex.Message));
+                LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                 result.Message.AppendLine(result.MagnetLink);
             }
 
@@ -204,7 +229,7 @@ public class JavSearchService
         catch (Exception ex)
         {
             result.Success = false;
-            result.Message.AppendLine($"处理失败: {ex.Message}");
+            LogError(result.Message, _loc.GetFormat(L.LogProcessFailedWithMessage, ex.Message));
             return result;
         }
     }
@@ -225,13 +250,13 @@ public class JavSearchService
 
         try
         {
-            result.Message.AppendLine($"选择种子: {selectedTorrent.Title}");
+            LogInfo(result.Message, _loc.GetFormat(L.LogSelectedTorrent, selectedTorrent.Title));
             var markers = new List<string>();
-            if (selectedTorrent.HasHd) markers.Add("高清");
-            if (selectedTorrent.HasUncensoredMarker) markers.Add("无码");
-            if (selectedTorrent.HasSubtitle) markers.Add("字幕");
-            var markerText = markers.Count > 0 ? string.Join(", ", markers) : "无";
-            result.Message.AppendLine($"标记: {markerText} (共 {selectedTorrent.WeightScore:0} 个)");
+            if (selectedTorrent.HasHd) markers.Add(_loc.Get(L.MarkerHD));
+            if (selectedTorrent.HasUncensoredMarker) markers.Add(_loc.Get(L.MarkerUncensored));
+            if (selectedTorrent.HasSubtitle) markers.Add(_loc.Get(L.MarkerSubtitle));
+            var markerText = markers.Count > 0 ? string.Join(", ", markers) : _loc.Get(L.MarkerNone);
+            LogInfo(result.Message, _loc.GetFormat(L.LogTorrentMarkers, markerText, selectedTorrent.WeightScore));
             result.Message.AppendLine();
 
             if (!forceDownload)
@@ -239,20 +264,19 @@ public class JavSearchService
                 if (!_serviceAvailability.LocalDedupAvailable)
                 {
                     result.LocalDedupSkipped = true;
-                    result.Message.AppendLine("本地搜索去重不可用（Everything 服务异常），已跳过本地检查。");
+                    LogWarning(result.Message, _loc.Get(L.LocalDedupUnavailableSkipped));
                 }
                 else
                 {
                     try
                     {
-                        result.Message.AppendLine("检查本地文件...");
+                        LogInfo(result.Message, _loc.Get(L.LogCheckingLocalFiles));
                         var localFiles = await _localFileService.CheckLocalFilesAsync(javId);
 
                         if (localFiles.Count > 0)
                         {
                             result.LocalFilesFound = true;
                             result.LocalFiles = localFiles;
-                            result.Message.AppendLine(_localFileService.FormatLocalFileInfo(localFiles));
                             result.Success = true;
                             return result;
                         }
@@ -260,11 +284,11 @@ public class JavSearchService
                     catch (Exception ex)
                     {
                         result.LocalDedupSkipped = true;
-                        result.Message.AppendLine($"本地搜索去重不可用（Everything 异常）：{ex.Message}");
+                        LogWarning(result.Message, _loc.GetFormat(L.LocalDedupException, ex.Message));
                     }
                 }
 
-                result.Message.AppendLine("本地文件不存在或未检查，开始下载...");
+                LogInfo(result.Message, _loc.Get(L.LogStartDownload));
             }
 
             if (!_serviceAvailability.DownloadQueueAvailable)
@@ -272,8 +296,8 @@ public class JavSearchService
                 result.Success = true;
                 result.DownloadQueueSkipped = true;
                 result.MagnetLink = selectedTorrent.MagnetLink;
-                result.Message.AppendLine("下载器不可用（qBittorrent 服务异常），未自动加入下载队列。");
-                result.Message.AppendLine("请手动使用磁力链接下载：");
+                LogWarning(result.Message, _loc.Get(L.DownloaderUnavailableSkipped));
+                LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                 result.Message.AppendLine(result.MagnetLink);
                 return result;
             }
@@ -285,14 +309,15 @@ public class JavSearchService
                 {
                     result.Success = true;
                     result.Downloaded = true;
-                    result.Message.AppendLine($"下载任务已添加: {selectedTorrent.Title}");
+                    LogSuccess(result.Message, _loc.GetFormat(L.LogDownloadTaskAddedWithTitle, selectedTorrent.Title));
                 }
                 else
                 {
                     result.Success = true;
                     result.DownloadQueueSkipped = true;
                     result.MagnetLink = selectedTorrent.MagnetLink;
-                    result.Message.AppendLine("未能自动加入下载队列，已显示磁力链接：");
+                    LogWarning(result.Message, _loc.Get(L.LogAddToQueueFailedShowingMagnet));
+                    LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                     result.Message.AppendLine(result.MagnetLink);
                 }
             }
@@ -301,8 +326,8 @@ public class JavSearchService
                 result.Success = true;
                 result.DownloadQueueSkipped = true;
                 result.MagnetLink = selectedTorrent.MagnetLink;
-                result.Message.AppendLine($"下载器异常，未能自动加入下载队列：{ex.Message}");
-                result.Message.AppendLine("已显示磁力链接：");
+                LogWarning(result.Message, _loc.GetFormat(L.DownloaderException, ex.Message));
+                LogWarning(result.Message, _loc.Get(L.MagnetLinkManual));
                 result.Message.AppendLine(result.MagnetLink);
             }
 
@@ -311,7 +336,7 @@ public class JavSearchService
         catch (Exception ex)
         {
             result.Success = false;
-            result.Message.AppendLine($"处理失败: {ex.Message}");
+            LogError(result.Message, _loc.GetFormat(L.LogProcessFailedWithMessage, ex.Message));
             return result;
         }
     }
@@ -337,12 +362,13 @@ public class JavSearchService
             // 优先从本地缓存搜索
             if (!forceRemote && _cacheProvider != null)
             {
-                result.Message.AppendLine($"正在从本地缓存搜索 {javId}...");
+                LogInfo(result.Message, _loc.GetFormat(L.LogSearchingCache, javId));
                 searchResult = await _cacheProvider.GetAsync(javId);
                 
                 if (searchResult != null && searchResult.Torrents.Count > 0)
                 {
-                    result.Message.AppendLine($"[本地缓存] 命中！缓存时间: {searchResult.CachedAt:yyyy-MM-dd HH:mm}");
+                    var cachedAtText = searchResult.CachedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-";
+                    LogInfo(result.Message, _loc.GetFormat(L.LogCacheHitAt, cachedAtText));
                 }
                 else
                 {
@@ -356,17 +382,17 @@ public class JavSearchService
                 if (!_serviceAvailability.RemoteSearchAvailable)
                 {
                     result.Success = false;
-                    result.Message.AppendLine("JavDB 服务异常：不支持远程搜索能力。");
+                    LogError(result.Message, _loc.Get(L.JavDbUnavailable));
                     return result;
                 }
 
-                result.Message.AppendLine($"正在从远端搜索 {javId}...");
+                LogInfo(result.Message, _loc.GetFormat(L.LogSearchingRemote, javId));
                 searchResult = await _javDbProvider.SearchAsync(javId);
 
                 if (searchResult.Torrents.Count == 0)
                 {
                     result.Success = false;
-                    result.Message.AppendLine($"未找到 {javId} 的种子。");
+                    LogError(result.Message, _loc.GetFormat(L.LogNoTorrentsForId, javId));
                     return result;
                 }
 
@@ -374,13 +400,12 @@ public class JavSearchService
                 if (_cacheProvider != null)
                 {
                     await _cacheProvider.SaveAsync(searchResult);
-                    result.Message.AppendLine("已缓存到本地数据库。");
+                    LogInfo(result.Message, _loc.Get(L.LogSavedToCache));
                 }
             }
 
             result.AvailableTorrents = _selectionService.GetSortedTorrents(searchResult.Torrents);
             result.Success = result.AvailableTorrents.Count > 0;
-            result.Message.AppendLine(_selectionService.FormatTorrentInfo(searchResult.Torrents));
 
             // 添加详细信息到结果
             result.SearchResult = searchResult;
@@ -390,7 +415,7 @@ public class JavSearchService
         catch (Exception ex)
         {
             result.Success = false;
-            result.Message.AppendLine($"搜索失败: {ex.Message}");
+            LogError(result.Message, _loc.GetFormat(L.LogSearchFailedWithMessage, ex.Message));
             return result;
         }
     }

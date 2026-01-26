@@ -1,6 +1,7 @@
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Localization;
 using JavManager.Services;
 using JavManager.Utils;
 using Microsoft.Extensions.Configuration;
@@ -96,7 +97,8 @@ public class JavSearchServiceAvailabilityTests
             CreateSelectionService(),
             localFileService,
             downloadService,
-            availability);
+            availability,
+            new LocalizationService());
 
         var torrent = new TorrentInfo { Title = "ABC-123", MagnetLink = "magnet:?xt=urn:btih:abc" };
         var result = await service.ProcessSelectedTorrentAsync("ABC-123", torrent, forceDownload: false);
@@ -127,7 +129,8 @@ public class JavSearchServiceAvailabilityTests
             CreateSelectionService(),
             localFileService,
             downloadService,
-            availability);
+            availability,
+            new LocalizationService());
 
         var torrent = new TorrentInfo { Title = "ABC-123", MagnetLink = "magnet:?xt=urn:btih:abc" };
         var result = await service.ProcessSelectedTorrentAsync("ABC-123", torrent, forceDownload: false);
