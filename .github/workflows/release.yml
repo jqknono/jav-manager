@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - Directory.Build.props
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      created: ${{ steps.create_tag.outputs.created }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props || true)"
+          if [[ -z "${version}" ]]; then
+            echo "Failed to read <Version> from Directory.Build.props" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=v${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create and push tag (if missing)
+        id: create_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          if git rev-parse "${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists; skipping."
+            echo "created=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "${tag}"
+          git push origin "${tag}"
+          echo "created=true" >> "${GITHUB_OUTPUT}"
+
+  build:
+    needs: tag
+    if: needs.tag.outputs.created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+          - os: macos-13
+            rid: osx-x64
+          - os: macos-14
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          out_dir="artifacts/publish/${{ matrix.rid }}"
+          rm -rf "${out_dir}"
+          mkdir -p "${out_dir}"
+
+          dotnet publish "JavManager/JavManager.csproj" \
+            -c Release \
+            -r "${{ matrix.rid }}" \
+            --output "${out_dir}" \
+            --self-contained true \
+            -p:Version="${{ needs.tag.outputs.version }}" \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:IncludeAllContentForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:PublishReadyToRun=true \
+            -p:PublishTrimmed=false \
+            -p:DebugType=None
+
+      - name: Assert single-file publish output (strict)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rid="${{ matrix.rid }}"
+          out_dir="artifacts/publish/${rid}"
+
+          if [[ "${rid}" == win-* ]]; then
+            expected="JavManager.exe"
+          else
+            expected="JavManager"
+          fi
+
+          shopt -s nullglob
+          files=("${out_dir}"/*)
+          real_files=()
+          for f in "${files[@]}"; do
+            if [[ -f "${f}" ]]; then
+              real_files+=("${f}")
+            fi
+          done
+
+          if (( ${#real_files[@]} != 1 )); then
+            echo "STRICT MODE: publish output must contain exactly 1 file. Found ${#real_files[@]} files." >&2
+            ls -la "${out_dir}" >&2
+            exit 1
+          fi
+
+          if [[ "$(basename "${real_files[0]}")" != "${expected}" ]]; then
+            echo "STRICT MODE: publish output must contain only ${expected}, but got $(basename "${real_files[0]}")." >&2
+            ls -la "${out_dir}" >&2
+            exit 1
+          fi
+
+      - name: Prepare binary for release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.tag.outputs.version }}"
+          rid="${{ matrix.rid }}"
+          out_dir="artifacts/publish/${rid}"
+          bin_dir="artifacts/binaries"
+          mkdir -p "${bin_dir}"
+
+          # Determine executable name based on platform
+          if [[ "${rid}" == win-* ]]; then
+            src_exe="${out_dir}/JavManager.exe"
+            dest_exe="${bin_dir}/JavManager_${version}_${rid}.exe"
+          else
+            src_exe="${out_dir}/JavManager"
+            dest_exe="${bin_dir}/JavManager_${version}_${rid}"
+          fi
+
+          cp "${src_exe}" "${dest_exe}"
+          echo "Created: ${dest_exe}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JavManager_${{ needs.tag.outputs.version }}_${{ matrix.rid }}
+          path: artifacts/binaries/*
+          if-no-files-found: error
+
+  release:
+    needs: [ tag, build ]
+    if: needs.tag.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/download
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          name: ${{ needs.tag.outputs.tag }}
+          generate_release_notes: true
+          files: artifacts/download/**/*
+          fail_on_unmatched_files: true
+

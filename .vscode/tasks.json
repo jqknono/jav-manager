@@ -15,13 +15,27 @@
         },
         {
             "label": "publish",
-            "command": "dotnet",
             "type": "process",
+            "command": "powershell",
             "args": [
-                "publish",
-                "${workspaceFolder}/JavManager/JavManager.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "$ErrorActionPreference='Stop'; $rid='win-x64'; $project='${workspaceFolder}/JavManager/JavManager.csproj'; $outDir=Join-Path '${workspaceFolder}' (\"artifacts/release/$rid\"); if(Test-Path $outDir){Remove-Item -Recurse -Force $outDir}; New-Item -ItemType Directory -Force -Path $outDir | Out-Null; dotnet publish $project -c Release -r $rid --self-contained true --output $outDir -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:PublishReadyToRun=true -p:PublishTrimmed=false -p:DebugType=None; $expected='JavManager.exe'; $files=Get-ChildItem $outDir -File; if($files.Count -ne 1 -or $files[0].Name -ne $expected){ throw ('STRICT MODE: Release publish must output ONLY one file: '+$expected+'; Found: '+($files.Name -join ', ')) }; Write-Host ('OK: '+$files[0].FullName);"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "release",
+            "type": "process",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "$ErrorActionPreference='Stop'; $repo='${workspaceFolder}'; $project=Join-Path $repo 'JavManager/JavManager.csproj'; $props=Join-Path $repo 'Directory.Build.props'; $version='unknown'; if(Test-Path $props){ try{ [xml]$xml=Get-Content $props -Raw; $v=$xml.Project.PropertyGroup.Version; if($v -is [array]){ $v=$v[0] }; if(-not [string]::IsNullOrWhiteSpace($v)){ $version=$v.Trim() } } catch{} }; $rids=@('win-x64','linux-x64','linux-arm64','osx-x64','osx-arm64'); $tmp=Join-Path $repo 'artifacts/_publish_tmp'; $dest=Join-Path $repo 'artifacts/release'; if(Test-Path $tmp){ Remove-Item -Recurse -Force $tmp }; New-Item -ItemType Directory -Force -Path $tmp | Out-Null; New-Item -ItemType Directory -Force -Path $dest | Out-Null; foreach($rid in $rids){ $outDir=Join-Path $tmp $rid; New-Item -ItemType Directory -Force -Path $outDir | Out-Null; dotnet publish $project -c Release -r $rid --self-contained true --output $outDir -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:PublishReadyToRun=true -p:PublishTrimmed=false -p:DebugType=None; $expected= if($rid -like 'win-*'){'JavManager.exe'} else {'JavManager'}; $files=Get-ChildItem $outDir -File; if($files.Count -ne 1 -or $files[0].Name -ne $expected){ throw ('STRICT MODE: Release publish for '+$rid+' must output ONLY one file: '+$expected+'; Found: '+($files.Name -join ', ')) }; $destName= if($rid -like 'win-*'){ \"JavManager_${version}_${rid}.exe\" } else { \"JavManager_${version}_${rid}\" }; Copy-Item (Join-Path $outDir $expected) -Destination (Join-Path $dest $destName) -Force; Write-Host (\"OK: \"+(Join-Path $dest $destName)) }; Remove-Item -Recurse -Force $tmp;"
             ],
             "problemMatcher": "$msCompile"
         },

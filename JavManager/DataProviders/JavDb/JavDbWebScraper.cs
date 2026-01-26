@@ -2,7 +2,9 @@ using HtmlAgilityPack;
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Localization;
 using JavManager.Utils;
+using Spectre.Console;
 using System.Net;
 
 namespace JavManager.DataProviders.JavDb;
@@ -14,13 +16,15 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 {
     private readonly JavDbConfig _config;
     private readonly TorrentNameParser _nameParser;
+    private readonly LocalizationService _loc;
     private readonly CurlHttpClient _curlClient;
     private readonly JavDbHtmlParser _htmlParser;
 
-    public JavDbWebScraper(JavDbConfig config, TorrentNameParser nameParser)
+    public JavDbWebScraper(JavDbConfig config, TorrentNameParser nameParser, LocalizationService localizationService)
     {
         _config = config;
         _nameParser = nameParser;
+        _loc = localizationService;
         _htmlParser = new JavDbHtmlParser();
 
         // 使用 curl 客户端绕过 TLS 指纹检测
@@ -62,7 +66,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             return new JavSearchResult { JavId = javId };
 
         var selected = ChooseBestCandidate(candidates, javId);
-        Console.WriteLine($"[DEBUG] 选择结果: JavId={selected.JavId}, DetailUrl={selected.DetailUrl}");
+        AnsiConsole.MarkupLine($"[grey][[DEBUG]] Selected: JavId={Markup.Escape(selected.JavId)}, DetailUrl={Markup.Escape(selected.DetailUrl)}[/]");
 
         var result = await GetDetailAsync(selected.DetailUrl);
         if (string.IsNullOrWhiteSpace(result.JavId))
@@ -105,11 +109,11 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     searchResponse.EnsureSuccessStatusCode();
                 }
                 var html = searchResponse.Body;
-                Console.WriteLine($"[DEBUG] 搜索页面 HTML 长度: {html.Length}");
+                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Search page HTML length: {html.Length}[/]");
 
-                // 解析搜索结果
+                // Parse search results
                 var searchResults = _htmlParser.ParseSearchResults(html);
-                Console.WriteLine($"[DEBUG] 解析到搜索结果数量: {searchResults.Count}");
+                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Parsed search results count: {searchResults.Count}[/]");
 
                 if (searchResults.Count == 0)
                     return new List<JavSearchResult>();
@@ -138,7 +142,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                 if (deduped.Count > 0)
                 {
                     var first = deduped.First();
-                    Console.WriteLine($"[DEBUG] 第一个结果: JavId={first.JavId}, DetailUrl={first.DetailUrl}");
+                    AnsiConsole.MarkupLine($"[grey][[DEBUG]] First result: JavId={Markup.Escape(first.JavId)}, DetailUrl={Markup.Escape(first.DetailUrl)}[/]");
                 }
 
                 return deduped;
@@ -146,7 +150,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             catch (Exception ex)
             {
                 lastError = $"{baseUrl}: {ex.Message}";
-                Console.WriteLine($"[DEBUG] 异常: {lastError}");
+                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Exception: {Markup.Escape(lastError)}[/]");
                 continue;
             }
         }
@@ -429,23 +433,37 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
     /// <summary>
     /// 服务名称
     /// </summary>
-    string IHealthChecker.ServiceName => "JavDB (远程数据库)";
+    string IHealthChecker.ServiceName => _loc.Get(L.ServiceNameJavDb);
 
     /// <summary>
     /// 检查服务健康状态
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
+        const int maxAttempts = 3;
+        const int healthCheckTimeoutSeconds = 3;
+
         // 尝试所有可用的 URL
         var urls = new List<string> { _config.BaseUrl };
         urls.AddRange(_config.MirrorUrls);
+        urls = urls
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        foreach (var url in urls)
+        Exception? lastException = null;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
+            var url = urls.Count == 0
+                ? _config.BaseUrl
+                : urls[(attempt - 1) % urls.Count];
+
             try
             {
                 var testUrl = $"{url.TrimEnd('/')}";
-                var response = await _curlClient.GetAsync(testUrl);
+                var response = await _curlClient.GetAsync(testUrl, timeoutSeconds: healthCheckTimeoutSeconds);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -453,15 +471,14 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                     {
                         ServiceName = ((IHealthChecker)this).ServiceName,
                         IsHealthy = true,
-                        Message = "服务正常",
+                        Message = _loc.Get(L.HealthServiceOk),
                         Url = url
                     };
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 继续尝试下一个 URL
-                continue;
+                lastException = ex;
             }
         }
 
@@ -469,7 +486,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         {
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
-            Message = "所有 URL 均无法访问",
+            Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? _loc.Get(L.HealthAllUrlsFailed)),
             Url = _config.BaseUrl
         };
     }

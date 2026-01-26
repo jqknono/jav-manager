@@ -7,12 +7,51 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!--
+    STRICT MODE (Release publish):
+    Forbid "portable/scattered" publish outputs.
+    Release publish must be RID-specific, self-contained, and single-file.
+  -->
+  <Target Name="EnforceSingleFileReleasePublish"
+          BeforeTargets="Publish"
+          Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="'$(RuntimeIdentifier)' == ''"
+           Text="STRICT MODE: Release publish requires a RuntimeIdentifier. Use: dotnet publish -c Release -r &lt;RID&gt; (e.g. win-x64)." />
+    <Error Condition="$([System.String]::Copy('$(SelfContained)').ToLowerInvariant()) != 'true'"
+           Text="STRICT MODE: Release publish must be self-contained. Use: --self-contained true." />
+    <Error Condition="$([System.String]::Copy('$(PublishSingleFile)').ToLowerInvariant()) != 'true'"
+           Text="STRICT MODE: Release publish must set PublishSingleFile=true." />
+    <Error Condition="$([System.String]::Copy('$(IncludeNativeLibrariesForSelfExtract)').ToLowerInvariant()) != 'true'"
+           Text="STRICT MODE: Release publish must set IncludeNativeLibrariesForSelfExtract=true to ensure single executable output." />
+    <Error Condition="$([System.String]::Copy('$(IncludeAllContentForSelfExtract)').ToLowerInvariant()) != 'true'"
+           Text="STRICT MODE: Release publish must set IncludeAllContentForSelfExtract=true to embed appsettings.json and produce exactly one output file." />
+  </Target>
+
+  <Target Name="ValidateSingleFileReleasePublishOutput"
+          AfterTargets="Publish"
+          Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <_StrictExpectedFile>$(AssemblyName)</_StrictExpectedFile>
+      <_StrictExpectedFile Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</_StrictExpectedFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_StrictPublishFiles Include="$(PublishDir)**/*" />
+    </ItemGroup>
+
+    <Error Condition="'@(_StrictPublishFiles->Count())' != '1'"
+           Text="STRICT MODE: Release publish output must contain exactly 1 file. Output: $(PublishDir). Files: @(_StrictPublishFiles, ', ')" />
+    <Error Condition="!Exists('$(PublishDir)$(_StrictExpectedFile)')"
+           Text="STRICT MODE: Expected single output file not found: $(PublishDir)$(_StrictExpectedFile)" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
@@ -22,6 +61,16 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!-- Localization Resources -->
+  <ItemGroup>
+    <EmbeddedResource Update="Localization\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Localization\Strings.zh.resx">
+      <DependentUpon>Strings.resx</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

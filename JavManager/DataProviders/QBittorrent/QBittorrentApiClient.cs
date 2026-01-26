@@ -2,6 +2,7 @@ using System.Text;
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Localization;
 using JavManager.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -16,14 +17,16 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
 {
     private readonly QBittorrentConfig _config;
     private readonly HttpHelper _httpHelper;
+    private readonly LocalizationService _loc;
     private readonly string _baseUrl;
     private string? _sidCookie;
     private DateTime _loginTime;
 
-    public QBittorrentApiClient(QBittorrentConfig config)
+    public QBittorrentApiClient(QBittorrentConfig config, LocalizationService localizationService, HttpHelper? httpHelper = null)
     {
         _config = config;
-        _httpHelper = new HttpHelper(TimeSpan.FromSeconds(30));
+        _loc = localizationService;
+        _httpHelper = httpHelper ?? new HttpHelper(TimeSpan.FromSeconds(30));
         _baseUrl = _config.BaseUrl.TrimEnd('/');
 
         // 设置默认请求头
@@ -323,13 +326,15 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     /// <summary>
     /// 服务名称
     /// </summary>
-    string IHealthChecker.ServiceName => "qBittorrent (下载器)";
+    string IHealthChecker.ServiceName => _loc.Get(L.ServiceNameQBittorrent);
 
     /// <summary>
     /// 检查服务健康状态
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
+        var healthCheckTimeout = TimeSpan.FromSeconds(3);
+
         // 健康检查重试（主要应对网络/DNS 等瞬时问题）
         const int maxAttempts = 3;
         Exception? lastException = null;
@@ -346,14 +351,14 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 };
 
                 var url = $"{_baseUrl}/api/v2/auth/login";
-                var response = await _httpHelper.PostAsync(url, formData);
+                var response = await _httpHelper.PostAsync(url, formData, timeout: healthCheckTimeout);
                 if (!IsOkResponse(response))
                 {
                     return new HealthCheckResult
                     {
                         ServiceName = ((IHealthChecker)this).ServiceName,
                         IsHealthy = false,
-                        Message = $"登录被拒绝: {NormalizeResponseText(response)}",
+                        Message = _loc.GetFormat(L.HealthConnectionFailed, $"Login rejected: {NormalizeResponseText(response)}"),
                         Url = _baseUrl
                     };
                 }
@@ -362,15 +367,13 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 {
                     ServiceName = ((IHealthChecker)this).ServiceName,
                     IsHealthy = true,
-                    Message = attempt == 1 ? "连接正常" : $"连接正常（重试 {attempt - 1} 次后成功）",
+                    Message = _loc.Get(L.HealthServiceOk),
                     Url = _baseUrl
                 };
             }
             catch (Exception ex)
             {
                 lastException = ex;
-                if (attempt < maxAttempts)
-                    await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt));
             }
         }
 
@@ -378,7 +381,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         {
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
-            Message = $"连接失败（重试 {maxAttempts} 次）: {lastException?.Message}",
+            Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? "Unknown error"),
             Url = _baseUrl
         };
     }

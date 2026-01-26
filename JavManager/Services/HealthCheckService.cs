@@ -19,27 +19,27 @@ public class HealthCheckService
     /// </summary>
     public async Task<List<HealthCheckResult>> CheckAllAsync()
     {
-        var results = new List<HealthCheckResult>();
-
-        foreach (var checker in _healthCheckers)
-        {
-            try
+        var tasks = _healthCheckers
+            .Select(async checker =>
             {
-                var result = await checker.CheckHealthAsync();
-                results.Add(result);
-            }
-            catch (Exception ex)
-            {
-                results.Add(new HealthCheckResult
+                try
                 {
-                    ServiceName = checker.ServiceName,
-                    IsHealthy = false,
-                    Message = $"健康检查异常: {ex.Message}"
-                });
-            }
-        }
+                    return await checker.CheckHealthAsync();
+                }
+                catch (Exception ex)
+                {
+                    return new HealthCheckResult
+                    {
+                        ServiceName = checker.ServiceName,
+                        IsHealthy = false,
+                        Message = $"健康检查异常: {ex.Message}"
+                    };
+                }
+            })
+            .ToArray();
 
-        return results;
+        var results = await Task.WhenAll(tasks);
+        return results.ToList();
     }
 
     /// <summary>

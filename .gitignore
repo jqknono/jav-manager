@@ -4,3 +4,6 @@ JavManager/bin/Release/
 JavManager.Tests/obj/
 JavManager.Tests/bin/Debug/
 JavManager.Tests/bin/Release/
+artifacts/
+**/node_modules/
+**/.wrangler/

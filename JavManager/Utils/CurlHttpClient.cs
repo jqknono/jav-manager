@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Spectre.Console;
 
 namespace JavManager.Utils;
 
@@ -38,18 +39,18 @@ public class CurlHttpClient : IDisposable
     /// <summary>
     /// 发送 GET 请求
     /// </summary>
-    public async Task<CurlResponse> GetAsync(string url, string? referer = null)
+    public async Task<CurlResponse> GetAsync(string url, string? referer = null, int? timeoutSeconds = null)
     {
-        var args = BuildCurlArguments(url, referer);
+        var args = BuildCurlArguments(url, referer, timeoutSeconds);
         return await ExecuteCurlAsync(args);
     }
 
     /// <summary>
     /// 发送 POST 请求 (表单数据)
     /// </summary>
-    public async Task<CurlResponse> PostFormAsync(string url, Dictionary<string, string> formData, string? referer = null)
+    public async Task<CurlResponse> PostFormAsync(string url, Dictionary<string, string> formData, string? referer = null, int? timeoutSeconds = null)
     {
-        var args = BuildCurlArguments(url, referer);
+        var args = BuildCurlArguments(url, referer, timeoutSeconds);
         
         // 添加 POST 数据
         args.Add("-X");
@@ -67,14 +68,16 @@ public class CurlHttpClient : IDisposable
     /// <summary>
     /// 构建 curl 命令参数
     /// </summary>
-    private List<string> BuildCurlArguments(string url, string? referer)
+    private List<string> BuildCurlArguments(string url, string? referer, int? timeoutSeconds)
     {
+        var effectiveTimeoutSeconds = timeoutSeconds ?? _timeoutSeconds;
+
         var args = new List<string>
         {
             "-s",                    // 静默模式
             "-L",                    // 跟随重定向
             "-w", "\n%{http_code}",  // 输出状态码（使用实际换行符）
-            "--max-time", _timeoutSeconds.ToString(),
+            "--max-time", effectiveTimeoutSeconds.ToString(),
             "--compressed",          // 自动解压
         };
 
@@ -170,8 +173,8 @@ public class CurlHttpClient : IDisposable
             ExitCode = process.ExitCode
         };
 
-        // 调试输出
-        Console.WriteLine($"[DEBUG] curl exit={process.ExitCode}, status={statusCode}, bodyLen={body.Length}, error={error}");
+        // Debug output
+        AnsiConsole.MarkupLine($"[grey][[DEBUG]] curl exit={process.ExitCode}, status={statusCode}, bodyLen={body.Length}, error={Markup.Escape(error)}[/]");
 
         return response;
     }

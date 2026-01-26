@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Spectre.Console;
 
 namespace JavManager;
 
@@ -55,29 +56,29 @@ public static class TestCurl
         var output = outputBuilder.ToString();
         var error = errorBuilder.ToString();
 
-        Console.WriteLine($"Exit code: {process.ExitCode}");
-        Console.WriteLine($"Error: {error}");
-        Console.WriteLine($"Output length: {output.Length}");
+        AnsiConsole.MarkupLine($"[cyan]Exit code:[/] [yellow]{process.ExitCode}[/]");
+        AnsiConsole.MarkupLine($"[cyan]Error:[/] [red]{Markup.Escape(error)}[/]");
+        AnsiConsole.MarkupLine($"[cyan]Output length:[/] [green]{output.Length}[/]");
 
         var lines = output.TrimEnd().Split('\n');
-        Console.WriteLine($"Lines count: {lines.Length}");
+        AnsiConsole.MarkupLine($"[cyan]Lines count:[/] [green]{lines.Length}[/]");
         if (lines.Length > 0)
         {
-            Console.WriteLine($"Last line (raw bytes): {BitConverter.ToString(Encoding.UTF8.GetBytes(lines[^1]))}");
-            Console.WriteLine($"Last line trimmed: '{lines[^1].Trim()}'");
+            AnsiConsole.MarkupLine($"[cyan]Last line (raw bytes):[/] [grey]{Markup.Escape(BitConverter.ToString(Encoding.UTF8.GetBytes(lines[^1])))}[/]");
+            AnsiConsole.MarkupLine($"[cyan]Last line trimmed:[/] [grey]'{Markup.Escape(lines[^1].Trim())}'[/]");
         }
 
         if (lines.Length > 0 && int.TryParse(lines[^1].Trim(), out var code))
         {
-            Console.WriteLine($"Status code parsed: {code}");
+            AnsiConsole.MarkupLine($"[green]Status code parsed:[/] [yellow]{code}[/]");
         }
         else
         {
-            Console.WriteLine("Failed to parse status code");
-            Console.WriteLine($"Last 5 lines:");
+            AnsiConsole.MarkupLine("[red]Failed to parse status code[/]");
+            AnsiConsole.MarkupLine("[cyan]Last 5 lines:[/]");
             foreach (var line in lines.TakeLast(5))
             {
-                Console.WriteLine($"  Length={line.Length}, Content='{line}'");
+                AnsiConsole.MarkupLine($"  [grey]Length={line.Length}, Content='{Markup.Escape(line)}'[/]");
             }
         }
     }

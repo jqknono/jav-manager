@@ -2,6 +2,7 @@ using System.Text;
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Localization;
 using JavManager.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -15,12 +16,14 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
 {
     private readonly EverythingConfig _config;
     private readonly HttpHelper _httpHelper;
+    private readonly LocalizationService _loc;
     private readonly string _baseUrl;
 
-    public EverythingHttpClient(EverythingConfig config)
+    public EverythingHttpClient(EverythingConfig config, LocalizationService localizationService, HttpHelper? httpHelper = null)
     {
         _config = config;
-        _httpHelper = new HttpHelper(TimeSpan.FromSeconds(10));
+        _loc = localizationService;
+        _httpHelper = httpHelper ?? new HttpHelper(TimeSpan.FromSeconds(10));
 
         // 构建基础 URL
         _baseUrl = $"{_config.BaseUrl.TrimEnd('/')}";
@@ -166,13 +169,15 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
     /// <summary>
     /// 服务名称
     /// </summary>
-    string IHealthChecker.ServiceName => "Everything (本地搜索)";
+    string IHealthChecker.ServiceName => _loc.Get(L.ServiceNameEverything);
 
     /// <summary>
     /// 检查服务健康状态
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
+        var healthCheckTimeout = TimeSpan.FromSeconds(3);
+
         // 健康检查重试（主要应对网络/DNS 等瞬时问题）
         const int maxAttempts = 3;
         Exception? lastException = null;
@@ -183,7 +188,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
             {
                 // 发送一个简单查询来测试连接
                 var url = $"{_baseUrl}/?s=test&json=1&count=1";
-                var response = await _httpHelper.GetAsync(url);
+                var response = await _httpHelper.GetAsync(url, timeout: healthCheckTimeout);
 
                 // 尝试解析响应
                 var json = JObject.Parse(response);
@@ -193,7 +198,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
                     {
                         ServiceName = ((IHealthChecker)this).ServiceName,
                         IsHealthy = false,
-                        Message = "响应格式错误（缺少 results 字段）",
+                        Message = _loc.GetFormat(L.HealthConnectionFailed, "Missing results field"),
                         Url = _baseUrl
                     };
                 }
@@ -202,15 +207,13 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
                 {
                     ServiceName = ((IHealthChecker)this).ServiceName,
                     IsHealthy = true,
-                    Message = attempt == 1 ? "服务正常" : $"服务正常（重试 {attempt - 1} 次后成功）",
+                    Message = _loc.Get(L.HealthServiceOk),
                     Url = _baseUrl
                 };
             }
             catch (Exception ex)
             {
                 lastException = ex;
-                if (attempt < maxAttempts)
-                    await Task.Delay(TimeSpan.FromMilliseconds(300 * attempt));
             }
         }
 
@@ -218,7 +221,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
         {
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
-            Message = $"连接失败（重试 {maxAttempts} 次）: {lastException?.Message}",
+            Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? "Unknown error"),
             Url = _baseUrl
         };
     }

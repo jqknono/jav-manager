@@ -2,6 +2,7 @@ using Spectre.Console;
 using JavManager.Core.Models;
 using JavManager.Core.Interfaces;
 using JavManager.Services;
+using JavManager.Localization;
 
 namespace JavManager.ConsoleUI;
 
@@ -10,6 +11,13 @@ namespace JavManager.ConsoleUI;
 /// </summary>
 public class DisplayService
 {
+    private readonly LocalizationService _loc;
+
+    public DisplayService(LocalizationService localizationService)
+    {
+        _loc = localizationService;
+    }
+
     /// <summary>
     /// 显示欢迎信息
     /// </summary>
@@ -30,26 +38,29 @@ public class DisplayService
 
         AnsiConsole.WriteLine();
         AnsiConsole.Write(
-            new Rule("[yellow]JAV 下载管理器[/]")
+            new Rule($"[yellow]{Markup.Escape(_loc.Get(L.AppSubtitle))}[/]")
                 .RuleStyle("grey")
                 .Centered());
+        AnsiConsole.MarkupLine($"[grey]{Markup.Escape(JavManager.Utils.AppInfo.Name)} {Markup.Escape(JavManager.Utils.AppInfo.Version)}[/]");
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[green]功能:[/]");
-        AnsiConsole.MarkupLine("  • 从 JavDB 搜索番号");
-        AnsiConsole.MarkupLine("  • 智能选择最优片源（无码/字幕/大小）");
-        AnsiConsole.MarkupLine("  • 本地文件检查（使用 Everything）");
-        AnsiConsole.MarkupLine("  • 自动添加到 qBittorrent");
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(_loc.Get(L.Features))}[/]");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.FeatureSearchJavDb))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.FeatureSmartSelection))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.FeatureLocalCheck))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.FeatureAutoDownload))}");
         AnsiConsole.WriteLine();
 
-        AnsiConsole.MarkupLine("[green]命令:[/]");
-        AnsiConsole.MarkupLine(Markup.Escape("  • <番号> / s <番号>        搜索并下载（例如 IPZZ-408）"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • l <番号> [-m 100MB]       本地搜索（Everything，默认只显示 >=100MB）"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • r <番号>                  远端搜索（JavDB）"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • d                         正在下载列表（qBittorrent）"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • t                         下载任务列表（qBittorrent）"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • h                         显示帮助"));
-        AnsiConsole.MarkupLine(Markup.Escape("  • q                         退出"));
+        AnsiConsole.MarkupLine($"[green]{Markup.Escape(_loc.Get(L.Commands))}[/]");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdSearchDownload))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdLocalSearch))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdRemoteSearch))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdDownloading))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdDownloads))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdHealthCheck))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdVersion))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdHelp))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdQuit))}");
         AnsiConsole.WriteLine();
     }
 
@@ -64,7 +75,7 @@ public class DisplayService
         {
             if (result.LocalFilesFound)
             {
-                AnsiConsole.MarkupLine("[yellow]⚠ 本地文件已存在[/]");
+                AnsiConsole.MarkupLine($"[yellow]⚠ {Markup.Escape(_loc.Get(L.LocalFilesExist))}[/]");
                 foreach (var file in result.LocalFiles)
                 {
                     AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(file.FileName)}[/] ({FormatSize(file.Size)})");
@@ -72,22 +83,38 @@ public class DisplayService
             }
             else if (result.Downloaded)
             {
-                AnsiConsole.MarkupLine("[green]✓ 下载任务已添加[/]");
+                AnsiConsole.MarkupLine($"[green]✓ {Markup.Escape(_loc.Get(L.DownloadAdded))}[/]");
                 if (result.SelectedTorrent != null)
                 {
                     AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(result.SelectedTorrent.Title)}[/]");
                     var markers = new List<string>();
-                    if (result.SelectedTorrent.HasHd) markers.Add("高清");
-                    if (result.SelectedTorrent.HasUncensoredMarker) markers.Add("无码");
-                    if (result.SelectedTorrent.HasSubtitle) markers.Add("字幕");
-                    var markerText = markers.Count > 0 ? string.Join(", ", markers) : "无";
-                    AnsiConsole.MarkupLine($"  • 标记: {Markup.Escape(markerText)} ({result.SelectedTorrent.WeightScore:0})");
+                    if (result.SelectedTorrent.HasHd) markers.Add(_loc.Get(L.MarkerHD));
+                    if (result.SelectedTorrent.HasUncensoredMarker) markers.Add(_loc.Get(L.MarkerUncensored));
+                    if (result.SelectedTorrent.HasSubtitle) markers.Add(_loc.Get(L.MarkerSubtitle));
+                    var markerText = markers.Count > 0 ? string.Join(", ", markers) : _loc.Get(L.MarkerNone);
+                    AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.Markers))}: {Markup.Escape(markerText)} ({result.SelectedTorrent.WeightScore:0})");
                 }
+            }
+            else if (result.DownloadQueueSkipped && !string.IsNullOrWhiteSpace(result.MagnetLink))
+            {
+                AnsiConsole.MarkupLine($"[yellow]⚠ {Markup.Escape(_loc.Get(L.DownloadSkipped))}[/]");
+                if (result.SelectedTorrent != null)
+                {
+                    AnsiConsole.MarkupLine($"  • [cyan]{Markup.Escape(result.SelectedTorrent.Title)}[/]");
+                }
+
+                AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.MagnetLinkManual))}[/]");
+                AnsiConsole.WriteLine(result.MagnetLink);
+            }
+
+            if (!result.LocalFilesFound && result.LocalDedupSkipped)
+            {
+                AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.LocalDedupSkipped))}[/]");
             }
         }
         else
         {
-            AnsiConsole.MarkupLine("[red]✗ 处理失败[/]");
+            AnsiConsole.MarkupLine($"[red]✗ {Markup.Escape(_loc.Get(L.ProcessFailed))}[/]");
         }
 
         // 显示详细信息
@@ -107,18 +134,18 @@ public class DisplayService
     {
         if (torrents.Count == 0)
         {
-            AnsiConsole.MarkupLine("[red]未找到种子[/]");
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.Get(L.NoTorrentsFound))}[/]");
             return;
         }
 
         var table = new Table();
         table.Border(TableBorder.Rounded);
-        table.AddColumn("[yellow]#[/]");
-        table.AddColumn("[yellow]标题[/]");
-        table.AddColumn("[yellow]无码[/]");
-        table.AddColumn("[yellow]字幕[/]");
-        table.AddColumn("[yellow]高清[/]");
-        table.AddColumn("[yellow]大小[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableIndex))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableTitle))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableUncensored))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableSubtitle))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableHD))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableSize))}[/]");
 
         for (int i = 0; i < torrents.Count; i++)
         {
@@ -141,15 +168,15 @@ public class DisplayService
     {
         if (candidates.Count == 0)
         {
-            AnsiConsole.MarkupLine("[red]未找到搜索结果[/]");
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.Get(L.NoSearchResults))}[/]");
             return;
         }
 
         var table = new Table();
         table.Border(TableBorder.Rounded);
-        table.AddColumn("[yellow]#[/]");
-        table.AddColumn("[yellow]番号[/]");
-        table.AddColumn("[yellow]标题[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableIndex))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableJavId))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableTitle))}[/]");
 
         for (int i = 0; i < candidates.Count; i++)
         {
@@ -181,23 +208,23 @@ public class DisplayService
     }
 
     /// <summary>
-    /// 显示错误信息
+    /// 显示下载列表
     /// </summary>
     public void ShowDownloadList(List<TorrentInfo> torrents)
     {
         if (torrents.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]暂无下载任务[/]");
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.NoDownloads))}[/]");
             return;
         }
 
         var table = new Table();
         table.Border(TableBorder.Rounded);
-        table.AddColumn("[yellow]#[/]");
-        table.AddColumn("[yellow]名称[/]");
-        table.AddColumn("[yellow]进度[/]");
-        table.AddColumn("[yellow]状态[/]");
-        table.AddColumn("[yellow]大小[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableIndex))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableTitle))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableProgress))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableState))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableSize))}[/]");
 
         for (int i = 0; i < torrents.Count; i++)
         {
@@ -227,7 +254,7 @@ public class DisplayService
 
     public void ShowError(string message)
     {
-        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(message)}[/]");
+        AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.Get(L.Error))}: {Markup.Escape(message)}[/]");
     }
 
     /// <summary>
@@ -260,7 +287,7 @@ public class DisplayService
     public async Task ShowLoadingAsync(string message, Func<Task> action)
     {
         // 简化版本：显示消息，执行操作
-        AnsiConsole.MarkupLine($"[blue]{Markup.Escape(message)}...[/]");
+        AnsiConsole.MarkupLine($"[blue]{Markup.Escape(message)}[/]");
         await action();
     }
 
@@ -271,16 +298,16 @@ public class DisplayService
     {
         if (files.Count == 0)
         {
-            ShowInfo("未找到本地文件。");
+            ShowInfo(_loc.Get(L.NoLocalFiles));
             return;
         }
 
         var table = new Table();
         table.Border(TableBorder.Rounded);
-        table.AddColumn("[yellow]#[/]");
-        table.AddColumn("[yellow]文件名[/]");
-        table.AddColumn("[yellow]路径[/]");
-        table.AddColumn("[yellow]大小[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableIndex))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableFileName))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TablePath))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableSize))}[/]");
 
         for (int i = 0; i < files.Count; i++)
         {
@@ -323,26 +350,28 @@ public class DisplayService
     public void ShowHealthCheckResults(List<HealthCheckResult> results)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.Write(new Rule("[yellow]服务状态检查[/]").RuleStyle("grey"));
+        AnsiConsole.Write(new Rule($"[yellow]{Markup.Escape(_loc.Get(L.HealthCheckTitle))}[/]").RuleStyle("grey"));
         AnsiConsole.WriteLine();
 
         if (results.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]未注册任何健康检查器，无法显示服务状态。[/]");
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.HealthCheckNoCheckers))}[/]");
             AnsiConsole.WriteLine();
             return;
         }
 
         var table = new Table();
         table.Border(TableBorder.Rounded);
-        table.AddColumn("[yellow]服务[/]");
-        table.AddColumn("[yellow]状态[/]");
-        table.AddColumn("[yellow]信息[/]");
-        table.AddColumn("[yellow]URL[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableService))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableStatus))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableMessage))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableUrl))}[/]");
 
         foreach (var result in results)
         {
-            var status = result.IsHealthy ? "[green]✓ 正常[/]" : "[red]✗ 异常[/]";
+            var status = result.IsHealthy 
+                ? $"[green]✓ {Markup.Escape(_loc.Get(L.StatusHealthy))}[/]" 
+                : $"[red]✗ {Markup.Escape(_loc.Get(L.StatusUnhealthy))}[/]";
             var messageText = Markup.Escape(result.Message);
             var message = result.IsHealthy ? messageText : $"[red]{messageText}[/]";
             var urlText = (result.Url ?? "-").Truncate(40);
@@ -363,14 +392,14 @@ public class DisplayService
         var unhealthyCount = results.Count(r => !r.IsHealthy);
         if (unhealthyCount > 0)
         {
-            AnsiConsole.MarkupLine($"[red]警告: {unhealthyCount} 个服务不可用，请检查配置文件 appsettings.json[/]");
+            AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.GetFormat(L.UnhealthyWarning, unhealthyCount))}[/]");
             ShowDependencySetupHints(results.Where(r => !r.IsHealthy).ToList());
-            AnsiConsole.MarkupLine("[yellow]提示: 输入 'quit' 退出程序修改配置[/]");
+            AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.ConfigHint))}[/]");
             AnsiConsole.WriteLine();
         }
         else
         {
-            AnsiConsole.MarkupLine("[green]所有服务运行正常[/]");
+            AnsiConsole.MarkupLine($"[green]{Markup.Escape(_loc.Get(L.AllServicesHealthy))}[/]");
             AnsiConsole.WriteLine();
         }
     }
@@ -384,21 +413,100 @@ public class DisplayService
         {
             if (r.ServiceName.Contains("Everything", StringComparison.OrdinalIgnoreCase))
             {
-                AnsiConsole.MarkupLine("[yellow]未检测到 Everything 本地检索服务，请安装并启用 HTTP API：[/]");
-                AnsiConsole.MarkupLine($"  • Everything 1.5a: {Markup.Escape("https://www.voidtools.com/everything-1.5a/")}");
-                AnsiConsole.MarkupLine($"  • Everything HTTP 插件: {Markup.Escape("https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799")}");
-                AnsiConsole.MarkupLine("  • 配置: 将 appsettings.json 的 Everything.BaseUrl 指向 HTTP 服务地址（需包含端口，例如 http://127.0.0.1:1234）");
+                AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.EverythingSetupHint))}[/]");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.EverythingDownload))}");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.EverythingPlugin))}");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.EverythingConfig))}");
                 AnsiConsole.WriteLine();
             }
             else if (r.ServiceName.Contains("qBittorrent", StringComparison.OrdinalIgnoreCase))
             {
-                AnsiConsole.MarkupLine("[yellow]未检测到 qBittorrent 下载器 WebUI，请安装并启用 WebUI：[/]");
-                AnsiConsole.MarkupLine($"  • qBittorrent: {Markup.Escape("https://github.com/qbittorrent/qBittorrent")}");
-                AnsiConsole.MarkupLine($"  • Enhanced Edition: {Markup.Escape("https://github.com/c0re100/qBittorrent-Enhanced-Edition")}");
-                AnsiConsole.MarkupLine("  • 配置: 启用 WebUI 后，将 appsettings.json 的 QBittorrent.BaseUrl 指向 WebUI 地址（需包含端口，例如 http://127.0.0.1:8080），并设置正确的账号密码");
+                AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.QBittorrentSetupHint))}[/]");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.QBittorrentDownload))}");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.QBittorrentEnhanced))}");
+                AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.QBittorrentConfig))}");
                 AnsiConsole.WriteLine();
             }
         }
+    }
+
+    /// <summary>
+    /// 显示本地缓存统计信息
+    /// </summary>
+    public void ShowCacheStatistics(CacheStatistics stats)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule($"[yellow]{Markup.Escape(_loc.Get(L.CacheStatsTitle))}[/]").RuleStyle("grey"));
+        AnsiConsole.WriteLine();
+
+        var table = new Table();
+        table.Border(TableBorder.Rounded);
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableItem))}[/]");
+        table.AddColumn($"[yellow]{Markup.Escape(_loc.Get(L.TableValue))}[/]");
+
+        table.AddRow(_loc.Get(L.CacheJavCount), stats.TotalJavCount.ToString("N0"));
+        table.AddRow(_loc.Get(L.CacheTorrentCount), stats.TotalTorrentCount.ToString("N0"));
+        table.AddRow(_loc.Get(L.CacheDbSize), FormatSize(stats.DatabaseSizeBytes));
+        table.AddRow(_loc.Get(L.CacheLastUpdated), stats.LastUpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-");
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+    }
+
+    /// <summary>
+    /// 显示 JAV 详细信息
+    /// </summary>
+    public void ShowJavDetails(JavSearchResult result)
+    {
+        if (result == null)
+            return;
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule($"[yellow]{Markup.Escape(result.JavId)}[/]").RuleStyle("grey"));
+        AnsiConsole.WriteLine();
+
+        var table = new Table();
+        table.Border(TableBorder.Rounded);
+        table.HideHeaders();
+        table.AddColumn(_loc.Get(L.TableItem));
+        table.AddColumn(_loc.Get(L.TableValue));
+
+        table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailJavId))}[/]", Markup.Escape(result.JavId));
+        table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailTitle))}[/]", Markup.Escape(result.Title));
+        
+        if (result.ReleaseDate != DateTime.MinValue)
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailReleaseDate))}[/]", result.ReleaseDate.ToString("yyyy-MM-dd"));
+        
+        if (result.Duration > 0)
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailDuration))}[/]", _loc.GetFormat(L.DurationMinutes, result.Duration));
+        
+        if (!string.IsNullOrWhiteSpace(result.Director))
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailDirector))}[/]", Markup.Escape(result.Director));
+        
+        if (!string.IsNullOrWhiteSpace(result.Maker))
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailMaker))}[/]", Markup.Escape(result.Maker));
+        
+        if (!string.IsNullOrWhiteSpace(result.Publisher))
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailPublisher))}[/]", Markup.Escape(result.Publisher));
+        
+        if (!string.IsNullOrWhiteSpace(result.Series))
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailSeries))}[/]", Markup.Escape(result.Series));
+        
+        if (result.Actors.Count > 0)
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailActors))}[/]", Markup.Escape(string.Join(", ", result.Actors)));
+        
+        if (result.Categories.Count > 0)
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailCategories))}[/]", Markup.Escape(string.Join(", ", result.Categories)));
+
+        table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailDataSource))}[/]", result.DataSource);
+        
+        if (result.CachedAt.HasValue)
+            table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailCachedAt))}[/]", result.CachedAt.Value.ToString("yyyy-MM-dd HH:mm:ss"));
+
+        table.AddRow($"[yellow]{Markup.Escape(_loc.Get(L.DetailTorrentCount))}[/]", result.Torrents.Count.ToString());
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
     }
 }
 

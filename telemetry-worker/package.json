@@ -1,0 +1,17 @@
+{
+  "name": "jav-manager-telemetry",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create jav-manager-telemetry",
+    "db:init": "wrangler d1 execute jav-manager-telemetry --file=./schema.sql",
+    "db:init-local": "wrangler d1 execute jav-manager-telemetry --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.60.0"
+  }
+}

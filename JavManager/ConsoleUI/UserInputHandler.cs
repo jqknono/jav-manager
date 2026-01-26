@@ -1,18 +1,32 @@
 using JavManager.Core.Models;
+using JavManager.Localization;
+using Spectre.Console;
 
 namespace JavManager.ConsoleUI;
 
 /// <summary>
-/// 用户输入处理器
+/// User input handler
 /// </summary>
 public class UserInputHandler
 {
+    private readonly LocalizationService _loc;
+
+    public UserInputHandler(LocalizationService localizationService)
+    {
+        _loc = localizationService;
+    }
+
+    public void WritePrompt()
+    {
+        AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.Get(L.PromptInput))}[/]");
+    }
+
     /// <summary>
     /// 获取用户输入（命令或番号）
     /// </summary>
     public string GetJavId()
     {
-        Console.Write("请输入命令或番号 (输入 h 查看命令, 输入 q 退出): ");
+        WritePrompt();
         var input = Console.ReadLine()?.Trim() ?? string.Empty;
 
         // 退出命令
@@ -27,18 +41,18 @@ public class UserInputHandler
     }
 
     /// <summary>
-    /// 处理本地文件存在时的用户选择
+    /// Handle user selection when local file exists
     /// </summary>
-    /// <param name="localFiles">本地文件列表</param>
-    /// <returns>用户选择结果</returns>
+    /// <param name="localFiles">Local file list</param>
+    /// <returns>User selection result</returns>
     public UserSelectionResult GetLocalFileSelection(List<LocalFileInfo> localFiles)
     {
-        Console.WriteLine();
-        Console.WriteLine("本地文件已存在，请选择操作：");
-        Console.WriteLine("  1. 跳过下载");
-        Console.WriteLine("  2. 强制重新下载");
-        Console.WriteLine("  3. 显示文件详情");
-        Console.Write("请输入选项 (1-3): ");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.LocalFileExists))}[/]");
+        AnsiConsole.MarkupLine($"  [green]{Markup.Escape(_loc.Get(L.LocalFileOption1Skip))}[/]");
+        AnsiConsole.MarkupLine($"  [blue]{Markup.Escape(_loc.Get(L.LocalFileOption2Force))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.LocalFileOption3Details))}[/]");
+        AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.Get(L.PromptLocalFileSelection))}[/]");
 
         var input = Console.ReadLine()?.Trim() ?? string.Empty;
 
@@ -52,7 +66,7 @@ public class UserInputHandler
     }
 
     /// <summary>
-    /// 确认操作
+    /// Confirm torrent selection
     /// </summary>
     public int? GetTorrentIndexSelection(int maxIndex)
     {
@@ -61,7 +75,7 @@ public class UserInputHandler
 
         while (true)
         {
-            Console.Write($"请选择下载第几个？ (1-{maxIndex}, 回车默认选择第一个, 0 取消): ");
+            AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.GetFormat(L.PromptTorrentSelection, maxIndex))}[/]");
             var input = Console.ReadLine()?.Trim() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(input))
@@ -72,7 +86,7 @@ public class UserInputHandler
 
             if (!int.TryParse(input, out var index) || index < 1 || index > maxIndex)
             {
-                Console.WriteLine($"输入无效，请输入 1-{maxIndex}，或直接回车默认选择第一个。");
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.GetFormat(L.PromptInvalidInputRange, maxIndex))}[/]");
                 continue;
             }
 
@@ -81,7 +95,7 @@ public class UserInputHandler
     }
 
     /// <summary>
-    /// 选择搜索结果序号（JavDB 搜索结果）
+    /// Select search result index (JavDB search results)
     /// </summary>
     public int? GetSearchResultIndexSelection(int maxIndex)
     {
@@ -90,7 +104,7 @@ public class UserInputHandler
 
         while (true)
         {
-            Console.Write($"请选择搜索结果第几个？ (1-{maxIndex}, 回车默认选择第一个, 0 取消): ");
+            AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.GetFormat(L.PromptSearchResultSelection, maxIndex))}[/]");
             var input = Console.ReadLine()?.Trim() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(input))
@@ -101,7 +115,7 @@ public class UserInputHandler
 
             if (!int.TryParse(input, out var index) || index < 1 || index > maxIndex)
             {
-                Console.WriteLine($"输入无效，请输入 1-{maxIndex} 或直接回车默认选择第一个。");
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(_loc.GetFormat(L.PromptInvalidInputRange, maxIndex))}[/]");
                 continue;
             }
 
@@ -110,12 +124,12 @@ public class UserInputHandler
     }
 
     /// <summary>
-    /// 等待用户按任意键继续
+    /// Wait for user to press any key to continue
     /// </summary>
     public void Pause()
     {
-        Console.WriteLine();
-        Console.Write("按任意键继续...");
+        AnsiConsole.WriteLine();
+        AnsiConsole.Markup($"[grey]{Markup.Escape(_loc.Get(L.PressAnyKey))}[/]");
         Console.ReadKey(true);
     }
 }

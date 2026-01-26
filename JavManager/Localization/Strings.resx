@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- General -->
+  <data name="AppTitle" xml:space="preserve">
+    <value>JAV Download Manager</value>
+  </data>
+  <data name="AppSubtitle" xml:space="preserve">
+    <value>JAV Download Manager</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Cancelled" xml:space="preserve">
+    <value>Cancelled.</value>
+  </data>
+  <data name="Goodbye" xml:space="preserve">
+    <value>Goodbye!</value>
+  </data>
+  <data name="PressAnyKey" xml:space="preserve">
+    <value>Press any key to continue...</value>
+  </data>
+
+  <!-- Features -->
+  <data name="Features" xml:space="preserve">
+    <value>Features:</value>
+  </data>
+  <data name="FeatureSearchJavDb" xml:space="preserve">
+    <value>Search JAV ID from JavDB</value>
+  </data>
+  <data name="FeatureSmartSelection" xml:space="preserve">
+    <value>Smart source selection (uncensored/subtitle/size)</value>
+  </data>
+  <data name="FeatureLocalCheck" xml:space="preserve">
+    <value>Local file check (using Everything)</value>
+  </data>
+  <data name="FeatureAutoDownload" xml:space="preserve">
+    <value>Auto add to qBittorrent</value>
+  </data>
+
+  <!-- Commands -->
+  <data name="Commands" xml:space="preserve">
+    <value>Commands:</value>
+  </data>
+  <data name="CmdSearchDownload" xml:space="preserve">
+    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        Search and download (e.g. IPZZ-408)</value>
+  </data>
+  <data name="CmdLocalSearch" xml:space="preserve">
+    <value>l &lt;JAV-ID&gt; [-m 100MB]       Local search (Everything, default &gt;=100MB)</value>
+  </data>
+  <data name="CmdRemoteSearch" xml:space="preserve">
+    <value>r &lt;JAV-ID&gt;                  Remote search (JavDB)</value>
+  </data>
+  <data name="CmdDownloading" xml:space="preserve">
+    <value>d                         Downloading list (qBittorrent)</value>
+  </data>
+  <data name="CmdDownloads" xml:space="preserve">
+    <value>t                         Download tasks (qBittorrent)</value>
+  </data>
+  <data name="CmdHealthCheck" xml:space="preserve">
+    <value>hc                        Check service status</value>
+  </data>
+  <data name="CmdVersion" xml:space="preserve">
+    <value>v                         Show version</value>
+  </data>
+  <data name="CmdHelp" xml:space="preserve">
+    <value>h                         Show help</value>
+  </data>
+  <data name="CmdQuit" xml:space="preserve">
+    <value>q                         Quit</value>
+  </data>
+  <data name="CmdCacheStats" xml:space="preserve">
+    <value>c             Show local cache statistics</value>
+  </data>
+  <data name="CmdTestCurl" xml:space="preserve">
+    <value>--test-curl    Run curl test</value>
+  </data>
+  <data name="HelpTitle" xml:space="preserve">
+    <value>{0} {1} - Commands:</value>
+  </data>
+
+  <!-- Prompts -->
+  <data name="PromptInput" xml:space="preserve">
+    <value>Enter command or JAV-ID (h for help, q to quit): </value>
+  </data>
+  <data name="PromptTorrentSelection" xml:space="preserve">
+    <value>Select torrent to download (1-{0}, Enter for first, 0 to cancel): </value>
+  </data>
+  <data name="PromptSearchResultSelection" xml:space="preserve">
+    <value>Select search result (1-{0}, Enter for first, 0 to cancel): </value>
+  </data>
+  <data name="PromptLocalFileSelection" xml:space="preserve">
+    <value>Enter option (1-3): </value>
+  </data>
+  <data name="PromptInvalidInput" xml:space="preserve">
+    <value>Invalid input.</value>
+  </data>
+  <data name="PromptInvalidInputRange" xml:space="preserve">
+    <value>Invalid input, please enter 1-{0}, or press Enter to select the first one.</value>
+  </data>
+
+  <!-- Local File Selection -->
+  <data name="LocalFileExists" xml:space="preserve">
+    <value>Local file exists, please select an option:</value>
+  </data>
+  <data name="LocalFileOption1Skip" xml:space="preserve">
+    <value>1. Skip download</value>
+  </data>
+  <data name="LocalFileOption2Force" xml:space="preserve">
+    <value>2. Force download</value>
+  </data>
+  <data name="LocalFileOption3Details" xml:space="preserve">
+    <value>3. Show file details</value>
+  </data>
+  <data name="LocalFileSkipped" xml:space="preserve">
+    <value>Download skipped.</value>
+  </data>
+  <data name="LocalFileForceDownload" xml:space="preserve">
+    <value>Force downloading...</value>
+  </data>
+  <data name="LocalFileExistsSkip" xml:space="preserve">
+    <value>Local file exists, skipping download.</value>
+  </data>
+
+  <!-- Table Headers -->
+  <data name="TableIndex" xml:space="preserve">
+    <value>#</value>
+  </data>
+  <data name="TableTitle" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="TableUncensored" xml:space="preserve">
+    <value>Uncen</value>
+  </data>
+  <data name="TableSubtitle" xml:space="preserve">
+    <value>Sub</value>
+  </data>
+  <data name="TableHD" xml:space="preserve">
+    <value>HD</value>
+  </data>
+  <data name="TableSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="TableFileName" xml:space="preserve">
+    <value>Filename</value>
+  </data>
+  <data name="TablePath" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="TableProgress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="TableState" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="TableJavId" xml:space="preserve">
+    <value>JAV-ID</value>
+  </data>
+  <data name="TableService" xml:space="preserve">
+    <value>Service</value>
+  </data>
+  <data name="TableStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="TableMessage" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="TableUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="TableItem" xml:space="preserve">
+    <value>Item</value>
+  </data>
+  <data name="TableValue" xml:space="preserve">
+    <value>Value</value>
+  </data>
+
+  <!-- Search Results -->
+  <data name="NoTorrentsFound" xml:space="preserve">
+    <value>No torrents found</value>
+  </data>
+  <data name="NoSearchResults" xml:space="preserve">
+    <value>No search results found</value>
+  </data>
+  <data name="NoDownloads" xml:space="preserve">
+    <value>No download tasks</value>
+  </data>
+  <data name="NoLocalFiles" xml:space="preserve">
+    <value>No local files found.</value>
+  </data>
+  <data name="Searching" xml:space="preserve">
+    <value>Searching {0}...</value>
+  </data>
+  <data name="SearchFailed" xml:space="preserve">
+    <value>Remote search failed (JavDB): {0}</value>
+  </data>
+
+  <!-- Process Results -->
+  <data name="LocalFilesExist" xml:space="preserve">
+    <value>Local file already exists</value>
+  </data>
+  <data name="DownloadAdded" xml:space="preserve">
+    <value>Download task added</value>
+  </data>
+  <data name="DownloadSkipped" xml:space="preserve">
+    <value>Not added to download queue</value>
+  </data>
+  <data name="MagnetLinkManual" xml:space="preserve">
+    <value>Magnet link (manual download):</value>
+  </data>
+  <data name="ProcessFailed" xml:space="preserve">
+    <value>Process failed</value>
+  </data>
+  <data name="LocalDedupSkipped" xml:space="preserve">
+    <value>Note: Local deduplication skipped (Everything unavailable)</value>
+  </data>
+  <data name="MarkerHD" xml:space="preserve">
+    <value>HD</value>
+  </data>
+  <data name="MarkerUncensored" xml:space="preserve">
+    <value>Uncensored</value>
+  </data>
+  <data name="MarkerSubtitle" xml:space="preserve">
+    <value>Subtitle</value>
+  </data>
+  <data name="MarkerNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Markers" xml:space="preserve">
+    <value>Markers</value>
+  </data>
+
+  <!-- Health Check -->
+  <data name="HealthCheckTitle" xml:space="preserve">
+    <value>Service Status Check</value>
+  </data>
+  <data name="HealthCheckNoCheckers" xml:space="preserve">
+    <value>No health checkers registered, cannot display service status.</value>
+  </data>
+  <data name="StatusHealthy" xml:space="preserve">
+    <value>Healthy</value>
+  </data>
+  <data name="StatusUnhealthy" xml:space="preserve">
+    <value>Unhealthy</value>
+  </data>
+  <data name="UnhealthyWarning" xml:space="preserve">
+    <value>Warning: {0} service(s) unavailable, please check configuration file appsettings.json</value>
+  </data>
+  <data name="AllServicesHealthy" xml:space="preserve">
+    <value>All services are running normally</value>
+  </data>
+  <data name="HealthCheckException" xml:space="preserve">
+    <value>Health check exception: {0}</value>
+  </data>
+  <data name="HealthCheckStarted" xml:space="preserve">
+    <value>Service status check started in background. Enter 'hc' to view results anytime.</value>
+  </data>
+
+  <!-- Service Setup Hints -->
+  <data name="EverythingSetupHint" xml:space="preserve">
+    <value>Everything local search service not detected, please install and enable HTTP API:</value>
+  </data>
+  <data name="EverythingDownload" xml:space="preserve">
+    <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
+  </data>
+  <data name="EverythingPlugin" xml:space="preserve">
+    <value>Everything HTTP plugin: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
+  </data>
+  <data name="EverythingConfig" xml:space="preserve">
+    <value>Config: Set Everything.BaseUrl in appsettings.json to HTTP service address (include port, e.g. http://127.0.0.1:1234)</value>
+  </data>
+  <data name="QBittorrentSetupHint" xml:space="preserve">
+    <value>qBittorrent downloader WebUI not detected, please install and enable WebUI:</value>
+  </data>
+  <data name="QBittorrentDownload" xml:space="preserve">
+    <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
+  </data>
+  <data name="QBittorrentEnhanced" xml:space="preserve">
+    <value>Enhanced Edition: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
+  </data>
+  <data name="QBittorrentConfig" xml:space="preserve">
+    <value>Config: After enabling WebUI, set QBittorrent.BaseUrl in appsettings.json to WebUI address (include port, e.g. http://127.0.0.1:8080), and set correct username/password</value>
+  </data>
+  <data name="ConfigHint" xml:space="preserve">
+    <value>Hint: Enter 'quit' to exit and modify configuration</value>
+  </data>
+
+  <!-- Service Errors -->
+  <data name="JavDbUnavailable" xml:space="preserve">
+    <value>JavDB service error: Remote search capability unavailable.</value>
+  </data>
+  <data name="EverythingUnavailable" xml:space="preserve">
+    <value>Everything service error: Local search not supported.</value>
+  </data>
+  <data name="QBittorrentUnavailable" xml:space="preserve">
+    <value>qBittorrent service error: Download queue operations not supported.</value>
+  </data>
+
+  <!-- Service Names -->
+  <data name="ServiceNameEverything" xml:space="preserve">
+    <value>Everything (Local Search)</value>
+  </data>
+  <data name="ServiceNameQBittorrent" xml:space="preserve">
+    <value>qBittorrent (Downloader)</value>
+  </data>
+  <data name="ServiceNameJavDb" xml:space="preserve">
+    <value>JavDB (Remote Database)</value>
+  </data>
+
+  <!-- Health Check Messages -->
+  <data name="HealthServiceOk" xml:space="preserve">
+    <value>Service OK</value>
+  </data>
+  <data name="HealthConnectionFailed" xml:space="preserve">
+    <value>Connection failed: {0}</value>
+  </data>
+  <data name="HealthAllUrlsFailed" xml:space="preserve">
+    <value>All URLs unreachable</value>
+  </data>
+
+  <!-- JavSearchService Messages -->
+  <data name="LocalDedupUnavailableSkipped" xml:space="preserve">
+    <value>Local deduplication unavailable (Everything service error), skipped local check.</value>
+  </data>
+  <data name="LocalDedupException" xml:space="preserve">
+    <value>Local deduplication unavailable (Everything error): {0}</value>
+  </data>
+  <data name="DownloaderUnavailableSkipped" xml:space="preserve">
+    <value>Downloader unavailable (qBittorrent service error), not added to download queue.</value>
+  </data>
+  <data name="DownloaderException" xml:space="preserve">
+    <value>Downloader error, failed to add to download queue: {0}</value>
+  </data>
+
+  <!-- Cache -->
+  <data name="CacheStatsTitle" xml:space="preserve">
+    <value>Local Cache Statistics</value>
+  </data>
+  <data name="CacheDisabled" xml:space="preserve">
+    <value>Local cache not enabled.</value>
+  </data>
+  <data name="CacheJavCount" xml:space="preserve">
+    <value>Cached JAV count</value>
+  </data>
+  <data name="CacheTorrentCount" xml:space="preserve">
+    <value>Cached torrent count</value>
+  </data>
+  <data name="CacheDbSize" xml:space="preserve">
+    <value>Database size</value>
+  </data>
+  <data name="CacheLastUpdated" xml:space="preserve">
+    <value>Last updated</value>
+  </data>
+
+  <!-- JAV Details -->
+  <data name="DetailJavId" xml:space="preserve">
+    <value>JAV-ID</value>
+  </data>
+  <data name="DetailTitle" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="DetailReleaseDate" xml:space="preserve">
+    <value>Release Date</value>
+  </data>
+  <data name="DetailDuration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="DetailDirector" xml:space="preserve">
+    <value>Director</value>
+  </data>
+  <data name="DetailMaker" xml:space="preserve">
+    <value>Maker</value>
+  </data>
+  <data name="DetailPublisher" xml:space="preserve">
+    <value>Publisher</value>
+  </data>
+  <data name="DetailSeries" xml:space="preserve">
+    <value>Series</value>
+  </data>
+  <data name="DetailActors" xml:space="preserve">
+    <value>Actors</value>
+  </data>
+  <data name="DetailCategories" xml:space="preserve">
+    <value>Categories</value>
+  </data>
+  <data name="DetailDataSource" xml:space="preserve">
+    <value>Data Source</value>
+  </data>
+  <data name="DetailCachedAt" xml:space="preserve">
+    <value>Cached At</value>
+  </data>
+  <data name="DetailTorrentCount" xml:space="preserve">
+    <value>Torrent Count</value>
+  </data>
+  <data name="DurationMinutes" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
+
+  <!-- Usage Hints -->
+  <data name="UsageLocalSearch" xml:space="preserve">
+    <value>Usage: l &lt;JAV-ID&gt; [-m 100MB]</value>
+  </data>
+  <data name="UsageRemoteSearch" xml:space="preserve">
+    <value>Usage: r &lt;JAV-ID&gt;</value>
+  </data>
+  <data name="UsageSearch" xml:space="preserve">
+    <value>Usage: s &lt;JAV-ID&gt;</value>
+  </data>
+  <data name="InvalidJavId" xml:space="preserve">
+    <value>"{0}" is not a valid JAV-ID. JAV-ID must be in format &lt;letters/numbers&gt;-&lt;numbers&gt;.</value>
+  </data>
+  <data name="NoFilesOverSize" xml:space="preserve">
+    <value>No local files found larger than {0:0.##} MB.</value>
+  </data>
+
+  <!-- Error Messages -->
+  <data name="ErrorOccurred" xml:space="preserve">
+    <value>Error occurred: {0}</value>
+  </data>
+
+</root>

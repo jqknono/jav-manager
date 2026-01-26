@@ -6,10 +6,11 @@ JavManager 是一个 C# .NET 10.0 控制台应用程序，用于自动化 JAV �
 
 **核心工作流程**:
 1. 输入番号 (如 XXX-123)
-2. 从 JavDB 爬取种子链接
-3. 按权重排序选择最佳片源
-4. 使用 Everything 检查本地文件
-5. 通过 qBittorrent 下载
+2. 优先从本地 SQLite 缓存查找
+3. 未命中则从 JavDB 爬取种子链接并缓存
+4. 按权重排序选择最佳片源
+5. 使用 Everything 检查本地文件
+6. 通过 qBittorrent 下载
 
 ---
 
@@ -39,7 +40,8 @@ Core/                  # 核心层：模型、接口、配置
 DataProviders/        # 数据访问层：外部服务客户端
 ├── JavDb/           # JavDB HTTP 爬虫 (HtmlAgilityPack)
 ├── Everything/      # Everything HTTP API 客户端
-└── QBittorrent/     # qBittorrent WebUI API 客户端
+├── QBittorrent/     # qBittorrent WebUI API 客户端
+└── LocalCache/      # SQLite 本地缓存 (EF Core)
 
 Services/            # 业务逻辑层
 ├── JavSearchService/          # 主业务编排
@@ -118,6 +120,15 @@ Task<bool> LoginAsync();
 Task<bool> AddTorrentAsync(string magnetLink, string? savePath, ...);
 ```
 
+### IJavLocalCacheProvider
+```csharp
+// 本地缓存接口
+Task<JavSearchResult?> GetAsync(string javId);
+Task SaveAsync(JavSearchResult result);
+Task<bool> ExistsAsync(string javId);
+Task<CacheStatistics> GetStatisticsAsync();
+```
+
 ---
 
 ## 配置文件
@@ -149,6 +160,11 @@ Task<bool> AddTorrentAsync(string magnetLink, string? savePath, ...);
     "DefaultTags": "auto-download",
     "PausedOnStart": false
   },
+  "LocalCache": {
+    "Enabled": true,
+    "DatabasePath": "",
+    "CacheExpirationDays": 0
+  },
   "Weights": {
     "UncensoredWeight": 1000.0,
     "SubtitleWeight": 500.0
@@ -162,6 +178,7 @@ Task<bool> AddTorrentAsync(string magnetLink, string? savePath, ...);
 
 ```xml
 <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
 <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
 <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 <PackageReference Include="Spectre.Console" Version="0.50.0" />
@@ -192,3 +209,32 @@ services.AddSingleton<IJavDbDataProvider, JavDbWebScraper>();
 
 ### 添加新的本地搜索引擎
 实现 `IEverythingSearchProvider` 接口，替换 EverythingHttpClient。
+
+---
+
+## 本地缓存数据库
+
+### 数据库结构
+
+SQLite 数据库位于应用目录下 `jav_cache.db`（可通过配置修改路径）。
+
+**表结构**:
+- `JavInfo`: 番号基本信息（番号、标题、发布日期、导演、制作商、系列等）
+- `JavActors`: 演员关联表
+- `JavCategories`: 类别关联表  
+- `Torrents`: 种子信息表（磁力链接、大小、标记等）
+
+### 缓存策略
+
+1. **搜索优先级**: 本地缓存 -> 远端 JavDB
+2. **自动缓存**: 远端搜索结果自动保存到本地
+3. **强制刷新**: 使用 `r <番号>` 命令可跳过缓存直接从远端搜索
+4. **缓存统计**: 使用 `c` 命令查看缓存统计信息
+
+### 缓存的数据
+
+- 番号基本信息（标题、发布日期、时长）
+- 演员列表
+- 类别/标签列表
+- 制作商、发行商、系列、导演
+- 所有种子的详细信息（磁力链接、标记等）

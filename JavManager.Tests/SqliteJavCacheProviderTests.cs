@@ -1,0 +1,95 @@
+using JavManager.Core.Configuration.ConfigSections;
+using JavManager.Core.Models;
+using JavManager.DataProviders.LocalCache;
+using Microsoft.Data.Sqlite;
+using Xunit;
+
+namespace JavManager.Tests;
+
+public class SqliteJavCacheProviderTests
+{
+    [Fact]
+    public async Task SaveAsync_PersistsAndLoadsResult()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"javmanager_cache_{Guid.NewGuid():N}.db");
+        try
+        {
+            var config = new LocalCacheConfig
+            {
+                Enabled = true,
+                DatabasePath = dbPath,
+                CacheExpirationDays = 0
+            };
+
+            var provider = new SqliteJavCacheProvider(config);
+            await provider.InitializeAsync();
+
+            var result = new JavSearchResult
+            {
+                JavId = "ABC-123",
+                Title = "Test Title",
+                CoverUrl = "https://example.test/cover.jpg",
+                ReleaseDate = new DateTime(2020, 1, 2),
+                Duration = 120,
+                Director = "Test Director",
+                Maker = "Test Maker",
+                Publisher = "Test Publisher",
+                Series = "Test Series",
+                DetailUrl = "https://example.test/detail",
+                Actors = new List<string> { "Actor A" },
+                Categories = new List<string> { "Category A" },
+                Torrents = new List<TorrentInfo>
+                {
+                    new()
+                    {
+                        Title = "Test Torrent",
+                        MagnetLink = "magnet:?xt=urn:btih:0123456789ABCDEF0123456789ABCDEF01234567",
+                        TorrentUrl = "https://example.test/torrent",
+                        Size = 123,
+                        HasUncensoredMarker = false,
+                        UncensoredMarkerType = UncensoredMarkerType.None,
+                        HasSubtitle = false,
+                        HasHd = true,
+                        Seeders = 10,
+                        Leechers = 5,
+                        SourceSite = "Test"
+                    }
+                }
+            };
+
+            await provider.SaveAsync(result);
+
+            var loaded = await provider.GetAsync("abc123");
+
+            Assert.NotNull(loaded);
+            Assert.Equal("ABC-123", loaded!.JavId);
+            Assert.Equal("Test Title", loaded.Title);
+            Assert.Single(loaded.Actors);
+            Assert.Single(loaded.Categories);
+            Assert.Single(loaded.Torrents);
+
+            var stats = await provider.GetStatisticsAsync();
+            Assert.Equal(1, stats.TotalJavCount);
+            Assert.Equal(1, stats.TotalTorrentCount);
+            Assert.True(stats.DatabaseSizeBytes > 0);
+            Assert.NotNull(stats.LastUpdatedAt);
+
+            await using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                await connection.OpenAsync();
+
+                // Category columns are created dynamically as Cat_<CategoryName> with basic sanitization.
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT Cat_Category_A FROM JavInfo WHERE JavId = 'ABC-123' LIMIT 1;";
+                var flag = Convert.ToInt32(await command.ExecuteScalarAsync());
+                Assert.Equal(1, flag);
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+                File.Delete(dbPath);
+        }
+    }
+}
