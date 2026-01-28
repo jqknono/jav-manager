@@ -103,7 +103,7 @@ jobs:
             --self-contained false \
             -p:Version="${{ needs.meta.outputs.version }}" \
             -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=false \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:IncludeAllContentForSelfExtract=true \
             -p:EnableCompressionInSingleFile=false \
             -p:PublishReadyToRun=false \

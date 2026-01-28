@@ -43,7 +43,7 @@ $sc = ToLowerBool $SelfContained
 $single = ToLowerBool $SingleFile
 $r2r = ToLowerBool $ReadyToRun
 $trim = ToLowerBool $Trimmed
-$includeNative = ToLowerBool $SelfContained
+$includeNative = "true"
 $compression = ToLowerBool $SelfContained
 $strictSingleFile = ToLowerBool $SelfContained
 
