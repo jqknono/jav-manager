@@ -1,4 +1,27 @@
 #!/usr/bin/env bash
+# =============================================================================
+# publish.sh - Publish JavManager for multiple platforms
+#              为多个平台发布 JavManager 独立单文件可执行程序
+#
+# Description:
+#   Builds JavManager for each specified runtime identifier (RID) with strict
+#   validation: each output must contain exactly one executable file.
+#   Outputs to artifacts/publish/<rid>/.
+#   为每个指定的运行时标识符 (RID) 构建 JavManager，严格验证：
+#   每个输出必须仅包含一个可执行文件。输出到 artifacts/publish/<rid>/。
+#
+# Environment Variables:
+#   PROJECT        - Project file path (default: JavManager/JavManager.csproj)
+#   CONFIGURATION  - Build configuration (default: Release)
+#   OUTPUT_ROOT    - Output directory (default: artifacts/publish)
+#   SELF_CONTAINED - Self-contained build (default: true)
+#   SINGLE_FILE    - Single file output (default: true)
+#   READY_TO_RUN   - Ready to run compilation (default: true)
+#   TRIMMED        - Enable trimming (default: false)
+#
+# Usage:
+#   ./publish.sh
+# =============================================================================
 set -euo pipefail
 
 PROJECT="${PROJECT:-JavManager/JavManager.csproj}"

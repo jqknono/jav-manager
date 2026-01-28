@@ -1,3 +1,27 @@
+<#
+.SYNOPSIS
+    Publish JavManager for multiple platforms as self-contained single-file executables.
+    为多个平台发布 JavManager 独立单文件可执行程序。
+
+.DESCRIPTION
+    Builds JavManager for each specified runtime identifier (RID) with strict validation:
+    each output must contain exactly one executable file. Outputs to artifacts/publish/<rid>/.
+    为每个指定的运行时标识符 (RID) 构建 JavManager，严格验证：
+    每个输出必须仅包含一个可执行文件。输出到 artifacts/publish/<rid>/。
+
+.PARAMETER Project
+    Path to the project file. Default: JavManager/JavManager.csproj
+    项目文件路径。默认：JavManager/JavManager.csproj
+
+.PARAMETER RuntimeIdentifiers
+    Array of runtime identifiers. Default: win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64
+    运行时标识符数组。默认：win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64
+
+.EXAMPLE
+    .\publish.ps1
+    .\publish.ps1 -RuntimeIdentifiers @("win-x64", "linux-x64")
+#>
+
 param(
     [string]$Project = "JavManager/JavManager.csproj",
     [string]$Configuration = "Release",

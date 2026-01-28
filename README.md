@@ -22,6 +22,10 @@ A command-line tool for automated JAV content management with local caching, tor
 | JavDB | Metadata & magnet links | [javdb.com](https://javdb.com/) |
 | qBittorrent | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
+### Cloudflare 403 Issue
+
+If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager uses built-in Chrome-like headers and retries without third-party tools. If you still see 403, configure `cf_clearance` and a matching `UserAgent` from your browser (see `doc/CloudflareBypass.md`).
+
 ## Usage
 
 ```bash

@@ -22,6 +22,10 @@
 | JavDB | 元数据和磁力链接 | [javdb.com](https://javdb.com/) |
 | qBittorrent | 种子下载 | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
+### Cloudflare 403 问题
+
+如果 JavDB 返回 HTTP 403，通常是 Cloudflare 挑战导致的。JavManager 内部使用 Chrome 风格请求并会反复重试，不依赖第三方工具。如果仍然出现 403，请在配置中提供浏览器获取的 `cf_clearance` 和对应的 `UserAgent`（参见 `doc/CloudflareBypass.md`）。
+
 ## 使用方法
 
 ```bash

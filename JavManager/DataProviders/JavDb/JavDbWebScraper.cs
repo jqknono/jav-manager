@@ -6,19 +6,30 @@ using JavManager.Localization;
 using JavManager.Utils;
 using Spectre.Console;
 using System.Net;
+using System.Net.Http;
+using System.Security.Authentication;
 
 namespace JavManager.DataProviders.JavDb;
 
 /// <summary>
-/// JavDB HTTP 爬虫（使用 curl 绕过 TLS 指纹检测）
+/// JavDB HTTP 爬虫（内部伪装为 Chrome，反复尝试）
+/// 使用 HTTP/1.1 降级 + 完整 Chrome headers 以提高绕过 Cloudflare 成功率
 /// </summary>
 public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 {
     private readonly JavDbConfig _config;
     private readonly TorrentNameParser _nameParser;
     private readonly LocalizationService _loc;
-    private readonly CurlHttpClient _curlClient;
     private readonly JavDbHtmlParser _htmlParser;
+    private readonly HttpClient _httpClient;
+    private readonly CookieContainer _cookieContainer;
+    private readonly List<string> _userAgents;
+    private readonly Random _random = new();
+    private const int MaxAttemptsPerUrl = 4;
+    private const int MaxUrlCycles = 2;
+    private static readonly TimeSpan RetryBaseDelay = TimeSpan.FromMilliseconds(1000);
+    private const string DefaultUserAgent =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
     public JavDbWebScraper(JavDbConfig config, TorrentNameParser nameParser, LocalizationService localizationService)
     {
@@ -27,36 +38,9 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         _loc = localizationService;
         _htmlParser = new JavDbHtmlParser();
 
-        // 使用 curl 客户端绕过 TLS 指纹检测
-        _curlClient = new CurlHttpClient(_config.RequestTimeout / 1000);
-
-        // 设置请求头模拟真实浏览器（Chrome 131 on Windows）
-        // 头部顺序和值都很重要，需要与真实浏览器一致
-        _curlClient.SetDefaultHeader("Cache-Control", "max-age=0");
-        _curlClient.SetDefaultHeader("Upgrade-Insecure-Requests", "1");
-        _curlClient.SetDefaultHeader("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        _curlClient.SetDefaultHeader("Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
-        
-        // Sec-Ch-Ua 系列头部（Chrome Client Hints）
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Mobile", "?0");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Platform", "\"Windows\"");
-        
-        // Sec-Fetch 系列头部
-        _curlClient.SetDefaultHeader("Sec-Fetch-Site", "none");
-        _curlClient.SetDefaultHeader("Sec-Fetch-Mode", "navigate");
-        _curlClient.SetDefaultHeader("Sec-Fetch-User", "?1");
-        _curlClient.SetDefaultHeader("Sec-Fetch-Dest", "document");
-        
-        _curlClient.SetDefaultHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
-        _curlClient.SetDefaultHeader("Accept-Encoding", "gzip, deflate, br, zstd");
-        
-        // 添加 over18 cookie
-        _curlClient.SetCookie("over18", "1");
-        // 添加 locale cookie 避免重定向
-        _curlClient.SetCookie("locale", "zh");
+        _cookieContainer = new CookieContainer();
+        _httpClient = CreateHttpClient(_cookieContainer, _config.RequestTimeout);
+        _userAgents = BuildUserAgentCandidates(_config.UserAgent);
     }
 
     /// <summary>
@@ -80,81 +64,94 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
     public async Task<List<JavSearchResult>> SearchCandidatesAsync(string javId)
     {
-        // 尝试所有可用的 URL
         var urls = new List<string> { _config.BaseUrl };
         urls.AddRange(_config.MirrorUrls);
+        urls = urls
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var lastError = "";
-
-        foreach (var baseUrl in urls)
+        for (var cycle = 0; cycle < MaxUrlCycles; cycle++)
         {
-            try
+            foreach (var baseUrl in urls)
             {
-                var baseUrlTrimmed = baseUrl.TrimEnd('/');
-
-                // 第一步：访问首页建立会话
-                var homeResponse = await _curlClient.GetAsync(baseUrlTrimmed);
-                if (!homeResponse.IsSuccessStatusCode)
+                try
                 {
-                    lastError = _loc.GetFormat(L.JavDbHomeRequestFailed, homeResponse.StatusCode);
-                    if (homeResponse.StatusCode == 403)
-                        continue;
-                    homeResponse.EnsureSuccessStatusCode();
-                }
+                    var baseUrlTrimmed = baseUrl.TrimEnd('/');
+                    SeedCookiesForUrl(baseUrlTrimmed);
 
-                // 第二步：访问搜索页面
-                var searchUrl = $"{baseUrlTrimmed}/search?q={Uri.EscapeDataString(javId)}&f=all";
-                var searchResponse = await _curlClient.GetAsync(searchUrl, baseUrlTrimmed);
-                if (!searchResponse.IsSuccessStatusCode)
-                {
-                    lastError = _loc.GetFormat(L.JavDbSearchRequestFailed, searchResponse.StatusCode);
-                    if (searchResponse.StatusCode == 403)
-                        continue;
-                    searchResponse.EnsureSuccessStatusCode();
-                }
-                var html = searchResponse.Body;
-                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Search page HTML length: {html.Length}[/]");
-
-                // Parse search results
-                var searchResults = _htmlParser.ParseSearchResults(html);
-                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Parsed search results count: {searchResults.Count}[/]");
-
-                if (searchResults.Count == 0)
-                    return new List<JavSearchResult>();
-
-                // 统一详情链接为绝对 URL（保持镜像域名一致）
-                foreach (var r in searchResults)
-                {
-                    if (!string.IsNullOrWhiteSpace(r.DetailUrl) &&
-                        !r.DetailUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
-                        !r.DetailUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    // 第一步：访问首页建立会话
+                    var homeResponse = await GetWithRetryAsync(baseUrlTrimmed, referer: null, maxAttempts: MaxAttemptsPerUrl);
+                    if (!IsSuccessStatusCode(homeResponse.StatusCode))
                     {
-                        r.DetailUrl = $"{baseUrlTrimmed}{r.DetailUrl}";
+                        lastError = !string.IsNullOrWhiteSpace(homeResponse.Error)
+                            ? $"{baseUrlTrimmed}: {homeResponse.Error}"
+                            : _loc.GetFormat(L.JavDbHomeRequestFailed, homeResponse.StatusCode);
+                        if (IsRetryableStatus(homeResponse.StatusCode))
+                            continue;
+                        continue;
                     }
-                }
 
-                // 去重
-                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var deduped = new List<JavSearchResult>();
-                foreach (var r in searchResults)
+                    // 第二步：访问搜索页面
+                    var searchUrl = $"{baseUrlTrimmed}/search?q={Uri.EscapeDataString(javId)}&f=all";
+                    var searchResponse = await GetWithRetryAsync(searchUrl, baseUrlTrimmed, maxAttempts: MaxAttemptsPerUrl);
+                    if (!IsSuccessStatusCode(searchResponse.StatusCode))
+                    {
+                        lastError = !string.IsNullOrWhiteSpace(searchResponse.Error)
+                            ? $"{baseUrlTrimmed}: {searchResponse.Error}"
+                            : _loc.GetFormat(L.JavDbSearchRequestFailed, searchResponse.StatusCode);
+                        if (IsRetryableStatus(searchResponse.StatusCode))
+                            continue;
+                        continue;
+                    }
+
+                    var html = searchResponse.Body;
+                    AnsiConsole.MarkupLine($"[grey][[DEBUG]] Search page HTML length: {html.Length}[/]");
+
+                    // Parse search results
+                    var searchResults = _htmlParser.ParseSearchResults(html);
+                    AnsiConsole.MarkupLine($"[grey][[DEBUG]] Parsed search results count: {searchResults.Count}[/]");
+
+                    if (searchResults.Count == 0)
+                        return new List<JavSearchResult>();
+
+                    // 统一详情链接为绝对 URL（保持镜像域名一致）
+                    foreach (var r in searchResults)
+                    {
+                        if (!string.IsNullOrWhiteSpace(r.DetailUrl) &&
+                            !r.DetailUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                            !r.DetailUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            r.DetailUrl = $"{baseUrlTrimmed}{r.DetailUrl}";
+                        }
+                    }
+
+                    // 去重
+                    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var deduped = new List<JavSearchResult>();
+                    foreach (var r in searchResults)
+                    {
+                        var key = string.IsNullOrWhiteSpace(r.DetailUrl) ? $"{r.Title}|{r.JavId}" : r.DetailUrl;
+                        if (seen.Add(key))
+                            deduped.Add(r);
+                    }
+
+                    if (deduped.Count > 0)
+                    {
+                        var first = deduped.First();
+                        AnsiConsole.MarkupLine($"[grey][[DEBUG]] First result: JavId={Markup.Escape(first.JavId)}, DetailUrl={Markup.Escape(first.DetailUrl)}[/]");
+                    }
+
+                    return deduped;
+                }
+                catch (Exception ex)
                 {
-                    var key = string.IsNullOrWhiteSpace(r.DetailUrl) ? $"{r.Title}|{r.JavId}" : r.DetailUrl;
-                    if (seen.Add(key))
-                        deduped.Add(r);
+                    lastError = $"{baseUrl}: {ex.Message}";
+                    AnsiConsole.MarkupLine($"[grey][[DEBUG]] Exception: {Markup.Escape(lastError)}[/]");
+                    continue;
                 }
-
-                if (deduped.Count > 0)
-                {
-                    var first = deduped.First();
-                    AnsiConsole.MarkupLine($"[grey][[DEBUG]] First result: JavId={Markup.Escape(first.JavId)}, DetailUrl={Markup.Escape(first.DetailUrl)}[/]");
-                }
-
-                return deduped;
-            }
-            catch (Exception ex)
-            {
-                lastError = $"{baseUrl}: {ex.Message}";
-                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Exception: {Markup.Escape(lastError)}[/]");
-                continue;
             }
         }
 
@@ -181,8 +178,15 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             referer = uri.GetLeftPart(UriPartial.Authority);
         }
 
-        var response = await _curlClient.GetAsync(detailUrl, referer);
-        response.EnsureSuccessStatusCode();
+        SeedCookiesForUrl(referer);
+        var response = await GetWithRetryAsync(detailUrl, referer, maxAttempts: MaxAttemptsPerUrl);
+        if (!IsSuccessStatusCode(response.StatusCode))
+        {
+            var error = !string.IsNullOrWhiteSpace(response.Error)
+                ? response.Error
+                : $"Detail: HTTP {response.StatusCode}";
+            throw new InvalidOperationException(_loc.GetFormat(L.JavDbHttpRequestFailed, error));
+        }
         var html = response.Body;
 
         var result = _htmlParser.ParseDetailPage(html);
@@ -194,6 +198,236 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
         return result;
     }
+
+    private static HttpClient CreateHttpClient(CookieContainer cookieContainer, int timeoutMs)
+    {
+        var handler = new SocketsHttpHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 10,
+            UseCookies = true,
+            CookieContainer = cookieContainer,
+            ConnectTimeout = TimeSpan.FromSeconds(15),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            // 使用 HTTP/1.1：Cloudflare 对 HTTP/1.1 的指纹检测较宽松
+            // HTTP/2 的 SETTINGS 帧顺序等特征容易被检测
+            EnableMultipleHttp2Connections = false,
+            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
+            {
+                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13
+            }
+        };
+
+        var client = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromMilliseconds(timeoutMs)
+        };
+        // 强制 HTTP/1.1 以避免 HTTP/2 指纹检测
+        client.DefaultRequestVersion = HttpVersion.Version11;
+        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+        return client;
+    }
+
+    private static List<string> BuildUserAgentCandidates(string? configuredUserAgent)
+    {
+        var candidates = new List<string>();
+        if (!string.IsNullOrWhiteSpace(configuredUserAgent))
+            candidates.Add(configuredUserAgent.Trim());
+
+        candidates.Add(DefaultUserAgent);
+        candidates.Add("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+        candidates.Add("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+
+        return candidates
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void SeedCookiesForUrl(string baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+            return;
+
+        _cookieContainer.Add(uri, new Cookie("over18", "1", "/"));
+        _cookieContainer.Add(uri, new Cookie("locale", "zh", "/"));
+
+        if (!string.IsNullOrWhiteSpace(_config.CfClearance))
+            _cookieContainer.Add(uri, new Cookie("cf_clearance", _config.CfClearance, "/"));
+
+        if (!string.IsNullOrWhiteSpace(_config.CfBm))
+            _cookieContainer.Add(uri, new Cookie("__cf_bm", _config.CfBm, "/"));
+    }
+
+    private async Task<(int StatusCode, string Body, bool IsCloudflare, string? Error)> GetWithRetryAsync(
+        string url,
+        string? referer,
+        int maxAttempts,
+        int? timeoutMs = null)
+    {
+        var effectiveTimeout = timeoutMs ?? _config.RequestTimeout;
+        var lastError = "";
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            // 添加随机延迟模拟人类行为（首次请求也加小延迟）
+            if (attempt > 0)
+            {
+                var delay = GetRetryDelay(attempt);
+                AnsiConsole.MarkupLine($"[grey][[DEBUG]] Waiting {delay.TotalMilliseconds:F0}ms before retry...[/]");
+                await Task.Delay(delay);
+            }
+            else
+            {
+                // 首次请求加小随机延迟
+                await Task.Delay(_random.Next(100, 500));
+            }
+
+            var result = await SendRequestAsync(url, referer, attempt, effectiveTimeout);
+            if (IsSuccessStatusCode(result.StatusCode))
+                return result;
+
+            lastError = !string.IsNullOrWhiteSpace(result.Error)
+                ? result.Error
+                : $"HTTP {result.StatusCode}";
+
+            AnsiConsole.MarkupLine(
+                $"[grey][[DEBUG]] Request failed (attempt {attempt + 1}/{maxAttempts}): {Markup.Escape(url)} status={result.StatusCode}, cf={result.IsCloudflare}, error={Markup.Escape(lastError)}[/]");
+
+            if (!IsRetryableStatus(result.StatusCode) || attempt == maxAttempts - 1)
+                return (result.StatusCode, result.Body, result.IsCloudflare, lastError);
+        }
+
+        return (0, string.Empty, false, lastError);
+    }
+
+    private async Task<(int StatusCode, string Body, bool IsCloudflare, string? Error)> SendRequestAsync(
+        string url,
+        string? referer,
+        int attemptIndex,
+        int timeoutMs)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        ApplyChromeHeaders(request, referer, attemptIndex);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+        try
+        {
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            var body = await response.Content.ReadAsStringAsync(cts.Token);
+            var isCloudflare = response.Headers.Contains("cf-mitigated") ||
+                               response.Headers.Contains("cf-ray");
+            return ((int)response.StatusCode, body, isCloudflare, null);
+        }
+        catch (TaskCanceledException)
+        {
+            return (0, string.Empty, false, $"Timeout after {timeoutMs}ms");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (0, string.Empty, false, ex.Message);
+        }
+    }
+
+    private void ApplyChromeHeaders(HttpRequestMessage request, string? referer, int attemptIndex)
+    {
+        var userAgent = _userAgents[attemptIndex % _userAgents.Count];
+        var chromeMajor = ParseChromeMajorVersion(userAgent);
+        var platform = GetPlatformFromUserAgent(userAgent);
+        var mobile = userAgent.Contains("Mobile", StringComparison.OrdinalIgnoreCase) ? "?1" : "?0";
+
+        // Chrome 真实请求的 header 顺序（顺序对某些 WAF 检测很重要）
+        // 1. Host (由 HttpClient 自动添加)
+        // 2. Connection
+        request.Headers.TryAddWithoutValidation("Connection", "keep-alive");
+
+        // 3. Cache-Control
+        request.Headers.TryAddWithoutValidation("Cache-Control", "max-age=0");
+
+        // 4. sec-ch-ua 系列
+        request.Headers.TryAddWithoutValidation("sec-ch-ua", BuildSecChUa(chromeMajor));
+        request.Headers.TryAddWithoutValidation("sec-ch-ua-mobile", mobile);
+        request.Headers.TryAddWithoutValidation("sec-ch-ua-platform", $"\"{platform}\"");
+
+        // 5. DNT
+        request.Headers.TryAddWithoutValidation("DNT", "1");
+
+        // 6. Upgrade-Insecure-Requests
+        request.Headers.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+
+        // 7. User-Agent
+        request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+
+        // 8. Accept
+        request.Headers.TryAddWithoutValidation("Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+
+        // 9. Sec-Fetch 系列
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-Site", string.IsNullOrWhiteSpace(referer) ? "none" : "same-origin");
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-User", "?1");
+        request.Headers.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+
+        // 10. Referer
+        if (!string.IsNullOrWhiteSpace(referer) && Uri.TryCreate(referer, UriKind.Absolute, out var refererUri))
+        {
+            request.Headers.Referrer = refererUri;
+        }
+
+        // 11. Accept-Encoding
+        request.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate, br");
+
+        // 12. Accept-Language
+        request.Headers.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7");
+    }
+
+    private static string BuildSecChUa(string chromeMajor)
+        => $"\"Google Chrome\";v=\"{chromeMajor}\", \"Chromium\";v=\"{chromeMajor}\", \"Not_A Brand\";v=\"24\"";
+
+    private static string ParseChromeMajorVersion(string userAgent)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(userAgent, @"Chrome/(\d+)");
+        return match.Success ? match.Groups[1].Value : "131";
+    }
+
+    private static string GetPlatformFromUserAgent(string userAgent)
+    {
+        if (userAgent.Contains("Windows", StringComparison.OrdinalIgnoreCase))
+            return "Windows";
+        if (userAgent.Contains("Mac OS X", StringComparison.OrdinalIgnoreCase) || userAgent.Contains("Macintosh", StringComparison.OrdinalIgnoreCase))
+            return "macOS";
+        if (userAgent.Contains("Linux", StringComparison.OrdinalIgnoreCase))
+            return "Linux";
+        if (userAgent.Contains("Android", StringComparison.OrdinalIgnoreCase))
+            return "Android";
+        return "Windows";
+    }
+
+    private TimeSpan GetRetryDelay(int attemptIndex)
+    {
+        // 指数退避 + 随机抖动，模拟人类行为
+        var baseMs = RetryBaseDelay.TotalMilliseconds * Math.Pow(1.5, attemptIndex);
+        var jitter = _random.Next(-300, 500);
+        return TimeSpan.FromMilliseconds(Math.Max(500, baseMs + jitter));
+    }
+
+    private static bool IsSuccessStatusCode(int statusCode)
+        => statusCode >= 200 && statusCode < 300;
+
+    private static bool IsRetryableStatus(int statusCode)
+        => statusCode == 0 ||
+           statusCode == 403 ||
+           statusCode == 408 ||
+           statusCode == 425 ||
+           statusCode == 429 ||
+           statusCode == 500 ||
+           statusCode == 502 ||
+           statusCode == 503 ||
+           statusCode == 520 ||
+           statusCode == 522 ||
+           statusCode == 524;
 
     /// <summary>
     /// 解析种子链接（从 HTML 中提取磁力链接）
@@ -428,7 +662,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
     public void Dispose()
     {
-        _curlClient?.Dispose();
+        _httpClient?.Dispose();
     }
 
     // ========== IHealthChecker 实现 ==========
@@ -475,9 +709,14 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             try
             {
                 var testUrl = url.TrimEnd('/');
-                var response = await _curlClient.GetAsync(testUrl, timeoutSeconds: healthCheckTimeoutSeconds);
+                SeedCookiesForUrl(testUrl);
+                var response = await GetWithRetryAsync(
+                    testUrl,
+                    referer: null,
+                    maxAttempts: 2,
+                    timeoutMs: healthCheckTimeoutSeconds * 1000);
 
-                if (response.IsSuccessStatusCode)
+                if (IsSuccessStatusCode(response.StatusCode))
                 {
                     return new HealthCheckResult
                     {
@@ -490,7 +729,9 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
                 // HTTP 错误（如 403）
                 failedUrls.Add(url);
-                lastError = $"{url}: HTTP {(int)response.StatusCode}";
+                lastError = !string.IsNullOrWhiteSpace(response.Error)
+                    ? $"{url}: {response.Error}"
+                    : $"{url}: HTTP {(int)response.StatusCode}";
             }
             catch (Exception ex)
             {

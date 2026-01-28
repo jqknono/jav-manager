@@ -17,8 +17,11 @@ public class TelemetryService : IDisposable
 
     public TelemetryService(string? telemetryEndpoint = null, bool enabled = true)
     {
-        _telemetryEndpoint = telemetryEndpoint ?? "https://jav-manager-telemetry.YOUR_SUBDOMAIN.workers.dev/api/telemetry";
-        _enabled = enabled && !string.IsNullOrEmpty(_telemetryEndpoint);
+        // Use default endpoint if not specified or empty
+        _telemetryEndpoint = string.IsNullOrWhiteSpace(telemetryEndpoint) 
+            ? "https://jav-manager.techfetch.dev/api/telemetry" 
+            : telemetryEndpoint;
+        _enabled = enabled;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         _info = CollectSystemInfo();
     }

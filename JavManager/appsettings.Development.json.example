@@ -1,13 +1,13 @@
 {
   "Everything": {
-    "BaseUrl": "http://everything.jqknono.com",
+    "BaseUrl": "http://localhost:8080",
     "UserName": null,
     "Password": null
   },
   "QBittorrent": {
-    "BaseUrl": "http://qbittorrent.jqknono.com",
-    "UserName": null,
-    "Password": null
+    "BaseUrl": "http://localhost:8081",
+    "UserName": "admin",
+    "Password": "your_password"
   },
   "JavDb": {
     "BaseUrl": "https://javdb.com",
@@ -18,7 +18,7 @@
     "UserAgent": ""
   },
   "Download": {
-    "DefaultSavePath": "",
+    "DefaultSavePath": "/downloads/jav",
     "DefaultCategory": "jav",
     "DefaultTags": "auto-download"
   },
@@ -28,16 +28,16 @@
     "CacheExpirationDays": 0
   },
   "Console": {
-    "Language": "en",
+    "Language": "zh",
     "HideOtherTorrents": true
   },
   "Telemetry": {
-    "Enabled": true,
+    "Enabled": false,
     "Endpoint": ""
   },
   "JavInfoSync": {
     "Enabled": false,
-    "Endpoint": "https://jav-manager.techfetch.dev/api/javinfo",
+    "Endpoint": "",
     "ApiKey": ""
   }
 }

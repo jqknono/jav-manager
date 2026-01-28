@@ -7,3 +7,17 @@ JavManager.Tests/bin/Release/
 artifacts/
 **/node_modules/
 **/.wrangler/
+
+# Environment and sensitive config files
+.env
+.env.local
+.env.dev
+.env.development
+.env.production
+appsettings.Development.json
+appsettings.*.local.json
+
+# Database files
+*.db
+*.db-shm
+*.db-wal

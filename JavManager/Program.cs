@@ -167,6 +167,7 @@ class Program
                     torrentSelectionService,
                     nameParser,
                     serviceAvailability,
+                    services.GetRequiredService<IJavInfoSyncClient>(),
                     cacheProvider: cacheProvider,
                     autoConfirm: true);
 
@@ -522,6 +523,7 @@ class Program
                 torrentSelectionService,
                 nameParser,
                 serviceAvailability,
+                services.GetRequiredService<IJavInfoSyncClient>(),
                 cacheProvider,
                 autoConfirm: autoConfirmSearch);
             return true;
@@ -739,6 +741,7 @@ class Program
                     torrentSelectionService,
                     nameParser,
                     serviceAvailability,
+                    services.GetRequiredService<IJavInfoSyncClient>(),
                     cacheProvider);
             }
             catch (Exception ex)
@@ -762,6 +765,7 @@ class Program
         TorrentSelectionService torrentSelectionService,
         TorrentNameParser nameParser,
         ServiceAvailability serviceAvailability,
+        IJavInfoSyncClient javInfoSyncClient,
         IJavLocalCacheProvider? cacheProvider = null,
         bool autoConfirm = false)
     {
@@ -835,6 +839,9 @@ class Program
             var detail = await javDbProvider.GetDetailAsync(selectedCandidate.DetailUrl);
             if (string.IsNullOrWhiteSpace(detail.JavId))
                 detail.JavId = javId;
+
+            // Sync JavInfo metadata to remote service (best-effort, non-blocking)
+            javInfoSyncClient.TrySync(detail);
 
             if (cacheProvider != null)
             {
