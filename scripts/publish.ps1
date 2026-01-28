@@ -29,7 +29,7 @@ param(
     [string[]]$RuntimeIdentifiers = @("win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"),
     [bool]$SelfContained = $true,
     [bool]$SingleFile = $true,
-    [bool]$ReadyToRun = $true,
+    [bool]$ReadyToRun = $false,
     [bool]$Trimmed = $false
 )
 
@@ -43,12 +43,21 @@ $sc = ToLowerBool $SelfContained
 $single = ToLowerBool $SingleFile
 $r2r = ToLowerBool $ReadyToRun
 $trim = ToLowerBool $Trimmed
+$includeNative = ToLowerBool $SelfContained
+$compression = ToLowerBool $SelfContained
+$strictSingleFile = ToLowerBool $SelfContained
+
+if (-not $SelfContained -and $Trimmed) {
+    Write-Host "PublishTrimmed requires self-contained output; disabling Trimmed for framework-dependent publish."
+    $Trimmed = $false
+    $trim = ToLowerBool $Trimmed
+}
 
 Write-Host "Project: $Project"
 Write-Host "Configuration: $Configuration"
 Write-Host "Output: $OutputRoot"
 Write-Host "RIDs: $($RuntimeIdentifiers -join ', ')"
-Write-Host "SelfContained=$sc SingleFile=$single ReadyToRun=$r2r Trimmed=$trim"
+Write-Host "SelfContained=$sc SingleFile=$single ReadyToRun=$r2r Trimmed=$trim StrictSingleFile=$strictSingleFile"
 
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 
@@ -66,11 +75,12 @@ foreach ($rid in $RuntimeIdentifiers) {
         --output $outDir `
         --self-contained $sc `
         -p:PublishSingleFile=$single `
-        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:IncludeNativeLibrariesForSelfExtract=$includeNative `
         -p:IncludeAllContentForSelfExtract=true `
-        -p:EnableCompressionInSingleFile=true `
+        -p:EnableCompressionInSingleFile=$compression `
         -p:PublishReadyToRun=$r2r `
         -p:PublishTrimmed=$trim `
+        -p:StrictSingleFileReleasePublish=$strictSingleFile `
         -p:DebugType=None
 
     $files = Get-ChildItem -Path $outDir -File

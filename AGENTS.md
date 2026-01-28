@@ -24,6 +24,10 @@ Requires .NET SDK `8.0`.
 - Tests: `dotnet test JavManager.Tests/JavManager.Tests.csproj`
 - Publish (local): `pwsh scripts/publish.ps1` or `bash scripts/publish.sh` (outputs to `artifacts/publish/<rid>/`)
 
+## Documentation Guidelines
+
+- Only edit `README.md` unless explicitly requested; do not modify other language readmes.
+
 ## Coding Style & Naming Conventions
 
 - Indentation: 4 spaces; keep files using the repo’s existing C# formatting.
@@ -44,7 +48,6 @@ Requires .NET SDK `8.0`.
 
 ## Security & Configuration Tips
 
-- Runtime config is read from `appsettings.json`, optional `appsettings.Development.json`, and env vars with prefix `JAVMANAGER_`
-  (example: `JAVMANAGER_QBittorrent__BaseUrl`).
+- Runtime config is read from `appsettings.json` and optional `appsettings.Development.json` (env var overrides are not supported).
 - Do not commit secrets (qBittorrent/Everything credentials, local URLs); prefer local `appsettings.Development.json` or env vars.
 - JavDB access is implemented via HTTP + HTML parsing; avoid introducing browser automation (e.g., Playwright) unless explicitly required.

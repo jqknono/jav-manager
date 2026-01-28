@@ -77,22 +77,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out_dir="artifacts/publish/${{ matrix.rid }}"
-          rm -rf "${out_dir}"
-          mkdir -p "${out_dir}"
+          out_dir_sc="artifacts/publish/${{ matrix.rid }}/self-contained"
+          out_dir_fdd="artifacts/publish/${{ matrix.rid }}/fdd"
+          rm -rf "${out_dir_sc}" "${out_dir_fdd}"
+          mkdir -p "${out_dir_sc}" "${out_dir_fdd}"
 
           dotnet publish "JavManager/JavManager.csproj" \
             -c Release \
             -r "${{ matrix.rid }}" \
-            --output "${out_dir}" \
+            --output "${out_dir_sc}" \
             --self-contained true \
             -p:Version="${{ needs.meta.outputs.version }}" \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:IncludeAllContentForSelfExtract=true \
             -p:EnableCompressionInSingleFile=true \
-            -p:PublishReadyToRun=true \
+            -p:PublishReadyToRun=false \
             -p:PublishTrimmed=false \
+            -p:DebugType=None
+
+          dotnet publish "JavManager/JavManager.csproj" \
+            -c Release \
+            -r "${{ matrix.rid }}" \
+            --output "${out_dir_fdd}" \
+            --self-contained false \
+            -p:Version="${{ needs.meta.outputs.version }}" \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=false \
+            -p:IncludeAllContentForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=false \
+            -p:PublishReadyToRun=false \
+            -p:PublishTrimmed=false \
+            -p:StrictSingleFileReleasePublish=false \
             -p:DebugType=None
 
       - name: Assert single-file publish output (strict)
@@ -100,7 +116,8 @@ jobs:
         run: |
           set -euo pipefail
           rid="${{ matrix.rid }}"
-          out_dir="artifacts/publish/${rid}"
+          out_dir_sc="artifacts/publish/${rid}/self-contained"
+          out_dir_fdd="artifacts/publish/${rid}/fdd"
 
           if [[ "${rid}" == win-* ]]; then
             expected="JavManager.exe"
@@ -108,26 +125,34 @@ jobs:
             expected="JavManager"
           fi
 
-          shopt -s nullglob
-          files=("${out_dir}"/*)
-          real_files=()
-          for f in "${files[@]}"; do
-            if [[ -f "${f}" ]]; then
-              real_files+=("${f}")
+          check_output() {
+            local out_dir="$1"
+            local label="$2"
+
+            shopt -s nullglob
+            local files=("${out_dir}"/*)
+            local real_files=()
+            for f in "${files[@]}"; do
+              if [[ -f "${f}" ]]; then
+                real_files+=("${f}")
+              fi
+            done
+
+            if (( ${#real_files[@]} != 1 )); then
+              echo "STRICT MODE: ${label} output must contain exactly 1 file. Found ${#real_files[@]} files." >&2
+              ls -la "${out_dir}" >&2
+              exit 1
             fi
-          done
 
-          if (( ${#real_files[@]} != 1 )); then
-            echo "STRICT MODE: publish output must contain exactly 1 file. Found ${#real_files[@]} files." >&2
-            ls -la "${out_dir}" >&2
-            exit 1
-          fi
+            if [[ "$(basename "${real_files[0]}")" != "${expected}" ]]; then
+              echo "STRICT MODE: ${label} output must contain only ${expected}, but got $(basename "${real_files[0]}")." >&2
+              ls -la "${out_dir}" >&2
+              exit 1
+            fi
+          }
 
-          if [[ "$(basename "${real_files[0]}")" != "${expected}" ]]; then
-            echo "STRICT MODE: publish output must contain only ${expected}, but got $(basename "${real_files[0]}")." >&2
-            ls -la "${out_dir}" >&2
-            exit 1
-          fi
+          check_output "${out_dir_sc}" "self-contained"
+          check_output "${out_dir_fdd}" "fdd"
 
       - name: Prepare binary for release
         shell: bash
@@ -135,21 +160,29 @@ jobs:
           set -euo pipefail
           version="${{ needs.meta.outputs.version }}"
           rid="${{ matrix.rid }}"
-          out_dir="artifacts/publish/${rid}"
+          out_dir_sc="artifacts/publish/${rid}/self-contained"
+          out_dir_fdd="artifacts/publish/${rid}/fdd"
           bin_dir="artifacts/binaries"
           mkdir -p "${bin_dir}"
 
           # Determine executable name based on platform
           if [[ "${rid}" == win-* ]]; then
-            src_exe="${out_dir}/JavManager.exe"
-            dest_exe="${bin_dir}/JavManager_${version}_${rid}.exe"
+            src_sc="${out_dir_sc}/JavManager.exe"
+            dest_sc="${bin_dir}/JavManager_${version}_${rid}_sc.exe"
+            src_fdd="${out_dir_fdd}/JavManager.exe"
+            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd.exe"
           else
-            src_exe="${out_dir}/JavManager"
-            dest_exe="${bin_dir}/JavManager_${version}_${rid}"
+            src_sc="${out_dir_sc}/JavManager"
+            dest_sc="${bin_dir}/JavManager_${version}_${rid}_sc"
+            src_fdd="${out_dir_fdd}/JavManager"
+            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd"
           fi
 
-          cp "${src_exe}" "${dest_exe}"
-          echo "Created: ${dest_exe}"
+          cp "${src_sc}" "${dest_sc}"
+          echo "Created: ${dest_sc}"
+
+          cp "${src_fdd}" "${dest_fdd}"
+          echo "Created: ${dest_fdd}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -202,7 +235,8 @@ jobs:
             echo
             echo "## Assets"
             echo
-            echo "- Prebuilt self-contained binaries for multiple platforms/RIDs."
+            echo "- Self-contained single-file binaries: *_sc"
+            echo "- Framework-dependent single-file binaries: *_fdd (requires .NET 8 runtime)"
             echo "- `SHA256SUMS.txt` for verification."
           } > RELEASE_NOTES.md
 

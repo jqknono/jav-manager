@@ -35,9 +35,9 @@ When Cloudflare challenges are active, you need a real browser session to obtain
 
 ### Configuration
 
-Add the cookies to your configuration:
+Add the cookies to your configuration file:
 
-**appsettings.Development.json:**
+**appsettings.Development.json (recommended for local):**
 ```json
 {
   "JavDb": {
@@ -48,13 +48,7 @@ Add the cookies to your configuration:
   }
 }
 ```
-
-**Or via environment variables:**
-```bash
-export JAVMANAGER_JavDb__CfClearance="your_cf_clearance_value"
-export JAVMANAGER_JavDb__CfBm="your___cf_bm_value"
-export JAVMANAGER_JavDb__UserAgent="Mozilla/5.0 ..."
-```
+You can also place the same `JavDb` section in `appsettings.json` for production use.
 
 ### Important Notes
 

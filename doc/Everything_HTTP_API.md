@@ -1,84 +1,84 @@
-# Everything HTTP 服务器 API 文档
+# Everything HTTP Server API Documentation
 
-## 概述
+## Overview
 
-Everything HTTP 服务器是一个 Web 服务器，允许你通过 Web 浏览器搜索和访问本地文件。
-
----
-
-## 基本配置
-
-### 启动 HTTP 服务器
-
-1. 在 Everything 中，点击 **工具** 菜单 → **选项**
-2. 点击 **HTTP 服务器** 选项卡
-3. 勾选 **启用 HTTP 服务器**
-4. 点击 **确定**
-
-### 访问地址
-
-| 方式 | URL |
-|------|-----|
-| 本地访问 | `http://localhost` |
-| 计算机名访问 | `http://ComputerName` |
-| 指定端口 | `http://localhost:8080` |
-
-> 默认端口：80（可在设置中更改）
-
-### 身份验证
-
-可设置用户名和密码（修改后立即生效）：
-1. 工具 → 选项 → HTTP 服务器
-2. 输入新的用户名和密码
-3. 点击确定
+Everything HTTP Server is a web server that allows you to search and access local files through a web browser.
 
 ---
 
-## URL 查询参数（核心 API）
+## Basic Configuration
 
-### 基本语法
+### Starting the HTTP Server
+
+1. In Everything, click the **Tools** menu → **Options**
+2. Click the **HTTP Server** tab
+3. Check **Enable HTTP Server**
+4. Click **OK**
+
+### Access URLs
+
+| Method | URL |
+|--------|-----|
+| Local access | `http://localhost` |
+| Computer name access | `http://ComputerName` |
+| Specified port | `http://localhost:8080` |
+
+> Default port: 80 (can be changed in settings)
+
+### Authentication
+
+You can set a username and password (takes effect immediately):
+1. Tools → Options → HTTP Server
+2. Enter new username and password
+3. Click OK
+
+---
+
+## URL Query Parameters (Core API)
+
+### Basic Syntax
 
 ```
-http://localhost/?s=搜索词&o=0&c=32&j=0&...
+http://localhost/?s=search_term&o=0&c=32&j=0&...
 ```
 
-### 参数列表
+### Parameter List
 
-| 完整参数名 | 简写 | 类型 | 说明 |
-|-----------|------|------|------|
-| `search` | `s`, `q` | string | 搜索文本 |
-| `offset` | `o` | number | 从第 n 条结果开始显示 |
-| `count` | `c` | number | 返回结果数量限制 |
-| `json` | `j` | boolean | 非零值返回 JSON 格式 |
-| `case` | `i` | boolean | 非零值区分大小写 |
-| `wholeword` | `w` | boolean | 非零值全词匹配 |
-| `path` | `p` | boolean | 非零值搜索完整路径 |
-| `regex` | `r` | boolean | 非零值使用正则表达式 |
-| `diacritics` | `m` | boolean | 非零值匹配变音符号 |
-| `path_column` | - | boolean | JSON 中包含路径列 |
-| `size_column` | - | boolean | JSON 中包含大小列 |
-| `date_modified_column` | - | boolean | JSON 中包含修改日期列 |
-| `date_created_column` | - | boolean | JSON 中包含创建日期列 |
-| `attributes_column` | - | boolean | JSON 中包含属性列 |
-| `sort` | - | string | 排序字段（见下表） |
-| `ascending` | - | boolean | 非零值升序排序 |
+| Full Parameter Name | Short | Type | Description |
+|---------------------|-------|------|-------------|
+| `search` | `s`, `q` | string | Search text |
+| `offset` | `o` | number | Display results starting from the nth item |
+| `count` | `c` | number | Limit the number of results returned |
+| `json` | `j` | boolean | Non-zero value returns JSON format |
+| `case` | `i` | boolean | Non-zero value for case-sensitive |
+| `wholeword` | `w` | boolean | Non-zero value for whole word matching |
+| `path` | `p` | boolean | Non-zero value to search full path |
+| `regex` | `r` | boolean | Non-zero value to use regular expressions |
+| `diacritics` | `m` | boolean | Non-zero value to match diacritics |
+| `path_column` | - | boolean | Include path column in JSON |
+| `size_column` | - | boolean | Include size column in JSON |
+| `date_modified_column` | - | boolean | Include modified date column in JSON |
+| `date_created_column` | - | boolean | Include created date column in JSON |
+| `attributes_column` | - | boolean | Include attributes column in JSON |
+| `sort` | - | string | Sort field (see table below) |
+| `ascending` | - | boolean | Non-zero value for ascending sort |
 
-### 排序字段（sort）
+### Sort Fields (sort)
 
-| 值 | 说明 |
-|----|------|
-| `name` | 按名称排序（默认） |
-| `path` | 按路径排序 |
-| `date_modified` | 按修改日期排序 |
-| `size` | 按大小排序 |
+| Value | Description |
+|-------|-------------|
+| `name` | Sort by name (default) |
+| `path` | Sort by path |
+| `date_modified` | Sort by modified date |
+| `size` | Sort by size |
 
-### 默认值
+### Default Values
 
-#### HTML 格式默认值
+#### HTML Format Defaults
 
-| 参数 | 默认值 |
-|------|--------|
-| search | 空 |
+| Parameter | Default Value |
+|-----------|---------------|
+| search | Empty |
 | offset | 0 |
 | count | 32 |
 | json | 0 |
@@ -90,13 +90,13 @@ http://localhost/?s=搜索词&o=0&c=32&j=0&...
 | sort | name |
 | ascending | 1 |
 
-#### JSON 格式默认值
+#### JSON Format Defaults
 
-| 参数 | 默认值 |
-|------|--------|
-| search | 空 |
+| Parameter | Default Value |
+|-----------|---------------|
+| search | Empty |
 | offset | 0 |
-| count | 4294967295（无限制） |
+| count | 4294967295 (unlimited) |
 | json | 1 |
 | case | 0 |
 | wholeword | 0 |
@@ -113,45 +113,45 @@ http://localhost/?s=搜索词&o=0&c=32&j=0&...
 
 ---
 
-## API 使用示例
+## API Usage Examples
 
-### 基础搜索
+### Basic Search
 
 ```
 http://localhost/?search=ABC+123
 ```
 
-### 搜索并返回 JSON（前 100 条）
+### Search and Return JSON (First 100 Results)
 
 ```
 http://localhost/?search=ABC+123&json=1&count=100
 ```
 
-### 按大小降序排序
+### Sort by Size in Descending Order
 
 ```
 http://localhost/?search=ABC+123&sort=size&ascending=0
 ```
 
-### 使用正则表达式搜索
+### Search Using Regular Expression
 
 ```
 http://localhost/?search=test.*log&regex=1&json=1
 ```
 
-### 搜索完整路径
+### Search Full Path
 
 ```
 http://localhost/?search=windows&path=1&json=1
 ```
 
-### 包含大小和日期信息
+### Include Size and Date Information
 
 ```
 http://localhost/?search=*.jpg&json=1&size_column=1&date_modified_column=1
 ```
 
-### 分页查询
+### Paginated Query
 
 ```
 http://localhost/?search=*.txt&json=1&count=50&offset=50
@@ -159,100 +159,100 @@ http://localhost/?search=*.txt&json=1&count=50&offset=50
 
 ---
 
-## 高级功能
+## Advanced Features
 
-### 禁用文件下载
+### Disable File Download
 
-仅允许查看搜索结果，禁止下载文件：
+Only allow viewing search results, prohibit file downloads:
 
-1. 工具 → 选项 → HTTP 服务器
-2. 取消勾选 **允许文件下载**
-3. 点击确定
+1. Tools → Options → HTTP Server
+2. Uncheck **Allow file download**
+3. Click OK
 
-### 自定义界面
+### Custom Interface
 
-#### 方法一：自定义 HTML/CSS 文件
+#### Method 1: Custom HTML/CSS Files
 
-1. 在 `%APPDATA%\Everything` 创建 `HTTP Server` 文件夹
-   - 如果未启用设置存储在 APPDATA，则在 `Everything.exe` 同目录创建
-2. 下载 [Everything-HTTP.Server.Files.zip](https://www.voidtools.com/) 到该文件夹
-3. 编辑文件自定义界面
-4. 按住 Shift 点击刷新按钮强制刷新
+1. Create an `HTTP Server` folder in `%APPDATA%\Everything`
+   - If settings storage in APPDATA is not enabled, create it in the same directory as `Everything.exe`
+2. Download [Everything-HTTP.Server.Files.zip](https://www.voidtools.com/) to that folder
+3. Edit files to customize the interface
+4. Hold Shift and click the refresh button to force refresh
 
-#### 方法二：更改默认页面
+#### Method 2: Change Default Page
 
-1. 工具 → 选项 → HTTP 服务器
-2. 设置 **默认页面** 为自定义页面
+1. Tools → Options → HTTP Server
+2. Set **Default page** to a custom page
 
-### 自定义字符串（本地化）
+### Custom Strings (Localization)
 
-1. 下载 [http_server_strings.zip](https://www.voidtools.com/)
-2. 解压 `http_server_strings.ini` 到 `%APPDATA%\Everything\HTTP server\`
-3. 编辑 ini 文件
-4. 在 Everything 中执行：
+1. Download [http_server_strings.zip](https://www.voidtools.com/)
+2. Extract `http_server_strings.ini` to `%APPDATA%\Everything\HTTP server\`
+3. Edit the ini file
+4. Execute in Everything:
    ```
-   /http_server_strings=C:\Users\<用户名>\AppData\Roaming\Everything\HTTP Server\http_server_strings.ini
+   /http_server_strings=C:\Users\<username>\AppData\Roaming\Everything\HTTP Server\http_server_strings.ini
    ```
-5. 重启 HTTP 服务器
+5. Restart the HTTP Server
 
 ---
 
-## Range 请求支持
+## Range Request Support
 
-Everything 支持 Range 请求，可用于：
-- 视频流式播放
-- 音频流式播放
-- 大文件分块下载
-
----
-
-## 安全注意事项
-
-⚠️ **警告**：所有被 Everything 索引的文件和文件夹都可以通过 Web 服务器搜索和下载。
-
-### 安全建议
-
-1. 设置用户名和密码
-2. 如仅需查看，禁用文件下载
-3. 仅在可信网络环境中使用
-4. 考虑更改默认端口
+Everything supports Range requests, which can be used for:
+- Video streaming
+- Audio streaming
+- Large file chunked downloads
 
 ---
 
-## 禁用 HTTP 服务器
+## Security Considerations
 
-如需完全禁用 HTTP 服务器功能：
+⚠️ **Warning**: All files and folders indexed by Everything can be searched and downloaded through the web server.
 
-1. 退出 Everything
-2. 打开 `Everything.ini`（与 `Everything.exe` 同目录）
-3. 将以下行：
+### Security Recommendations
+
+1. Set a username and password
+2. Disable file download if only viewing is needed
+3. Use only in trusted network environments
+4. Consider changing the default port
+
+---
+
+## Disabling the HTTP Server
+
+To completely disable the HTTP Server functionality:
+
+1. Exit Everything
+2. Open `Everything.ini` (in the same directory as `Everything.exe`)
+3. Change the following line:
    ```ini
    allow_http_server=1
    ```
-   改为：
+   to:
    ```ini
    allow_http_server=0
    ```
-4. 保存并重启 Everything
+4. Save and restart Everything
 
 ---
 
-## 故障排除
+## Troubleshooting
 
-### 错误：Unable to start HTTP server: bind failed 10048
+### Error: Unable to start HTTP server: bind failed 10048
 
-**原因**：端口 80 已被其他服务占用。
+**Cause**: Port 80 is already occupied by another service.
 
-**解决方法**：
+**Solution**:
 
-1. 工具 → 选项 → HTTP 服务器
-2. 将 **监听端口** 改为其他端口（如 8080）
-3. 点击确定
-4. 访问时需指定端口：`http://localhost:8080`
+1. Tools → Options → HTTP Server
+2. Change **Listen port** to another port (e.g., 8080)
+3. Click OK
+4. Access with the specified port: `http://localhost:8080`
 
 ---
 
-## JSON 响应格式示例
+## JSON Response Format Example
 
 ```json
 {
@@ -265,7 +265,7 @@ Everything 支持 Range 请求，可用于：
 
 ---
 
-## 参考链接
+## Reference Links
 
-- [Everything 官方文档](https://www.voidtools.com/support/everything/http/)
-- [Everything 主页](https://www.voidtools.com/)
+- [Everything Official Documentation](https://www.voidtools.com/support/everything/http/)
+- [Everything Homepage](https://www.voidtools.com/)

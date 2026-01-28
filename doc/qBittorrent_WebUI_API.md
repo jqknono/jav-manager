@@ -1,45 +1,45 @@
-# qBittorrent WebUI API 文档
+# qBittorrent WebUI API Documentation
 
-> 版本：qBittorrent 5.0+ / API v2.11.3
-> 官方文档：https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)
-
----
-
-## 概述
-
-所有 API 方法遵循格式：`/api/v2/APIName/methodName`
-
-- `GET`：查询操作
-- `POST`：修改状态操作
-- 所有 API（除登录外）都需要认证
+> Version: qBittorrent 5.0+ / API v2.11.3
+> Official Documentation: https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)
 
 ---
 
-## 认证
+## Overview
 
-### 登录
+All API methods follow the format: `/api/v2/APIName/methodName`
 
-**端点：** `/api/v2/auth/login`
+- `GET`: Query operations
+- `POST`: Modify state operations
+- All APIs (except login) require authentication
 
-**方法：** `POST`
+---
 
-**参数：**
+## Authentication
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `username` | string | WebUI 用户名 |
-| `password` | string | WebUI 密码 |
+### Login
 
-**返回：**
+**Endpoint:** `/api/v2/auth/login`
 
-| 状态码 | 场景 |
-|--------|------|
-| 403 | IP 因多次登录失败被禁 |
-| 200 | 其他所有场景 |
+**Method:** `POST`
 
-**响应：** 成功时返回包含 SID 的 Cookie
+**Parameters:**
 
-**示例：**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `username` | string | WebUI username |
+| `password` | string | WebUI password |
+
+**Returns:**
+
+| Status Code | Scenario |
+|-------------|----------|
+| 403 | IP disabled due to multiple login failures |
+| 200 | All other scenarios |
+
+**Response:** Returns a Cookie containing SID on success
+
+**Example:**
 
 ```bash
 curl -i --header 'Referer: http://localhost:8080' \
@@ -47,313 +47,313 @@ curl -i --header 'Referer: http://localhost:8080' \
      http://localhost:8080/api/v2/auth/login
 ```
 
-> 注意：必须设置 `Referer` 或 `Origin` 头部为请求的主机地址
+> Note: Must set `Referer` or `Origin` header to the request host address
 
-### 登出
+### Logout
 
-**端点：** `/api/v2/auth/logout`
+**Endpoint:** `/api/v2/auth/logout`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**返回：** `200 OK`
+**Returns:** `200 OK`
 
 ---
 
-## 查询 API
+## Query API
 
-### 获取种子列表
+### Get Torrent List
 
-**端点：** `/api/v2/torrents/info`
+**Endpoint:** `/api/v2/torrents/info`
 
-**方法：** `GET`
+**Method:** `GET`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `filter` | string | 状态过滤：`all`, `downloading`, `seeding`, `completed`, `stopped`, `active`, `inactive`, `running`, `stalled`, `stalled_uploading`, `stalled_downloading`, `errored` |
-| `category` | string | 按分类过滤（空字符串表示无分类，不传表示任意分类） |
-| `tag` | string | 按标签过滤（空字符串表示无标签，不传表示任意标签） |
-| `sort` | string | 排序字段（可用响应 JSON 数组的任意字段） |
-| `reverse` | bool | 反向排序 |
-| `limit` | integer | 限制返回数量 |
-| `offset` | integer | 设置偏移量（负数表示从末尾偏移） |
-| `hashes` | string | 按 hash 过滤，多个用 `\|` 分隔 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `filter` | string | Status filter: `all`, `downloading`, `seeding`, `completed`, `stopped`, `active`, `inactive`, `running`, `stalled`, `stalled_uploading`, `stalled_downloading`, `errored` |
+| `category` | string | Filter by category (empty string means no category, not passing means any category) |
+| `tag` | string | Filter by tag (empty string means no tag, not passing means any tag) |
+| `sort` | string | Sort field (any field in the response JSON array) |
+| `reverse` | bool | Reverse sort |
+| `limit` | integer | Limit the number of results returned |
+| `offset` | integer | Set offset (negative value means offset from the end) |
+| `hashes` | string | Filter by hash, multiple separated by `\|` |
 
-**示例：**
+**Example:**
 
 ```
 GET /api/v2/torrents/info?filter=downloading&category=movies&sort=ratio
 ```
 
-**返回：** JSON 数组
+**Returns:** JSON array
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `added_on` | integer | 添加时间（Unix 时间戳） |
-| `amount_left` | integer | 剩余数据量（字节） |
-| `auto_tmm` | bool | 是否启用自动种子管理 |
-| `availability` | float | 可用片段百分比 |
-| `category` | string | 分类 |
-| `completed` | integer | 已完成传输数据（字节） |
-| `completion_on` | integer | 完成时间（Unix 时间戳） |
-| `content_path` | string | 内容绝对路径 |
-| `dl_limit` | integer | 下载限速（字节/s，-1 表示无限制） |
-| `dlspeed` | integer | 下载速度（字节/s） |
-| `downloaded` | integer | 已下载数据量 |
-| `downloaded_session` | integer | 本次会话已下载 |
-| `eta` | integer | 预计完成时间（秒） |
-| `f_l_piece_prio` | bool | 是否首尾片段优先 |
-| `force_start` | bool | 是否强制开始 |
-| `hash` | string | 种子哈希 |
-| `isPrivate` | bool | 是否来自私有追踪器 |
-| `last_activity` | integer | 最后活动时间（Unix 时间戳） |
-| `magnet_uri` | string | 磁力链接 |
-| `max_ratio` | float | 最大分享比率 |
-| `max_seeding_time` | integer | 最大做种时间（秒） |
-| `name` | string | 种子名称 |
-| `num_complete` | integer | 群体中完成者数量 |
-| `num_incomplete` | integer | 群体中未完成者数量 |
-| `num_leechs` | integer | 已连接的下载者数量 |
-| `num_seeds` | integer | 已连接的种子数量 |
-| `priority` | integer | 优先级（-1 表示队列未启用或种子模式） |
-| `progress` | float | 进度（百分比/100） |
-| `ratio` | float | 分享比率 |
-| `reannounce` | integer | 下次重新公告时间（秒） |
-| `save_path` | string | 保存路径 |
-| `seeding_time` | integer | 做种时间（秒） |
-| `seq_dl` | bool | 是否顺序下载 |
-| `size` | integer | 选中文件总大小（字节） |
-| `state` | string | 状态（见下表） |
-| `super_seeding` | bool | 是否超级做种 |
-| `tags` | string | 标签列表（逗号分隔） |
-| `time_active` | integer | 总活跃时间（秒） |
-| `total_size` | integer | 所有文件总大小（字节） |
-| `tracker` | string | 首个工作追踪器 URL |
-| `up_limit` | integer | 上传限速（字节/s，-1 表示无限制） |
-| `uploaded` | integer | 已上传数据量 |
-| `uploaded_session` | integer | 本次会话已上传 |
-| `upspeed` | integer | 上传速度（字节/s） |
+| Field | Type | Description |
+|-------|------|-------------|
+| `added_on` | integer | Added time (Unix timestamp) |
+| `amount_left` | integer | Remaining data (bytes) |
+| `auto_tmm` | bool | Whether automatic torrent management is enabled |
+| `availability` | float | Percentage of available pieces |
+| `category` | string | Category |
+| `completed` | integer | Completed transferred data (bytes) |
+| `completion_on` | integer | Completion time (Unix timestamp) |
+| `content_path` | string | Absolute path of content |
+| `dl_limit` | integer | Download speed limit (bytes/s, -1 means unlimited) |
+| `dlspeed` | integer | Download speed (bytes/s) |
+| `downloaded` | integer | Amount of data downloaded |
+| `downloaded_session` | integer | Downloaded in this session |
+| `eta` | integer | Estimated completion time (seconds) |
+| `f_l_piece_prio` | bool | Whether first and last pieces have priority |
+| `force_start` | bool | Whether force start is enabled |
+| `hash` | string | Torrent hash |
+| `isPrivate` | bool | Whether from private tracker |
+| `last_activity` | integer | Last activity time (Unix timestamp) |
+| `magnet_uri` | string | Magnet link |
+| `max_ratio` | float | Maximum share ratio |
+| `max_seeding_time` | integer | Maximum seeding time (seconds) |
+| `name` | string | Torrent name |
+| `num_complete` | integer | Number of completers in the swarm |
+| `num_incomplete` | integer | Number of incompleters in the swarm |
+| `num_leechs` | integer | Number of connected leechers |
+| `num_seeds` | integer | Number of connected seeds |
+| `priority` | integer | Priority (-1 means queue not enabled or seeding mode) |
+| `progress` | float | Progress (percentage/100) |
+| `ratio` | float | Share ratio |
+| `reannounce` | integer | Time to next reannounce (seconds) |
+| `save_path` | string | Save path |
+| `seeding_time` | integer | Seeding time (seconds) |
+| `seq_dl` | bool | Whether sequential download |
+| `size` | integer | Total size of selected files (bytes) |
+| `state` | string | State (see table below) |
+| `super_seeding` | bool | Whether super seeding |
+| `tags` | string | List of tags (comma-separated) |
+| `time_active` | integer | Total active time (seconds) |
+| `total_size` | integer | Total size of all files (bytes) |
+| `tracker` | string | First working tracker URL |
+| `up_limit` | integer | Upload speed limit (bytes/s, -1 means unlimited) |
+| `uploaded` | integer | Amount of data uploaded |
+| `uploaded_session` | integer | Uploaded in this session |
+| `upspeed` | integer | Upload speed (bytes/s) |
 
-**状态值 (state)：**
+**State Values (state):**
 
-| 值 | 说明 |
-|----|------|
-| `error` | 发生错误（已暂停） |
-| `missingFiles` | 文件丢失 |
-| `uploading` | 正在上传，数据传输中 |
-| `pausedUP` | 已暂停，已完成下载 |
-| `queuedUP` | 排队等待上传 |
-| `stalledUP` | 做种中，无连接 |
-| `checkingUP` | 已完成，正在检查 |
-| `forcedUP` | 强制上传，忽略队列 |
-| `allocating` | 正在分配磁盘空间 |
-| `downloading` | 正在下载，数据传输中 |
-| `metaDL` | 正在获取元数据 |
-| `pausedDL` | 已暂停，未完成下载 |
-| `queuedDL` | 排队等待下载 |
-| `stalledDL` | 下载中，无连接 |
-| `checkingDL` | 正在检查，未完成下载 |
-| `forcedDL` | 强制下载，忽略队列 |
-| `checkingResumeData` | 启动时检查恢复数据 |
-| `moving` | 正在移动到其他位置 |
-| `unknown` | 未知状态 |
-
----
-
-### 获取种子通用属性
-
-**端点：** `/api/v2/torrents/properties`
-
-**方法：** `GET`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-
-**返回：** JSON 对象
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `save_path` | string | 保存路径 |
-| `creation_date` | integer | 创建日期（Unix 时间戳） |
-| `piece_size` | integer | 分块大小（字节） |
-| `comment` | string | 注释 |
-| `total_wasted` | integer | 浪费数据（字节） |
-| `total_uploaded` | integer | 总上传（字节） |
-| `total_uploaded_session` | integer | 本次会话上传（字节） |
-| `total_downloaded` | integer | 总下载（字节） |
-| `total_downloaded_session` | integer | 本次会话下载（字节） |
-| `up_limit` | integer | 上传限速（字节/s） |
-| `dl_limit` | integer | 下载限速（字节/s） |
-| `time_elapsed` | integer | 经过时间（秒） |
-| `seeding_time` | integer | 做种时间（秒） |
-| `nb_connections` | integer | 连接数 |
-| `nb_connections_limit` | integer | 连接数限制 |
-| `share_ratio` | float | 分享比率 |
-| `addition_date` | integer | 添加日期（Unix 时间戳） |
-| `completion_date` | integer | 完成日期（Unix 时间戳） |
-| `created_by` | string | 创建者 |
-| `dl_speed_avg` | integer | 平均下载速度（字节/s） |
-| `dl_speed` | integer | 下载速度（字节/s） |
-| `eta` | integer | 预计完成时间（秒） |
-| `last_seen` | integer | 最后看到完整时间（Unix 时间戳） |
-| `peers` | integer | 已连接对等端数量 |
-| `peers_total` | integer | 群体中对等端总数 |
-| `pieces_have` | integer | 已拥有分块数 |
-| `pieces_num` | integer | 总分块数 |
-| `reannounce` | integer | 下次公告时间（秒） |
-| `seeds` | integer | 已连接种子数 |
-| `seeds_total` | integer | 群体中种子总数 |
-| `total_size` | integer | 总大小（字节） |
-| `up_speed_avg` | integer | 平均上传速度（字节/s） |
-| `up_speed` | integer | 上传速度（字节/s） |
-| `isPrivate` | bool | 是否私有种子 |
+| Value | Description |
+|-------|-------------|
+| `error` | Error occurred (paused) |
+| `missingFiles` | Files missing |
+| `uploading` | Uploading, data transfer in progress |
+| `pausedUP` | Paused, download completed |
+| `queuedUP` | Queued for upload |
+| `stalledUP` | Seeding, no connections |
+| `checkingUP` | Completed, checking |
+| `forcedUP` | Forced upload, ignoring queue |
+| `allocating` | Allocating disk space |
+| `downloading` | Downloading, data transfer in progress |
+| `metaDL` | Getting metadata |
+| `pausedDL` | Paused, download not completed |
+| `queuedDL` | Queued for download |
+| `stalledDL` | Downloading, no connections |
+| `checkingDL` | Checking, download not completed |
+| `forcedDL` | Forced download, ignoring queue |
+| `checkingResumeData` | Checking resume data on startup |
+| `moving` | Moving to another location |
+| `unknown` | Unknown state |
 
 ---
 
-### 获取种子追踪器
+### Get Torrent General Properties
 
-**端点：** `/api/v2/torrents/trackers`
+**Endpoint:** `/api/v2/torrents/properties`
 
-**方法：** `GET`
+**Method:** `GET`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
 
-**返回：** JSON 数组
+**Returns:** JSON object
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `url` | string | 追踪器 URL |
-| `status` | integer | 状态：0=禁用，1=未联系，2=工作正常，3=更新中，4=不工作 |
-| `tier` | integer | 优先级层级 |
-| `num_peers` | integer | 对等端数量 |
-| `num_seeds` | integer | 种子数量 |
-| `num_leeches` | integer | 下载者数量 |
-| `num_downloaded` | integer | 完成下载次数 |
-| `msg` | string | 追踪器消息 |
-
----
-
-### 获取种子 Web 种子
-
-**端点：** `/api/v2/torrents/webseeds`
-
-**方法：** `GET`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-
-**返回：** JSON 数组
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `url` | string | Web 种子 URL |
-
----
-
-### 获取种子文件列表
-
-**端点：** `/api/v2/torrents/files`
-
-**方法：** `GET`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `indexes` | string | 文件索引，多个用 `\|` 分隔 |
-
-**返回：** JSON 数组
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `index` | integer | 文件索引 |
-| `name` | string | 文件名（含相对路径） |
-| `size` | integer | 文件大小（字节） |
-| `progress` | float | 下载进度 |
-| `priority` | integer | 优先级：0=不下载，1=普通，6=高，7=最高 |
-| `is_seed` | bool | 是否已完成 |
-| `piece_range` | array | 分块范围 [起始, 结束] |
-| `availability` | float | 可用性 |
+| Field | Type | Description |
+|-------|------|-------------|
+| `save_path` | string | Save path |
+| `creation_date` | integer | Creation date (Unix timestamp) |
+| `piece_size` | integer | Piece size (bytes) |
+| `comment` | string | Comment |
+| `total_wasted` | integer | Wasted data (bytes) |
+| `total_uploaded` | integer | Total uploaded (bytes) |
+| `total_uploaded_session` | integer | Uploaded in this session (bytes) |
+| `total_downloaded` | integer | Total downloaded (bytes) |
+| `total_downloaded_session` | integer | Downloaded in this session (bytes) |
+| `up_limit` | integer | Upload speed limit (bytes/s) |
+| `dl_limit` | integer | Download speed limit (bytes/s) |
+| `time_elapsed` | integer | Elapsed time (seconds) |
+| `seeding_time` | integer | Seeding time (seconds) |
+| `nb_connections` | integer | Number of connections |
+| `nb_connections_limit` | integer | Connection limit |
+| `share_ratio` | float | Share ratio |
+| `addition_date` | integer | Addition date (Unix timestamp) |
+| `completion_date` | integer | Completion date (Unix timestamp) |
+| `created_by` | string | Creator |
+| `dl_speed_avg` | integer | Average download speed (bytes/s) |
+| `dl_speed` | integer | Download speed (bytes/s) |
+| `eta` | integer | Estimated completion time (seconds) |
+| `last_seen` | integer | Last seen complete time (Unix timestamp) |
+| `peers` | integer | Number of connected peers |
+| `peers_total` | integer | Total peers in swarm |
+| `pieces_have` | integer | Number of pieces owned |
+| `pieces_num` | integer | Total number of pieces |
+| `reannounce` | integer | Time to next announce (seconds) |
+| `seeds` | integer | Number of connected seeds |
+| `seeds_total` | integer | Total seeds in swarm |
+| `total_size` | integer | Total size (bytes) |
+| `up_speed_avg` | integer | Average upload speed (bytes/s) |
+| `up_speed` | integer | Upload speed (bytes/s) |
+| `isPrivate` | bool | Whether private torrent |
 
 ---
 
-### 获取种子下载限速
+### Get Torrent Trackers
 
-**端点：** `/api/v2/torrents/downloadLimit`
+**Endpoint:** `/api/v2/torrents/trackers`
 
-**方法：** `POST`
+**Method:** `GET`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希，多个用 `\|` 分隔，或 `all` |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
 
-**返回：** JSON 对象 `{hash: limit}`
+**Returns:** JSON array
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | Tracker URL |
+| `status` | integer | Status: 0=disabled, 1=not contacted, 2=working, 3=updating, 4=not working |
+| `tier` | integer | Priority tier |
+| `num_peers` | integer | Number of peers |
+| `num_seeds` | integer | Number of seeds |
+| `num_leeches` | integer | Number of leechers |
+| `num_downloaded` | integer | Number of completed downloads |
+| `msg` | string | Tracker message |
 
 ---
 
-### 获取种子上传限速
+### Get Torrent Web Seeds
 
-**端点：** `/api/v2/torrents/uploadLimit`
+**Endpoint:** `/api/v2/torrents/webseeds`
 
-**方法：** `POST`
+**Method:** `GET`
 
-**参数：** 同下载限速
+**Parameters:**
 
-**返回：** JSON 对象 `{hash: limit}`
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+
+**Returns:** JSON array
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | Web seed URL |
 
 ---
 
-## 创建 API
+### Get Torrent File List
 
-### 添加新种子
+**Endpoint:** `/api/v2/torrents/files`
 
-**端点：** `/api/v2/torrents/add`
+**Method:** `GET`
 
-**方法：** `POST` (`multipart/form-data`)
+**Parameters:**
 
-**参数：**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `indexes` | string | File indexes, multiple separated by `\|` |
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `urls` | string | URL 列表（换行分隔） |
-| `torrents` | raw | 种子文件原始数据（可多次） |
-| `savepath` | string | 保存目录 |
-| `category` | string | 分类 |
-| `tags` | string | 标签（逗号分隔） |
-| `skip_checking` | string | 跳过校验：`true`/`false` |
-| `paused` | string | 添加后暂停：`true`/`false` |
-| `root_folder` | string | 创建根目录：`true`/`false` |
-| `rename` | string | 重命名种子 |
-| `upLimit` | integer | 上传限速（字节/s） |
-| `dlLimit` | integer | 下载限速（字节/s） |
-| `ratioLimit` | float | 分享比率限制 |
-| `seedingTimeLimit` | integer | 做种时间限制（分钟） |
-| `autoTMM` | bool | 是否使用自动种子管理 |
-| `sequentialDownload` | string | 顺序下载：`true`/`false` |
-| `firstLastPiecePrio` | string | 首尾优先：`true`/`false` |
+**Returns:** JSON array
 
-**返回：**
+| Field | Type | Description |
+|-------|------|-------------|
+| `index` | integer | File index |
+| `name` | string | File name (including relative path) |
+| `size` | integer | File size (bytes) |
+| `progress` | float | Download progress |
+| `priority` | integer | Priority: 0=do not download, 1=normal, 6=high, 7=highest |
+| `is_seed` | bool | Whether completed |
+| `piece_range` | array | Piece range [start, end] |
+| `availability` | float | Availability |
 
-| 状态码 | 场景 |
-|--------|------|
-| 415 | 种子文件无效 |
-| 200 | 成功 |
+---
 
-**示例（从 URL 添加）：**
+### Get Torrent Download Speed Limit
+
+**Endpoint:** `/api/v2/torrents/downloadLimit`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes, multiple separated by `\|`, or `all` |
+
+**Returns:** JSON object `{hash: limit}`
+
+---
+
+### Get Torrent Upload Speed Limit
+
+**Endpoint:** `/api/v2/torrents/uploadLimit`
+
+**Method:** `POST`
+
+**Parameters:** Same as download limit
+
+**Returns:** JSON object `{hash: limit}`
+
+---
+
+## Creation API
+
+### Add New Torrent
+
+**Endpoint:** `/api/v2/torrents/add`
+
+**Method:** `POST` (`multipart/form-data`)
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `urls` | string | List of URLs (newline separated) |
+| `torrents` | raw | Raw data of torrent file (can be multiple) |
+| `savepath` | string | Save directory |
+| `category` | string | Category |
+| `tags` | string | Tags (comma separated) |
+| `skip_checking` | string | Skip checking: `true`/`false` |
+| `paused` | string | Pause after adding: `true`/`false` |
+| `root_folder` | string | Create root folder: `true`/`false` |
+| `rename` | string | Rename torrent |
+| `upLimit` | integer | Upload speed limit (bytes/s) |
+| `dlLimit` | integer | Download speed limit (bytes/s) |
+| `ratioLimit` | float | Share ratio limit |
+| `seedingTimeLimit` | integer | Seeding time limit (minutes) |
+| `autoTMM` | bool | Whether to use automatic torrent management |
+| `sequentialDownload` | string | Sequential download: `true`/`false` |
+| `firstLastPiecePrio` | string | First and last priority: `true`/`false` |
+
+**Returns:**
+
+| Status Code | Scenario |
+|-------------|----------|
+| 415 | Invalid torrent file |
+| 200 | Success |
+
+**Example (Add from URL):**
 
 ```http
 POST /api/v2/torrents/add HTTP/1.1
@@ -378,7 +378,7 @@ true
 -----------------------------6688794727912--
 ```
 
-**示例（从文件添加）：**
+**Example (Add from file):**
 
 ```http
 POST /api/v2/torrents/add HTTP/1.1
@@ -388,33 +388,33 @@ Content-Type: multipart/form-data; boundary=---------------------------acebdf135
 Content-Disposition: form-data; name="torrents"; filename="file.torrent"
 Content-Type: application/x-bittorrent
 
-<文件二进制数据>
+<binary file data>
 ---------------------------acebdf13572468--
 ```
 
 ---
 
-### 添加追踪器
+### Add Trackers
 
-**端点：** `/api/v2/torrents/addTrackers`
+**Endpoint:** `/api/v2/torrents/addTrackers`
 
-**方法：** `POST` (`application/x-www-form-urlencoded`)
+**Method:** `POST` (`application/x-www-form-urlencoded`)
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `urls` | string | 追踪器 URL（换行分隔 `%0A`） |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `urls` | string | Tracker URLs (newline separated `%0A`) |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 404 | 种子未找到 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 404 | Torrent not found |
+| 200 | Success |
 
-**示例：**
+**Example:**
 
 ```http
 POST /api/v2/torrents/addTrackers
@@ -423,43 +423,43 @@ hash=xxx&urls=http://tracker1.com%0Ahttp://tracker2.com
 
 ---
 
-### 添加对等端
+### Add Peers
 
-**端点：** `/api/v2/torrents/addPeers`
+**Endpoint:** `/api/v2/torrents/addPeers`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔） |
-| `peers` | string | 对等端 `host:port`（多个用 `\|` 分隔） |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) |
+| `peers` | string | Peer `host:port` (multiple separated by `\|`) |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 无有效对等端 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | No valid peers |
+| 200 | Success |
 
 ---
 
-## 更新 API
+## Update API
 
-### 暂停种子
+### Pause Torrents
 
-**端点：** `/api/v2/torrents/stop`
+**Endpoint:** `/api/v2/torrents/stop`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
 
-**示例：**
+**Example:**
 
 ```
 POST /api/v2/torrents/stop?hashes=hash1|hash2
@@ -467,448 +467,448 @@ POST /api/v2/torrents/stop?hashes=hash1|hash2
 
 ---
 
-### 恢复种子
+### Resume Torrents
 
-**端点：** `/api/v2/torrents/start`
+**Endpoint:** `/api/v2/torrents/start`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：** 同暂停种子
-
----
-
-### 重新检查种子
-
-**端点：** `/api/v2/torrents/recheck`
-
-**方法：** `POST`
-
-**参数：** 同暂停种子
+**Parameters:** Same as pause torrents
 
 ---
 
-### 重新公告种子
+### Recheck Torrents
 
-**端点：** `/api/v2/torrents/reannounce`
+**Endpoint:** `/api/v2/torrents/recheck`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：** 同暂停种子
-
----
-
-### 编辑追踪器
-
-**端点：** `/api/v2/torrents/editTracker`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `origUrl` | string | 原追踪器 URL |
-| `newUrl` | string | 新追踪器 URL |
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 新 URL 无效 |
-| 404 | 种子未找到 |
-| 409 | 新 URL 已存在或原 URL 未找到 |
-| 200 | 成功 |
+**Parameters:** Same as pause torrents
 
 ---
 
-### 移除追踪器
+### Reannounce Torrents
 
-**端点：** `/api/v2/torrents/removeTrackers`
+**Endpoint:** `/api/v2/torrents/reannounce`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `urls` | string | 要移除的 URL（`\|` 分隔） |
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 404 | 种子未找到 |
-| 409 | 所有 URL 未找到 |
-| 200 | 成功 |
+**Parameters:** Same as pause torrents
 
 ---
 
-### 设置文件优先级
+### Edit Tracker
 
-**端点：** `/api/v2/torrents/filePrio`
+**Endpoint:** `/api/v2/torrents/editTracker`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `id` | string | 文件 ID（`\|` 分隔） |
-| `priority` | number | 优先级：0=不下载，1=普通，6=高，7=最高 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `origUrl` | string | Original tracker URL |
+| `newUrl` | string | New tracker URL |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 优先级无效或 ID 无效 |
-| 404 | 种子未找到 |
-| 409 | 元数据未下载或 ID 未找到 |
-| 200 | 成功 |
-
----
-
-### 设置下载限速
-
-**端点：** `/api/v2/torrents/setDownloadLimit`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `limit` | integer | 限速（字节/s） |
-
-**返回：** `200 OK`
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | New URL invalid |
+| 404 | Torrent not found |
+| 409 | New URL already exists or original URL not found |
+| 200 | Success |
 
 ---
 
-### 设置上传限速
+### Remove Trackers
 
-**端点：** `/api/v2/torrents/setUploadLimit`
+**Endpoint:** `/api/v2/torrents/removeTrackers`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：** 同下载限速
+**Parameters:**
 
----
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `urls` | string | URLs to remove (separated by `\|`) |
 
-### 设置分享限制
+**Returns:**
 
-**端点：** `/api/v2/torrents/setShareLimits`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `ratioLimit` | float | 分享比率限制（-2=全局，-1=无限制） |
-| `seedingTimeLimit` | integer | 做种时间限制（分钟，-2=全局，-1=无限制） |
-| `inactiveSeedingTimeLimit` | integer | 非活跃做种时间限制（分钟） |
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 参数缺失 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 404 | Torrent not found |
+| 409 | All URLs not found |
+| 200 | Success |
 
 ---
 
-### 设置保存位置
+### Set File Priority
 
-**端点：** `/api/v2/torrents/setLocation`
+**Endpoint:** `/api/v2/torrents/filePrio`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `location` | string | 新位置 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `id` | string | File IDs (separated by `\|`) |
+| `priority` | number | Priority: 0=do not download, 1=normal, 6=high, 7=highest |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 路径为空 |
-| 403 | 无写入权限 |
-| 409 | 无法创建目录 |
-| 200 | 成功 |
-
----
-
-### 设置种子名称
-
-**端点：** `/api/v2/torrents/rename`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `name` | string | 新名称 |
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 404 | 种子无效 |
-| 409 | 名称为空 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Invalid priority or invalid ID |
+| 404 | Torrent not found |
+| 409 | Metadata not downloaded or ID not found |
+| 200 | Success |
 
 ---
 
-### 设置分类
+### Set Download Speed Limit
 
-**端点：** `/api/v2/torrents/setCategory`
+**Endpoint:** `/api/v2/torrents/setDownloadLimit`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `category` | string | 分类名称 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `limit` | integer | Speed limit (bytes/s) |
 
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 409 | 分类不存在 |
-| 200 | 成功 |
+**Returns:** `200 OK`
 
 ---
 
-### 添加标签
+### Set Upload Speed Limit
 
-**端点：** `/api/v2/torrents/addTags`
+**Endpoint:** `/api/v2/torrents/setUploadLimit`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `tags` | string | 标签（逗号分隔） |
-
-**返回：** `200 OK`
+**Parameters:** Same as download speed limit
 
 ---
 
-### 移除标签
+### Set Share Limits
 
-**端点：** `/api/v2/torrents/removeTags`
+**Endpoint:** `/api/v2/torrents/setShareLimits`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `tags` | string | 标签（逗号分隔），空列表移除所有标签 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `ratioLimit` | float | Share ratio limit (-2=global, -1=unlimited) |
+| `seedingTimeLimit` | integer | Seeding time limit (minutes, -2=global, -1=unlimited) |
+| `inactiveSeedingTimeLimit` | integer | Inactive seeding time limit (minutes) |
 
-**返回：** `200 OK`
+**Returns:**
 
----
-
-### 设置自动管理
-
-**端点：** `/api/v2/torrents/setAutoManagement`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `enable` | bool | 是否启用 |
-
-**返回：** `200 OK`
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Missing parameters |
+| 200 | Success |
 
 ---
 
-### 切换顺序下载
+### Set Save Location
 
-**端点：** `/api/v2/torrents/toggleSequentialDownload`
+**Endpoint:** `/api/v2/torrents/setLocation`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `location` | string | New location |
 
-**返回：** `200 OK`
+**Returns:**
 
----
-
-### 切换首尾优先
-
-**端点：** `/api/v2/torrents/toggleFirstLastPiecePrio`
-
-**方法：** `POST`
-
-**参数：** 同顺序下载
-
-**返回：** `200 OK`
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Path is empty |
+| 403 | No write permission |
+| 409 | Cannot create directory |
+| 200 | Success |
 
 ---
 
-### 设置强制开始
+### Set Torrent Name
 
-**端点：** `/api/v2/torrents/setForceStart`
+**Endpoint:** `/api/v2/torrents/rename`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `value` | bool | 是否强制开始 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `name` | string | New name |
 
-**返回：** `200 OK`
+**Returns:**
 
----
-
-### 设置超级做种
-
-**端点：** `/api/v2/torrents/setSuperSeeding`
-
-**方法：** `POST`
-
-**参数：** 同强制开始
-
-**返回：** `200 OK`
+| Status Code | Scenario |
+|-------------|----------|
+| 404 | Invalid torrent |
+| 409 | Name is empty |
+| 200 | Success |
 
 ---
 
-### 重命名文件
+### Set Category
 
-**端点：** `/api/v2/torrents/renameFile`
+**Endpoint:** `/api/v2/torrents/setCategory`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hash` | string | 种子哈希 |
-| `oldPath` | string | 原路径 |
-| `newPath` | string | 新路径 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `category` | string | Category name |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 缺少 newPath |
-| 409 | 路径无效或已存在 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 409 | Category does not exist |
+| 200 | Success |
 
 ---
 
-### 重命名文件夹
+### Add Tags
 
-**端点：** `/api/v2/torrents/renameFolder`
+**Endpoint:** `/api/v2/torrents/addTags`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：** 同重命名文件
+**Parameters:**
 
-**返回：** 同重命名文件
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `tags` | string | Tags (comma separated) |
 
----
-
-### 优先级调整
-
-#### 提高优先级
-
-**端点：** `/api/v2/torrents/increasePrio`
-
-**方法：** `POST`
-
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 409 | 队列未启用 |
-| 200 | 成功 |
-
-#### 降低优先级
-
-**端点：** `/api/v2/torrents/decreasePrio`
-
-**方法/参数：** 同提高优先级
-
-#### 最高优先级
-
-**端点：** `/api/v2/torrents/topPrio`
-
-**方法/参数：** 同提高优先级
-
-#### 最低优先级
-
-**端点：** `/api/v2/torrents/bottomPrio`
-
-**方法/参数：** 同提高优先级
+**Returns:** `200 OK`
 
 ---
 
-## 删除 API
+### Remove Tags
 
-### 删除种子
+**Endpoint:** `/api/v2/torrents/removeTags`
 
-**端点：** `/api/v2/torrents/delete`
+**Method:** `POST`
 
-**方法：** `POST`
+**Parameters:**
 
-**参数：**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `tags` | string | Tags (comma separated), empty list removes all tags |
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hashes` | string | 种子哈希（多个用 `\|` 分隔）或 `all` |
-| `deleteFiles` | bool | 是否同时删除下载的数据 |
+**Returns:** `200 OK`
 
-**示例：**
+---
+
+### Set Auto Management
+
+**Endpoint:** `/api/v2/torrents/setAutoManagement`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `enable` | bool | Whether to enable |
+
+**Returns:** `200 OK`
+
+---
+
+### Toggle Sequential Download
+
+**Endpoint:** `/api/v2/torrents/toggleSequentialDownload`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+
+**Returns:** `200 OK`
+
+---
+
+### Toggle First Last Piece Priority
+
+**Endpoint:** `/api/v2/torrents/toggleFirstLastPiecePrio`
+
+**Method:** `POST`
+
+**Parameters:** Same as sequential download
+
+**Returns:** `200 OK`
+
+---
+
+### Set Force Start
+
+**Endpoint:** `/api/v2/torrents/setForceStart`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `value` | bool | Whether to force start |
+
+**Returns:** `200 OK`
+
+---
+
+### Set Super Seeding
+
+**Endpoint:** `/api/v2/torrents/setSuperSeeding`
+
+**Method:** `POST`
+
+**Parameters:** Same as force start
+
+**Returns:** `200 OK`
+
+---
+
+### Rename File
+
+**Endpoint:** `/api/v2/torrents/renameFile`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | string | Torrent hash |
+| `oldPath` | string | Original path |
+| `newPath` | string | New path |
+
+**Returns:**
+
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Missing newPath |
+| 409 | Invalid path or already exists |
+| 200 | Success |
+
+---
+
+### Rename Folder
+
+**Endpoint:** `/api/v2/torrents/renameFolder`
+
+**Method:** `POST`
+
+**Parameters:** Same as rename file
+
+**Returns:** Same as rename file
+
+---
+
+### Priority Adjustment
+
+#### Increase Priority
+
+**Endpoint:** `/api/v2/torrents/increasePrio`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+
+**Returns:**
+
+| Status Code | Scenario |
+|-------------|----------|
+| 409 | Queue not enabled |
+| 200 | Success |
+
+#### Decrease Priority
+
+**Endpoint:** `/api/v2/torrents/decreasePrio`
+
+**Method/Parameters:** Same as increase priority
+
+#### Top Priority
+
+**Endpoint:** `/api/v2/torrents/topPrio`
+
+**Method/Parameters:** Same as increase priority
+
+#### Bottom Priority
+
+**Endpoint:** `/api/v2/torrents/bottomPrio`
+
+**Method/Parameters:** Same as increase priority
+
+---
+
+## Deletion API
+
+### Delete Torrents
+
+**Endpoint:** `/api/v2/torrents/delete`
+
+**Method:** `POST`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hashes` | string | Torrent hashes (multiple separated by `\|`) or `all` |
+| `deleteFiles` | bool | Whether to delete downloaded data as well |
+
+**Example:**
 
 ```
 POST /api/v2/torrents/delete?hashes=hash1|hash2&deleteFiles=false
 ```
 
-**返回：** `200 OK`
+**Returns:** `200 OK`
 
 ---
 
-## 分类管理
+## Category Management
 
-### 获取所有分类
+### Get All Categories
 
-**端点：** `/api/v2/torrents/categories`
+**Endpoint:** `/api/v2/torrents/categories`
 
-**方法：** `GET`
+**Method:** `GET`
 
-**返回：** JSON 对象
+**Returns:** JSON object
 
 ```json
 {
@@ -921,182 +921,182 @@ POST /api/v2/torrents/delete?hashes=hash1|hash2&deleteFiles=false
 
 ---
 
-### 创建分类
+### Create Category
 
-**端点：** `/api/v2/torrents/createCategory`
+**Endpoint:** `/api/v2/torrents/createCategory`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `category` | string | 分类名称 |
-| `savePath` | string | 保存路径 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `category` | string | Category name |
+| `savePath` | string | Save path |
 
-**返回：**
+**Returns:**
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 分类名为空 |
-| 409 | 分类名无效 |
-| 200 | 成功 |
-
----
-
-### 编辑分类
-
-**端点：** `/api/v2/torrents/editCategory`
-
-**方法：** `POST`
-
-**参数：** 同创建分类
-
-**返回：**
-
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 分类名为空 |
-| 409 | 编辑失败 |
-| 200 | 成功 |
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Category name is empty |
+| 409 | Category name is invalid |
+| 200 | Success |
 
 ---
 
-### 删除分类
+### Edit Category
 
-**端点：** `/api/v2/torrents/removeCategories`
+**Endpoint:** `/api/v2/torrents/editCategory`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:** Same as create category
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `categories` | string | 分类列表（换行分隔 `%0A`） |
+**Returns:**
 
-**返回：** `200 OK`
-
----
-
-## 标签管理
-
-### 获取所有标签
-
-**端点：** `/api/v2/torrents/tags`
-
-**方法：** `GET`
-
-**返回：** JSON 数组
+| Status Code | Scenario |
+|-------------|----------|
+| 400 | Category name is empty |
+| 409 | Edit failed |
+| 200 | Success |
 
 ---
 
-### 创建标签
+### Delete Categories
 
-**端点：** `/api/v2/torrents/createTags`
+**Endpoint:** `/api/v2/torrents/removeCategories`
 
-**方法：** `POST`
+**Method:** `POST`
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `tags` | string | 标签列表（逗号分隔） |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `categories` | string | Category list (newline separated `%0A`) |
 
-**返回：** `200 OK`
-
----
-
-### 删除标签
-
-**端点：** `/api/v2/torrents/deleteTags`
-
-**方法：** `POST`
-
-**参数：** 同创建标签
-
-**返回：** `200 OK`
+**Returns:** `200 OK`
 
 ---
 
-## 同步 API
+## Tag Management
 
-### 获取主数据
+### Get All Tags
 
-**端点：** `/api/v2/sync/maindata`
+**Endpoint:** `/api/v2/torrents/tags`
 
-**方法：** `GET`
+**Method:** `GET`
 
-**参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `rid` | integer | 响应 ID（默认 0） |
-
-**返回：** JSON 对象
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `rid` | integer | 响应 ID |
-| `full_update` | bool | 是否全量更新 |
-| `torrents` | object | 种子数据 |
-| `torrents_removed` | array | 已删除种子哈希 |
-| `categories` | object | 新增分类 |
-| `categories_removed` | array | 已删除分类 |
-| `tags` | array | 新增标签 |
-| `tags_removed` | array | 已删除标签 |
-| `server_state` | object | 全局传输信息 |
+**Returns:** JSON array
 
 ---
 
-## 传输信息
+### Create Tags
 
-### 获取全局传输信息
+**Endpoint:** `/api/v2/torrents/createTags`
 
-**端点：** `/api/v2/transfer/info`
+**Method:** `POST`
 
-**方法：** `GET`
+**Parameters:**
 
-**返回：** JSON 对象
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tags` | string | Tag list (comma separated) |
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `dl_info_speed` | integer | 全局下载速度（字节/s） |
-| `dl_info_data` | integer | 本次会话下载量（字节） |
-| `up_info_speed` | integer | 全局上传速度（字节/s） |
-| `up_info_data` | integer | 本次会话上传量（字节） |
-| `dl_rate_limit` | integer | 下载限速（字节/s） |
-| `up_rate_limit` | integer | 上传限速（字节/s） |
-| `dht_nodes` | integer | DHT 节点数 |
-| `connection_status` | string | 连接状态：`connected`/`firewalled`/`disconnected` |
+**Returns:** `200 OK`
 
 ---
 
-## 快速参考
+### Delete Tags
 
-| 操作 | 端点 | 方法 |
-|------|------|------|
-| 获取种子列表 | `/api/v2/torrents/info` | GET |
-| 获取种子属性 | `/api/v2/torrents/properties` | GET |
-| 获取文件列表 | `/api/v2/torrents/files` | GET |
-| 添加种子 | `/api/v2/torrents/add` | POST |
-| 暂停种子 | `/api/v2/torrents/stop` | POST |
-| 恢复种子 | `/api/v2/torrents/start` | POST |
-| 删除种子 | `/api/v2/torrents/delete` | POST |
-| 设置限速 | `/api/v2/torrents/setDownloadLimit` | POST |
-| 设置位置 | `/api/v2/torrents/setLocation` | POST |
-| 设置分类 | `/api/v2/torrents/setCategory` | POST |
-| 添加标签 | `/api/v2/torrents/addTags` | POST |
+**Endpoint:** `/api/v2/torrents/deleteTags`
+
+**Method:** `POST`
+
+**Parameters:** Same as create tags
+
+**Returns:** `200 OK`
 
 ---
 
-## HTTP 状态码参考
+## Sync API
 
-| 状态码 | 说明 |
-|--------|------|
-| 200 | 成功 |
-| 400 | 请求参数错误 |
-| 403 | 禁止访问 |
-| 404 | 资源未找到 |
-| 409 | 操作冲突（如队列未启用） |
-| 415 | 不支持的媒体类型 |
-| 500 | 服务器内部错误 |
+### Get Main Data
+
+**Endpoint:** `/api/v2/sync/maindata`
+
+**Method:** `GET`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `rid` | integer | Response ID (default 0) |
+
+**Returns:** JSON object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rid` | integer | Response ID |
+| `full_update` | bool | Whether full update |
+| `torrents` | object | Torrent data |
+| `torrents_removed` | array | Removed torrent hashes |
+| `categories` | object | New categories |
+| `categories_removed` | array | Removed categories |
+| `tags` | array | New tags |
+| `tags_removed` | array | Removed tags |
+| `server_state` | object | Global transfer information |
+
+---
+
+## Transfer Information
+
+### Get Global Transfer Information
+
+**Endpoint:** `/api/v2/transfer/info`
+
+**Method:** `GET`
+
+**Returns:** JSON object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `dl_info_speed` | integer | Global download speed (bytes/s) |
+| `dl_info_data` | integer | Downloaded in this session (bytes) |
+| `up_info_speed` | integer | Global upload speed (bytes/s) |
+| `up_info_data` | integer | Uploaded in this session (bytes) |
+| `dl_rate_limit` | integer | Download speed limit (bytes/s) |
+| `up_rate_limit` | integer | Upload speed limit (bytes/s) |
+| `dht_nodes` | integer | DHT node count |
+| `connection_status` | string | Connection status: `connected`/`firewalled`/`disconnected` |
+
+---
+
+## Quick Reference
+
+| Operation | Endpoint | Method |
+|-----------|----------|--------|
+| Get torrent list | `/api/v2/torrents/info` | GET |
+| Get torrent properties | `/api/v2/torrents/properties` | GET |
+| Get file list | `/api/v2/torrents/files` | GET |
+| Add torrent | `/api/v2/torrents/add` | POST |
+| Pause torrent | `/api/v2/torrents/stop` | POST |
+| Resume torrent | `/api/v2/torrents/start` | POST |
+| Delete torrent | `/api/v2/torrents/delete` | POST |
+| Set speed limit | `/api/v2/torrents/setDownloadLimit` | POST |
+| Set location | `/api/v2/torrents/setLocation` | POST |
+| Set category | `/api/v2/torrents/setCategory` | POST |
+| Add tags | `/api/v2/torrents/addTags` | POST |
+
+---
+
+## HTTP Status Code Reference
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Success |
+| 400 | Invalid request parameters |
+| 403 | Forbidden |
+| 404 | Resource not found |
+| 409 | Operation conflict (e.g., queue not enabled) |
+| 415 | Unsupported media type |
+| 500 | Internal server error |

@@ -1,235 +1,235 @@
-# JavDB API 文档
+# JavDB API Documentation
 
-## 概述
+## Overview
 
-JavDB 是一个视频内容数据库网站，基于 Ruby on Rails 框架构建，使用 Cloudflare 进行防护。
+JavDB is a video content database website built on the Ruby on Rails framework, using Cloudflare for protection.
 
-### 基本信息
+### Basic Information
 
-| 项目 | 值 |
-|------|-----|
-| 主域名 | `https://javdb.com/` |
-| 镜像域名 | `javdb565.com`, `javdb564.com` |
-| Web 框架 | Ruby on Rails |
-| 防护 | Cloudflare |
-| 认证方式 | CSRF Token |
+| Item | Value |
+|------|-------|
+| Main Domain | `https://javdb.com/` |
+| Mirror Domains | `javdb565.com`, `javdb564.com` |
+| Web Framework | Ruby on Rails |
+| Protection | Cloudflare |
+| Authentication | CSRF Token |
 
 ---
 
-## 端点列表
+## Endpoint List
 
-### 1. 首页
+### 1. Home Page
 ```
 GET https://javdb.com/
 ```
 
-**响应内容**：
-- 最新视频列表
-- 热门标签
-- 推荐内容
+**Response Content**:
+- Latest video list
+- Popular tags
+- Recommended content
 
-### 2. 搜索
+### 2. Search
 ```
 GET https://javdb.com/search?q=KEYWORD&f=FILTER
 ```
 
-**参数**：
-| 参数 | 类型 | 必需 | 描述 |
-|------|------|------|------|
-| q | string | 是 | 搜索关键词 |
-| f | string | 否 | 过滤器类型（见下方过滤器列表） |
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| q | string | Yes | Search keyword |
+| f | string | No | Filter type (see filter list below) |
 
-**示例请求**：
+**Example Request**:
 ```
 GET https://javdb.com/search?q=SSIS&f=all
 ```
 
-### 3. 演员列表
+### 3. Actor List
 ```
 GET https://javdb.com/actors
 ```
 
-**响应内容**：
-- 演员头像
-- 演员名称
-- 演员ID
+**Response Content**:
+- Actor avatars
+- Actor names
+- Actor IDs
 
-### 4. 演员详情
+### 4. Actor Details
 ```
 GET https://javdb.com/actors/ACTOR_ID
 ```
 
-**示例**：
+**Example**:
 ```
 GET https://javdb.com/actors/OWl
 ```
 
-### 5. 视频详情
+### 5. Video Details
 ```
 GET https://javdb.com/v/VIDEO_ID
 ```
 
-**注意**：此端点需要登录认证，直接请求会返回 403 Forbidden。
+**Note**: This endpoint requires login authentication, direct requests will return 403 Forbidden.
 
-### 6. 系列
+### 6. Series
 ```
 GET https://javdb.com/series
 ```
 
-### 7. 制作商
+### 7. Studios
 ```
 GET https://javdb.com/studios
 ```
 
 ---
 
-## 过滤器参数
+## Filter Parameters
 
-| 参数值 | 描述 | 中文名称 |
-|--------|------|----------|
-| `all` | 所有视频 | 全部 |
-| `censored` | 有码视频 | 有碼 |
-| `uncensored` | 无码视频 | 無碼 |
-| `western` | 欧美内容 | 歐美 |
-| `fc2` | FC2 内容 | FC2 |
-| `anime` | 动漫内容 | 動漫 |
+| Parameter Value | Description | Chinese Name |
+|-----------------|-------------|--------------|
+| `all` | All videos | 全部 |
+| `censored` | Censored videos | 有碼 |
+| `uncensored` | Uncensored videos | 無碼 |
+| `western` | Western content | 歐美 |
+| `fc2` | FC2 content | FC2 |
+| `anime` | Anime content | 動漫 |
 
 ---
 
-## 图片 CDN 结构
+## Image CDN Structure
 
-### 封面图片
+### Cover Images
 ```
 https://c0.jdbstatic.com/covers/{2char}/{filename}.jpg
 ```
 
-**示例**：
+**Example**:
 ```
 https://c0.jdbstatic.com/covers/9d/9DGB5X.jpg
 ```
 
-### 演员头像
+### Actor Avatars
 ```
 https://c0.jdbstatic.com/avatars/{2char}/{filename}.jpg
 ```
 
-### 站点 Logo
+### Site Logo
 ```
 https://c0.jdbstatic.com/images/logo_120x120.png
 ```
 
 ---
 
-## 数据结构
+## Data Structure
 
-### 视频对象
+### Video Object
 ```
 {
-  "id": "SSIS-589",           // 视频 ID
-  "title": "视频标题",         // 日文标题
-  "cover": "封面图片URL",      // 封面图片链接
-  "rating": "4.43",           // 评分
-  "rating_count": 2164,       // 评价人数
-  "release_date": "2023-01-01", // 发行日期
-  "tags": ["含中字磁鏈", "中字可播放"], // 标签
-  "video_url": "/v/VIDEO_ID"  // 详情页链接
+  "id": "SSIS-589",           // Video ID
+  "title": "Video Title",      // Japanese title
+  "cover": "Cover Image URL",  // Cover image link
+  "rating": "4.43",            // Rating
+  "rating_count": 2164,        // Number of ratings
+  "release_date": "2023-01-01", // Release date
+  "tags": ["含中字磁鏈", "中字可播放"], // Tags
+  "video_url": "/v/VIDEO_ID"  // Detail page link
 }
 ```
 
-### 演员对象
+### Actor Object
 ```
 {
-  "id": "OWl",                // 演员 ID
-  "name": "演员名称",          // 演员
-  "avatar": "头像URL",         // 头像图片链接
-  "url": "/actors/OWl"        // 详情页链接
+  "id": "OWl",                // Actor ID
+  "name": "Actor Name",        // Actor name
+  "avatar": "Avatar URL",       // Avatar image link
+  "url": "/actors/OWl"        // Detail page link
 }
 ```
 
 ---
 
-## 认证机制
+## Authentication Mechanism
 
-JavDB 使用 Ruby on Rails 的 CSRF Token 机制进行认证：
+JavDB uses Ruby on Rails' CSRF Token mechanism for authentication:
 
 ```html
 <meta name="csrf-param" content="authenticity_token" />
 <meta name="csrf-token" content="TOKEN_VALUE" />
 ```
 
-**重要提示**：
-- 大部分页面需要有效的 CSRF Token
-- 视频详情页 `/v/VIDEO_ID` 需要用户登录
-- 直接 HTTP 请求会被 Cloudflare 阻止（403 Forbidden）
+**Important Notes**:
+- Most pages require a valid CSRF Token
+- Video detail page `/v/VIDEO_ID` requires user login
+- Direct HTTP requests will be blocked by Cloudflare (403 Forbidden)
 
 ---
 
-## Cookies 要求
+## Cookies Requirements
 
-### 必需 Cookies
+### Required Cookies
 
-| Cookie 名称 | 值 | 说明 | 过期时间 |
-|-------------|-----|------|----------|
-| `over18` | `1` | 年龄验证，必须设置为 1 才能正常访问搜索 API | 1 年 |
-| `_jdb_session` | 自动生成 | Rails 会话 cookie，由服务器自动生成和更新 | 会话结束时 |
+| Cookie Name | Value | Description | Expiration |
+|-------------|-------|-------------|------------|
+| `over18` | `1` | Age verification, must be set to 1 for normal access to search API | 1 year |
+| `_jdb_session` | Auto-generated | Rails session cookie, automatically generated and updated by the server | End of session |
 
-### 可选 Cookies
+### Optional Cookies
 
-| Cookie 名称 | 值 | 说明 |
-|-------------|-----|------|
-| `locale` | `zh` | 语言设置（zh=繁体中文） |
-| `list_mode` | `h` | 列表显示模式（h=水平列表） |
-| `theme` | `auto` | 主题设置（auto=跟随系统） |
+| Cookie Name | Value | Description |
+|-------------|-------|-------------|
+| `locale` | `zh` | Language setting (zh = Traditional Chinese) |
+| `list_mode` | `h` | List display mode (h = horizontal list) |
+| `theme` | `auto` | Theme setting (auto = follow system) |
 
-### Analytics Cookies（可选）
+### Analytics Cookies (Optional)
 
-这些 cookies 由 Yandex Analytics 使用，不影响 API 功能：
+These cookies are used by Yandex Analytics and do not affect API functionality:
 
-| Cookie 名称 | 说明 |
-|-------------|------|
-| `_ym_uid` | Yandex 用户 ID |
-| `_ym_d` | Yandex 访问日期 |
-| `_ym_isad` | Yandex 广告检测 |
+| Cookie Name | Description |
+|-------------|-------------|
+| `_ym_uid` | Yandex user ID |
+| `_ym_d` | Yandex visit date |
+| `_ym_isad` | Yandex ad detection |
 
-### Cookie 设置示例
+### Cookie Setting Example
 
 ```bash
-# 最小必需的 Cookie 设置
+# Minimum required cookie setting
 Cookie: over18=1
 
-# 完整的 Cookie 设置示例
-Cookie: over18=1; locale=zh; list_mode=h; theme=auto; _jdb_session=<自动生成的会话值>
+# Complete cookie setting example
+Cookie: over18=1; locale=zh; list_mode=h; theme=auto; _jdb_session=<auto-generated session value>
 ```
 
-**注意**：`_jdb_session` cookie 会在首次访问时由服务器自动设置，无需手动生成。
+**Note**: The `_jdb_session` cookie is automatically set by the server on first visit, no manual generation required.
 
 ---
 
-## HTTP 请求头要求
+## HTTP Request Header Requirements
 
-### 必需请求头
+### Required Request Headers
 
-| 请求头 | 值示例 | 说明 |
-|--------|--------|------|
-| `User-Agent` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36` | 必须使用真实的浏览器 User-Agent |
-| `Accept` | `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7` | 指定可接受的响应类型 |
-| `Accept-Language` | `zh-CN,zh;q=0.9` | 语言偏好 |
-| `Cookie` | `over18=1` | 必需的 cookies |
+| Request Header | Value Example | Description |
+|----------------|---------------|-------------|
+| `User-Agent` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36` | Must use a real browser User-Agent |
+| `Accept` | `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7` | Specify acceptable response types |
+| `Accept-Language` | `zh-CN,zh;q=0.9` | Language preference |
+| `Cookie` | `over18=1` | Required cookies |
 
-### 推荐请求头（用于通过 Cloudflare 防护）
+### Recommended Request Headers (for passing Cloudflare protection)
 
-| 请求头 | 值示例 | 说明 |
-|--------|--------|------|
-| `Accept-Encoding` | `gzip, deflate, br, zstd` | 支持的压缩编码 |
-| `Sec-Fetch-Dest` | `document` | 请求目标类型 |
-| `Sec-Fetch-Mode` | `navigate` | 请求模式 |
-| `Sec-Fetch-Site` | `same-origin` | 请求站点关系 |
-| `Sec-Fetch-User` | `?1` | 表示用户发起的请求 |
-| `Sec-Ch-Ua` | `"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"` | Chrome UA 信息 |
-| `Sec-Ch-Ua-Mobile` | `?0` | 是否移动设备 |
-| `Sec-Ch-Ua-Platform` | `"Windows"` | 操作系统平台 |
+| Request Header | Value Example | Description |
+|----------------|---------------|-------------|
+| `Accept-Encoding` | `gzip, deflate, br, zstd` | Supported compression encodings |
+| `Sec-Fetch-Dest` | `document` | Request destination type |
+| `Sec-Fetch-Mode` | `navigate` | Request mode |
+| `Sec-Fetch-Site` | `same-origin` | Request site relationship |
+| `Sec-Fetch-User` | `?1` | Indicates user-initiated request |
+| `Sec-Ch-Ua` | `"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"` | Chrome UA information |
+| `Sec-Ch-Ua-Mobile` | `?0` | Whether it's a mobile device |
+| `Sec-Ch-Ua-Platform` | `"Windows"` | Operating system platform |
 
-### 完整请求示例
+### Complete Request Example
 
 ```bash
 curl "https://javdb.com/search?q=SSIS&f=all" \
@@ -244,26 +244,26 @@ curl "https://javdb.com/search?q=SSIS&f=all" \
   -H "Sec-Fetch-User: ?1"
 ```
 
-### C# HttpClient 配置示例
+### C# HttpClient Configuration Example
 
 ```csharp
 var httpClient = new HttpClient();
 
-// 设置 User-Agent
+// Set User-Agent
 httpClient.DefaultRequestHeaders.Add("User-Agent",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36");
 
-// 设置 Accept
+// Set Accept
 httpClient.DefaultRequestHeaders.Add("Accept",
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
 
-// 设置 Accept-Language
+// Set Accept-Language
 httpClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9");
 
-// 设置必需的 Cookie
+// Set required cookies
 httpClient.DefaultRequestHeaders.Add("Cookie", "over18=1; locale=zh");
 
-// 设置 Sec-Fetch 头（可选，但有助于通过 Cloudflare）
+// Set Sec-Fetch headers (optional, but helps pass Cloudflare)
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Dest", "document");
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Site", "same-origin");
@@ -272,40 +272,40 @@ httpClient.DefaultRequestHeaders.Add("Sec-Fetch-User", "?1");
 
 ---
 
-## 年龄验证流程
+## Age Verification Flow
 
-JavDB 使用年龄验证机制，首次访问时会重定向到 `/over18` 端点：
+JavDB uses an age verification mechanism. On first access, it redirects to the `/over18` endpoint:
 
-### 验证流程
+### Verification Flow
 
 ```mermaid
 sequenceDiagram
-    participant Client as 客户端
-    participant JavDB as JavDB 服务器
-    
+    participant Client as Client
+    participant JavDB as JavDB Server
+
     Client->>JavDB: GET /search?q=SSIS
-    JavDB-->>Client: 302 重定向到 /over18?respond=1&rurl=...
+    JavDB-->>Client: 302 Redirect to /over18?respond=1&rurl=...
     Client->>JavDB: GET /over18?respond=1&rurl=...
-    JavDB-->>Client: 302 设置 Cookie: over18=1，重定向回原 URL
-    Client->>JavDB: GET /search?q=SSIS (携带 over18=1)
-    JavDB-->>Client: 200 返回搜索结果
+    JavDB-->>Client: 302 Set Cookie: over18=1, redirect back to original URL
+    Client->>JavDB: GET /search?q=SSIS (carrying over18=1)
+    JavDB-->>Client: 200 Return search results
 ```
 
-### 手动处理年龄验证
+### Manual Age Verification Handling
 
-如果直接访问搜索 API 返回 403 或重定向到 `/over18`，需要：
+If directly accessing the search API returns 403 or redirects to `/over18`, you need to:
 
-1. 首先访问 `https://javdb.com/over18?respond=1` 设置 `over18=1` cookie
-2. 获取响应中的 Set-Cookie 头
-3. 在后续请求中携带 `over18=1` cookie
+1. First visit `https://javdb.com/over18?respond=1` to set the `over18=1` cookie
+2. Get the Set-Cookie header from the response
+3. Carry the `over18=1` cookie in subsequent requests
 
 ```bash
-# 步骤 1: 访问年龄验证端点
+# Step 1: Visit age verification endpoint
 curl -i "https://javdb.com/over18?respond=1" \
   -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
   -H "Cookie: over18=1"
 
-# 步骤 2: 使用返回的 cookie 进行搜索
+# Step 2: Use the returned cookie for search
 curl "https://javdb.com/search?q=SSIS&f=all" \
   -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
   -H "Cookie: over18=1; locale=zh"
@@ -313,58 +313,58 @@ curl "https://javdb.com/search?q=SSIS&f=all" \
 
 ---
 
-## 错误处理
+## Error Handling
 
-### HTTP 状态码
+### HTTP Status Codes
 
-| 状态码 | 描述 | 原因 |
-|--------|------|------|
-| 200 | 成功 | 请求成功 |
-| 302 | Found | 重定向（通常是年龄验证） |
-| 403 | Forbidden | 被 Cloudflare 阻护或缺少必需的 cookies/headers |
-| 404 | Not Found | 资源不存在 |
+| Status Code | Description | Cause |
+|-------------|-------------|-------|
+| 200 | Success | Request successful |
+| 302 | Found | Redirect (usually age verification) |
+| 403 | Forbidden | Blocked by Cloudflare or missing required cookies/headers |
+| 404 | Not Found | Resource does not exist |
 
-### 常见错误
+### Common Errors
 
-**1. 403 Forbidden - 缺少必需的 Cookies**
+**1. 403 Forbidden - Missing Required Cookies**
 
 ```
-错误信息：
+Error message:
 Response status code does not indicate success: 403 (Forbidden)
 ```
 
-**原因**：
-- 缺少 `over18=1` cookie
-- User-Agent 不正确或缺失
-- 缺少必要的请求头
+**Cause**:
+- Missing `over18=1` cookie
+- Incorrect or missing User-Agent
+- Missing required request headers
 
-**解决方案**：
+**Solution**:
 ```csharp
-// 确保设置了必需的 cookie
+// Ensure required cookie is set
 httpClient.DefaultRequestHeaders.Add("Cookie", "over18=1");
 
-// 设置完整的 User-Agent
+// Set complete User-Agent
 httpClient.DefaultRequestHeaders.Add("User-Agent",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36");
 ```
 
-**2. 302 重定向 - 年龄验证**
+**2. 302 Redirect - Age Verification**
 
 ```
-响应头：
+Response header:
 Location: /over18?respond=1&rurl=...
 ```
 
-**原因**：
-- 首次访问未设置 `over18=1` cookie
+**Cause**:
+- First visit without `over18=1` cookie set
 
-**解决方案**：
+**Solution**:
 ```bash
-# 方法 1: 直接设置 over18=1 cookie
+# Method 1: Directly set over18=1 cookie
 curl "https://javdb.com/search?q=SSIS&f=all" \
   -H "Cookie: over18=1"
 
-# 方法 2: 先访问年龄验证端点
+# Method 2: First visit age verification endpoint
 curl -L "https://javdb.com/over18?respond=1" \
   -H "Cookie: over18=1"
 ```
@@ -372,27 +372,27 @@ curl -L "https://javdb.com/over18?respond=1" \
 **3. 403 Forbidden - Cloudflare Protection**
 
 ```
-错误信息：
+Error message:
 cf-mitigated: 1
 CF-RAY: xxxxxxxx-SIN
 ```
 
-**原因**：
-- 请求头不完整，被 Cloudflare 识别为爬虫
+**Cause**:
+- Incomplete request headers, identified as a crawler by Cloudflare
 
-**解决方案**：
-- 添加完整的 Sec-Fetch 系列请求头
-- 添加 Sec-Ch-Ua 系列请求头
-- 确保使用真实的浏览器 User-Agent
+**Solution**:
+- Add complete Sec-Fetch series request headers
+- Add Sec-Ch-Ua series request headers
+- Ensure using a real browser User-Agent
 
 ```csharp
-// 添加 Sec-Fetch 系列请求头
+// Add Sec-Fetch series request headers
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Dest", "document");
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-Site", "same-origin");
 httpClient.DefaultRequestHeaders.Add("Sec-Fetch-User", "?1");
 
-// 添加 Sec-Ch-Ua 系列请求头
+// Add Sec-Ch-Ua series request headers
 httpClient.DefaultRequestHeaders.Add("Sec-Ch-Ua",
     "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"");
 httpClient.DefaultRequestHeaders.Add("Sec-Ch-Ua-Mobile", "?0");
@@ -401,17 +401,17 @@ httpClient.DefaultRequestHeaders.Add("Sec-Ch-Ua-Platform", "\"Windows\"");
 
 ---
 
-## 使用示例
+## Usage Examples
 
-### 搜索示例
+### Search Example
 ```bash
-# 搜索 "SSIS" 关键词
+# Search for "SSIS" keyword
 curl "https://javdb.com/search?q=SSIS&f=all" \
   -H "User-Agent: Mozilla/5.0" \
   -H "Accept: text/html"
 ```
 
-### 获取演员列表
+### Get Actor List
 ```bash
 curl "https://javdb.com/actors" \
   -H "User-Agent: Mozilla/5.0"
@@ -419,18 +419,18 @@ curl "https://javdb.com/actors" \
 
 ---
 
-## 注意事项
+## Important Notes
 
-1. **Cloudflare 防护**：直接 API 请求可能被阻止，建议使用浏览器自动化工具
-2. **登录要求**：视频详情页需要用户登录
-3. **速率限制**：避免频繁请求，可能被 Cloudflare 识别为爬虫
-4. **镜像域名**：主域名可能被墙，可使用镜像域名访问
+1. **Cloudflare Protection**: Direct API requests may be blocked; it is recommended to use browser automation tools
+2. **Login Requirements**: Video detail pages require user login
+3. **Rate Limiting**: Avoid frequent requests, as you may be identified as a crawler by Cloudflare
+4. **Mirror Domains**: The main domain may be blocked; mirror domains can be used for access
 
 ---
 
-## 更新日志
+## Changelog
 
-| 日期 | 更新内容 |
-|------|----------|
-| 2026-01-19 | 添加 Cookies 要求和 HTTP 请求头详细说明，包括必需和可选的 cookies、完整的请求头配置、年龄验证流程和错误处理 |
-| 2026-01-18 | 初始版本，基于 JavDB 网站分析创建 |
+| Date | Update Content |
+|------|----------------|
+| 2026-01-19 | Added Cookies requirements and HTTP request header detailed instructions, including required and optional cookies, complete request header configuration, age verification flow, and error handling |
+| 2026-01-18 | Initial version, created based on JavDB website analysis |

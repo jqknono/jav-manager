@@ -5,6 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <StrictSingleFileReleasePublish Condition="'$(StrictSingleFileReleasePublish)' == ''">true</StrictSingleFileReleasePublish>
   </PropertyGroup>
 
   <!--
@@ -14,7 +15,7 @@
   -->
   <Target Name="EnforceSingleFileReleasePublish"
           BeforeTargets="Publish"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
     <Error Condition="'$(RuntimeIdentifier)' == ''"
            Text="STRICT MODE: Release publish requires a RuntimeIdentifier. Use: dotnet publish -c Release -r &lt;RID&gt; (e.g. win-x64)." />
     <Error Condition="$([System.String]::Copy('$(SelfContained)').ToLowerInvariant()) != 'true'"
@@ -29,7 +30,7 @@
 
   <Target Name="ValidateSingleFileReleasePublishOutput"
           AfterTargets="Publish"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
     <PropertyGroup>
       <_StrictExpectedFile>$(AssemblyName)</_StrictExpectedFile>
       <_StrictExpectedFile Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</_StrictExpectedFile>

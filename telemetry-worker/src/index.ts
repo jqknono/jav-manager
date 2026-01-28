@@ -48,6 +48,7 @@ interface JavInfoRecord {
 type PageLang = 'en' | 'zh';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
+const LATEST_RELEASE_URL = 'https://github.com/jqknono/jav-manager/releases/latest';
 
 const TEXT = {
   en: {
@@ -60,6 +61,12 @@ const TEXT = {
     langChinese: '繁體中文',
     homeTitle: 'JavManager Telemetry',
     homeIntro: 'This site summarizes telemetry and JavInfo sync data reported by JavManager clients.',
+    homeUsageTitle: 'How to use',
+    homeUsageItems: [
+      'Run JavManager and input a JAV ID (e.g. IPZZ-408).',
+      'The app checks local cache, then fetches from JavDB if needed.',
+      'Pick a torrent and send it to your downloader.',
+    ],
     homeOverviewTitle: 'Overview',
     homeOverviewItems: [
       'Search local cache first, then JavDB.',
@@ -72,9 +79,10 @@ const TEXT = {
       'JavInfo sync: metadata such as title, actors, categories, release date, and detail link.',
     ],
     homePagesTitle: 'Pages',
-    homePagesItems: ['User telemetry: /user', 'JavInfo data: /jav'],
+    homePagesItems: ['JavInfo data: /jav'],
     viewUsers: 'View Users',
     viewJav: 'View Jav Info',
+    downloadLatest: 'Download latest binary',
     userTitle: 'User Telemetry',
     userSubtitle: 'Anonymous usage events from clients.',
     javTitle: 'Jav Info',
@@ -119,6 +127,12 @@ const TEXT = {
     langChinese: '繁體中文',
     homeTitle: 'JavManager 遙測',
     homeIntro: '此頁彙整 JavManager 回傳的遙測與 JavInfo 同步資料。',
+    homeUsageTitle: '使用方式',
+    homeUsageItems: [
+      '啟動 JavManager 後輸入番號（例如 IPZZ-408）。',
+      '先查本地快取，未命中則查詢 JavDB。',
+      '選擇種子並送到下載器。',
+    ],
     homeOverviewTitle: '功能概覽',
     homeOverviewItems: [
       '先查本地快取，再查 JavDB。',
@@ -131,9 +145,10 @@ const TEXT = {
       'JavInfo 同步：標題、演員、分類、發行日期、詳情連結等中繼資料。',
     ],
     homePagesTitle: '頁面',
-    homePagesItems: ['使用者遙測：/user', 'Jav 資訊：/jav'],
+    homePagesItems: ['Jav 資訊：/jav'],
     viewUsers: '查看使用者',
     viewJav: '查看 Jav 資訊',
+    downloadLatest: '下載最新版本',
     userTitle: '使用者遙測',
     userSubtitle: '匿名使用事件與統計。',
     javTitle: 'Jav 資訊',
@@ -220,12 +235,17 @@ function buildLangSwitch(url: URL, lang: PageLang): string {
   `;
 }
 
-function renderNav(lang: PageLang, active: 'home' | 'user' | 'jav'): string {
+function renderNav(
+  lang: PageLang,
+  active: 'home' | 'user' | 'jav',
+  options?: { hideUser?: boolean }
+): string {
   const t = TEXT[lang];
+  const hideUser = options?.hideUser ?? false;
   return `
     <nav class="nav">
       <a class="${active === 'home' ? 'active' : ''}" href="/?lang=${lang}">${t.navHome}</a>
-      <a class="${active === 'user' ? 'active' : ''}" href="/user?lang=${lang}">${t.navUser}</a>
+      ${hideUser ? '' : `<a class="${active === 'user' ? 'active' : ''}" href="/user?lang=${lang}">${t.navUser}</a>`}
       <a class="${active === 'jav' ? 'active' : ''}" href="/jav?lang=${lang}">${t.navJav}</a>
     </nav>
   `;
@@ -287,11 +307,12 @@ function renderPage(params: {
   title: string;
   description?: string;
   active: 'home' | 'user' | 'jav';
+  hideUserNav?: boolean;
   body: string;
   script?: string;
   requestUrl: URL;
 }): string {
-  const { lang, title, description, active, body, script, requestUrl } = params;
+  const { lang, title, description, active, hideUserNav, body, script, requestUrl } = params;
   const t = TEXT[lang];
   const htmlLang = lang === 'zh' ? 'zh-Hant' : 'en';
   const pageTitle = title ? `${title} - ${t.appName}` : t.appName;
@@ -313,7 +334,7 @@ function renderPage(params: {
         </div>
         ${buildLangSwitch(requestUrl, lang)}
       </header>
-      ${renderNav(lang, active)}
+      ${renderNav(lang, active, { hideUser: hideUserNav })}
       ${body}
     </div>
   </div>
@@ -331,12 +352,16 @@ function getHomePage(url: URL, lang: PageLang): string {
         <p class="muted">${t.homeIntro}</p>
       </div>
       <div class="button-row">
-        <a class="button" href="/user?lang=${lang}">${t.viewUsers}</a>
-        <a class="button secondary" href="/jav?lang=${lang}">${t.viewJav}</a>
+        <a class="button" href="/jav?lang=${lang}">${t.viewJav}</a>
+        <a class="button secondary" href="${LATEST_RELEASE_URL}" target="_blank" rel="noopener">${t.downloadLatest}</a>
       </div>
     </section>
     <section class="section">
       <div class="cards">
+        <div class="card">
+          <div class="section-title">${t.homeUsageTitle}</div>
+          ${renderList(t.homeUsageItems)}
+        </div>
         <div class="card">
           <div class="section-title">${t.homeOverviewTitle}</div>
           ${renderList(t.homeOverviewItems)}
@@ -348,14 +373,20 @@ function getHomePage(url: URL, lang: PageLang): string {
         <div class="card">
           <div class="section-title">${t.homePagesTitle}</div>
           ${renderList([
-            `${t.navUser}: <a class="link" href="/user?lang=${lang}">/user</a>`,
             `${t.navJav}: <a class="link" href="/jav?lang=${lang}">/jav</a>`,
           ])}
         </div>
       </div>
     </section>
   `;
-  return renderPage({ lang, title: t.homeTitle, active: 'home', body, requestUrl: url });
+  return renderPage({
+    lang,
+    title: t.homeTitle,
+    active: 'home',
+    hideUserNav: true,
+    body,
+    requestUrl: url,
+  });
 }
 
 function getUserPage(url: URL, lang: PageLang): string {
@@ -528,6 +559,7 @@ function getUserPage(url: URL, lang: PageLang): string {
     lang,
     title: t.userTitle,
     active: 'user',
+    hideUserNav: true,
     body,
     script,
     requestUrl: url,
@@ -711,6 +743,7 @@ function getJavPage(url: URL, lang: PageLang): string {
     lang,
     title: t.javTitle,
     active: 'jav',
+    hideUserNav: true,
     body,
     script,
     requestUrl: url,

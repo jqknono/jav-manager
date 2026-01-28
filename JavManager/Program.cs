@@ -591,7 +591,6 @@ class Program
                 .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
         }
 
-        builder.AddEnvironmentVariables(prefix: "JAVMANAGER_");
         return builder.Build();
     }
 

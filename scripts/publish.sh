@@ -16,7 +16,7 @@
 #   OUTPUT_ROOT    - Output directory (default: artifacts/publish)
 #   SELF_CONTAINED - Self-contained build (default: true)
 #   SINGLE_FILE    - Single file output (default: true)
-#   READY_TO_RUN   - Ready to run compilation (default: true)
+#   READY_TO_RUN   - Ready to run compilation (default: false)
 #   TRIMMED        - Enable trimming (default: false)
 #
 # Usage:
@@ -29,8 +29,23 @@ CONFIGURATION="${CONFIGURATION:-Release}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-artifacts/publish}"
 SELF_CONTAINED="${SELF_CONTAINED:-true}"
 SINGLE_FILE="${SINGLE_FILE:-true}"
-READY_TO_RUN="${READY_TO_RUN:-true}"
+READY_TO_RUN="${READY_TO_RUN:-false}"
 TRIMMED="${TRIMMED:-false}"
+
+if [[ "${SELF_CONTAINED}" != "true" && "${TRIMMED}" == "true" ]]; then
+  echo "PublishTrimmed requires self-contained output; disabling TRIMMED for framework-dependent publish."
+  TRIMMED="false"
+fi
+
+if [[ "${SELF_CONTAINED}" == "true" ]]; then
+  INCLUDE_NATIVE_LIBS="true"
+  ENABLE_COMPRESSION="true"
+  STRICT_SINGLE_FILE="true"
+else
+  INCLUDE_NATIVE_LIBS="false"
+  ENABLE_COMPRESSION="false"
+  STRICT_SINGLE_FILE="false"
+fi
 
 RIDS=(
   "win-x64"
@@ -44,7 +59,7 @@ echo "Project: ${PROJECT}"
 echo "Configuration: ${CONFIGURATION}"
 echo "Output: ${OUTPUT_ROOT}"
 echo "RIDs: ${RIDS[*]}"
-echo "SelfContained=${SELF_CONTAINED} SingleFile=${SINGLE_FILE} ReadyToRun=${READY_TO_RUN} Trimmed=${TRIMMED}"
+echo "SelfContained=${SELF_CONTAINED} SingleFile=${SINGLE_FILE} ReadyToRun=${READY_TO_RUN} Trimmed=${TRIMMED} StrictSingleFile=${STRICT_SINGLE_FILE}"
 
 mkdir -p "${OUTPUT_ROOT}"
 
@@ -62,11 +77,12 @@ for rid in "${RIDS[@]}"; do
     --output "${out_dir}" \
     --self-contained "${SELF_CONTAINED}" \
     -p:PublishSingleFile="${SINGLE_FILE}" \
-    -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:IncludeNativeLibrariesForSelfExtract="${INCLUDE_NATIVE_LIBS}" \
     -p:IncludeAllContentForSelfExtract=true \
-    -p:EnableCompressionInSingleFile=true \
+    -p:EnableCompressionInSingleFile="${ENABLE_COMPRESSION}" \
     -p:PublishReadyToRun="${READY_TO_RUN}" \
     -p:PublishTrimmed="${TRIMMED}" \
+    -p:StrictSingleFileReleasePublish="${STRICT_SINGLE_FILE}" \
     -p:DebugType=None
 
   if [[ "${rid}" == win-* ]]; then
