@@ -98,7 +98,8 @@ public class JavSearchServiceAvailabilityTests
             localFileService,
             downloadService,
             availability,
-            new LocalizationService());
+            new LocalizationService(),
+            new NullJavInfoSyncClient());
 
         var torrent = new TorrentInfo { Title = "ABC-123", MagnetLink = "magnet:?xt=urn:btih:abc" };
         var result = await service.ProcessSelectedTorrentAsync("ABC-123", torrent, forceDownload: false);
@@ -130,7 +131,8 @@ public class JavSearchServiceAvailabilityTests
             localFileService,
             downloadService,
             availability,
-            new LocalizationService());
+            new LocalizationService(),
+            new NullJavInfoSyncClient());
 
         var torrent = new TorrentInfo { Title = "ABC-123", MagnetLink = "magnet:?xt=urn:btih:abc" };
         var result = await service.ProcessSelectedTorrentAsync("ABC-123", torrent, forceDownload: false);
@@ -142,4 +144,3 @@ public class JavSearchServiceAvailabilityTests
         Assert.Equal(0, qb.AddTorrentCallCount);
     }
 }
-

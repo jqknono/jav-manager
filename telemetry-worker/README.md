@@ -85,6 +85,7 @@ This starts a local worker at `http://localhost:8787` with a local D1 database.
 | `/api/telemetry` | POST | Receive telemetry data (non-blocking) |
 | `/api/stats` | GET | Get aggregated statistics |
 | `/api/data` | GET | Get paginated telemetry records |
+| `/api/javinfo` | POST | Store JavInfo metadata (idempotent, no torrents) |
 | `/` or `/admin` | GET | Admin dashboard page |
 
 ### Telemetry Payload
@@ -121,3 +122,9 @@ This starts a local worker at `http://localhost:8787` with a local D1 database.
 - No personal data is collected beyond machine/user identifiers
 - IP addresses are not stored in detail, only country/city
 - Users can disable telemetry in `appsettings.json`
+
+## JavInfo Sync (optional)
+
+`POST /api/javinfo` stores JavInfo metadata, including torrent list and magnet links (as provided by the client).
+
+If you set `API_KEY` as a Worker secret/variable, clients must send it via `X-API-Key`.

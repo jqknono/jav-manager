@@ -30,30 +30,33 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         // 使用 curl 客户端绕过 TLS 指纹检测
         _curlClient = new CurlHttpClient(_config.RequestTimeout / 1000);
 
-        // 设置请求头模拟真实浏览器
+        // 设置请求头模拟真实浏览器（Chrome 131 on Windows）
+        // 头部顺序和值都很重要，需要与真实浏览器一致
+        _curlClient.SetDefaultHeader("Cache-Control", "max-age=0");
+        _curlClient.SetDefaultHeader("Upgrade-Insecure-Requests", "1");
         _curlClient.SetDefaultHeader("User-Agent",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
         _curlClient.SetDefaultHeader("Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
-        _curlClient.SetDefaultHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
-        _curlClient.SetDefaultHeader("Upgrade-Insecure-Requests", "1");
-        _curlClient.SetDefaultHeader("Sec-Fetch-Site", "same-origin");
-        _curlClient.SetDefaultHeader("Sec-Fetch-Mode", "navigate");
-        _curlClient.SetDefaultHeader("Sec-Fetch-Dest", "document");
-        _curlClient.SetDefaultHeader("Sec-Fetch-User", "?1");
-        // Cloudflare 需要的完整客户端提示头部
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+        
+        // Sec-Ch-Ua 系列头部（Chrome Client Hints）
         _curlClient.SetDefaultHeader("Sec-Ch-Ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"");
         _curlClient.SetDefaultHeader("Sec-Ch-Ua-Mobile", "?0");
         _curlClient.SetDefaultHeader("Sec-Ch-Ua-Platform", "\"Windows\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Bitness", "\"64\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Arch", "\"x86\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Full-Version", "\"131.0.0.0\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Full-Version-List", "\"Google Chrome\";v=\"131.0.0.0\", \"Chromium\";v=\"131.0.0.0\", \"Not_A Brand\";v=\"24.0.0.0\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Model", "\"\"");
-        _curlClient.SetDefaultHeader("Sec-Ch-Ua-Platform-Version", "\"15.0.0\"");
+        
+        // Sec-Fetch 系列头部
+        _curlClient.SetDefaultHeader("Sec-Fetch-Site", "none");
+        _curlClient.SetDefaultHeader("Sec-Fetch-Mode", "navigate");
+        _curlClient.SetDefaultHeader("Sec-Fetch-User", "?1");
+        _curlClient.SetDefaultHeader("Sec-Fetch-Dest", "document");
+        
+        _curlClient.SetDefaultHeader("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        _curlClient.SetDefaultHeader("Accept-Encoding", "gzip, deflate, br, zstd");
         
         // 添加 over18 cookie
         _curlClient.SetCookie("over18", "1");
+        // 添加 locale cookie 避免重定向
+        _curlClient.SetCookie("locale", "zh");
     }
 
     /// <summary>
@@ -437,13 +440,13 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
     /// <summary>
     /// 检查服务健康状态
+    /// 依次尝试主站和所有镜像站，任一成功即认为健康
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
-        const int maxAttempts = 3;
         const int healthCheckTimeoutSeconds = 3;
 
-        // 尝试所有可用的 URL
+        // 构建所有待检查的 URL（主站 + 镜像站）
         var urls = new List<string> { _config.BaseUrl };
         urls.AddRange(_config.MirrorUrls);
         urls = urls
@@ -452,17 +455,26 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        Exception? lastException = null;
-
-        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        if (urls.Count == 0)
         {
-            var url = urls.Count == 0
-                ? _config.BaseUrl
-                : urls[(attempt - 1) % urls.Count];
+            return new HealthCheckResult
+            {
+                ServiceName = ((IHealthChecker)this).ServiceName,
+                IsHealthy = false,
+                Message = _loc.Get(L.HealthAllUrlsFailed),
+                Url = _config.BaseUrl
+            };
+        }
 
+        var failedUrls = new List<string>();
+        string? lastError = null;
+
+        // 依次尝试每个 URL，任一成功即返回健康
+        foreach (var url in urls)
+        {
             try
             {
-                var testUrl = $"{url.TrimEnd('/')}";
+                var testUrl = url.TrimEnd('/');
                 var response = await _curlClient.GetAsync(testUrl, timeoutSeconds: healthCheckTimeoutSeconds);
 
                 if (response.IsSuccessStatusCode)
@@ -475,18 +487,24 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
                         Url = url
                     };
                 }
+
+                // HTTP 错误（如 403）
+                failedUrls.Add(url);
+                lastError = $"{url}: HTTP {(int)response.StatusCode}";
             }
             catch (Exception ex)
             {
-                lastException = ex;
+                failedUrls.Add(url);
+                lastError = $"{url}: {ex.Message}";
             }
         }
 
+        // 所有 URL 都失败
         return new HealthCheckResult
         {
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
-            Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? _loc.Get(L.HealthAllUrlsFailed)),
+            Message = _loc.GetFormat(L.HealthConnectionFailed, lastError ?? _loc.Get(L.HealthAllUrlsFailed)),
             Url = _config.BaseUrl
         };
     }

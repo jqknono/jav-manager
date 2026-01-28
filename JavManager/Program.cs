@@ -606,6 +606,7 @@ class Program
                 services.Configure<QBittorrentConfig>(configuration.GetSection("QBittorrent"));
                 services.Configure<JavDbConfig>(configuration.GetSection("JavDb"));
                 services.Configure<DownloadConfig>(configuration.GetSection("Download"));
+                services.Configure<JavInfoSyncConfig>(configuration.GetSection("JavInfoSync"));
 
                 // 注册配置对象（直接注入）
                 var everythingConfig = configuration.GetSection("Everything").Get<EverythingConfig>() ?? new EverythingConfig();
@@ -613,12 +614,14 @@ class Program
                 var javDbConfig = configuration.GetSection("JavDb").Get<JavDbConfig>() ?? new JavDbConfig();
                 var downloadConfig = configuration.GetSection("Download").Get<DownloadConfig>() ?? new DownloadConfig();
                 var localCacheConfig = configuration.GetSection("LocalCache").Get<LocalCacheConfig>() ?? new LocalCacheConfig();
+                var javInfoSyncConfig = configuration.GetSection("JavInfoSync").Get<JavInfoSyncConfig>() ?? new JavInfoSyncConfig();
 
                 services.AddSingleton(everythingConfig);
                 services.AddSingleton(qbittorrentConfig);
                 services.AddSingleton(javDbConfig);
                 services.AddSingleton(downloadConfig);
                 services.AddSingleton(localCacheConfig);
+                services.AddSingleton(javInfoSyncConfig);
 
                 // 注册本地化服务（使用 Main 中初始化的实例，确保语言一致）
                 services.AddSingleton(localizationService);
@@ -647,6 +650,7 @@ class Program
                 services.AddScoped<TorrentSelectionService>();
                 services.AddScoped<LocalFileCheckService>();
                 services.AddScoped<DownloadService>();
+                services.AddSingleton<IJavInfoSyncClient, JavInfoSyncClient>();
                 services.AddScoped<JavSearchService>();
 
                 // 注册 UI

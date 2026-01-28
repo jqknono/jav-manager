@@ -79,10 +79,54 @@ public class CurlHttpClient : IDisposable
             "-w", "\n%{http_code}",  // 输出状态码（使用实际换行符）
             "--max-time", effectiveTimeoutSeconds.ToString(),
             "--compressed",          // 自动解压
+            
+            // TLS 指纹伪造：模拟 Chrome 浏览器
+            "--http2",               // 使用 HTTP/2（Chrome 默认）
+            "--tlsv1.2",             // 最低 TLS 1.2
+            "--tls-max", "1.3",      // 最高 TLS 1.3
+            
+            // Chrome 风格的密码套件顺序
+            "--ciphers", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,ECDHE-ECDSA-AES128-GCM-SHA256,ECDHE-RSA-AES128-GCM-SHA256,ECDHE-ECDSA-AES256-GCM-SHA384,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-ECDSA-CHACHA20-POLY1305,ECDHE-RSA-CHACHA20-POLY1305",
         };
 
-        // 添加请求头
+        // 添加请求头（按 Chrome 顺序）
+        // 注意：头部顺序对某些 WAF 检测很重要
+        var orderedHeaders = new List<(string Key, string Value)>();
+        
+        // 优先添加关键头部（Chrome 顺序）
+        if (_defaultHeaders.TryGetValue("Host", out var host))
+            orderedHeaders.Add(("Host", host));
+        if (_defaultHeaders.TryGetValue("Connection", out var conn))
+            orderedHeaders.Add(("Connection", conn));
+        if (_defaultHeaders.TryGetValue("Cache-Control", out var cache))
+            orderedHeaders.Add(("Cache-Control", cache));
+        if (_defaultHeaders.TryGetValue("Upgrade-Insecure-Requests", out var upgrade))
+            orderedHeaders.Add(("Upgrade-Insecure-Requests", upgrade));
+        if (_defaultHeaders.TryGetValue("User-Agent", out var ua))
+            orderedHeaders.Add(("User-Agent", ua));
+        if (_defaultHeaders.TryGetValue("Accept", out var accept))
+            orderedHeaders.Add(("Accept", accept));
+        
+        // Sec-* 头部
+        foreach (var header in _defaultHeaders.Where(h => h.Key.StartsWith("Sec-", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (!orderedHeaders.Any(h => h.Key.Equals(header.Key, StringComparison.OrdinalIgnoreCase)))
+                orderedHeaders.Add((header.Key, header.Value));
+        }
+        
+        if (_defaultHeaders.TryGetValue("Accept-Language", out var lang))
+            orderedHeaders.Add(("Accept-Language", lang));
+        if (_defaultHeaders.TryGetValue("Accept-Encoding", out var enc))
+            orderedHeaders.Add(("Accept-Encoding", enc));
+        
+        // 添加剩余头部
         foreach (var header in _defaultHeaders)
+        {
+            if (!orderedHeaders.Any(h => h.Key.Equals(header.Key, StringComparison.OrdinalIgnoreCase)))
+                orderedHeaders.Add((header.Key, header.Value));
+        }
+        
+        foreach (var header in orderedHeaders)
         {
             args.Add("-H");
             args.Add($"{header.Key}: {header.Value}");

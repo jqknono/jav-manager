@@ -9,7 +9,7 @@
 ## 功能特性
 
 - 从 JavDB 搜索 JAV 元数据和磁力链接
-- SQLite 本地缓存，加速重复搜索
+- 本地缓存，加速重复搜索
 - 通过 Everything 搜索引擎检查本地文件
 - 通过 qBittorrent WebUI API 下载
 - 基于权重排序的智能种子选择

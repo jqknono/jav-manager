@@ -50,6 +50,19 @@
                 "${workspaceFolder}/JavManager/JavManager.csproj"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "deploy:cloudflare",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "run",
+                "deploy"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/telemetry-worker"
+            },
+            "problemMatcher": []
         }
     ]
 }

@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  API_KEY?: string;
 }
 
 interface TelemetryPayload {
@@ -26,6 +27,109 @@ interface TelemetryRecord {
   created_at: string;
 }
 
+let schemaInit: Promise<void> | null = null;
+
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  return new Response(JSON.stringify(body), { ...init, headers });
+}
+
+async function ensureSchema(env: Env): Promise<void> {
+  if (schemaInit) return schemaInit;
+
+  schemaInit = (async () => {
+    // Telemetry table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS telemetry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        machine_name TEXT NOT NULL,
+        user_name TEXT NOT NULL,
+        app_version TEXT,
+        os_info TEXT,
+        event_type TEXT DEFAULT 'startup',
+        event_data TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        country TEXT,
+        city TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry(created_at DESC);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_machine_name ON telemetry(machine_name);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_user_name ON telemetry(user_name);`).run();
+
+    // JavInfo cache table (intentionally excludes torrent/magnet data)
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS javinfo (
+        jav_id TEXT PRIMARY KEY,
+        payload_json TEXT NOT NULL,
+        title TEXT,
+        cover_url TEXT,
+        release_date TEXT,
+        duration INTEGER,
+        director TEXT,
+        maker TEXT,
+        publisher TEXT,
+        series TEXT,
+        actors_json TEXT,
+        categories_json TEXT,
+        torrents_json TEXT,
+        detail_url TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `).run();
+
+    // Forward-only migrations for existing tables (safe no-ops if already present).
+    const ensureColumn = async (table: string, column: string, columnType: string) => {
+      const info = await env.DB.prepare(`PRAGMA table_info('${table}');`).all<{ name: string }>();
+      const existing = new Set((info.results ?? []).map(r => r.name));
+      if (existing.has(column)) return;
+      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnType};`).run();
+    };
+
+    await ensureColumn('javinfo', 'torrents_json', 'TEXT');
+
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_javinfo_updated_at ON javinfo(updated_at DESC);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_javinfo_release_date ON javinfo(release_date);`).run();
+  })();
+
+  return schemaInit;
+}
+
+function requireApiKey(request: Request, env: Env, corsHeaders: Record<string, string>): Response | null {
+  const required = (env.API_KEY ?? '').trim();
+  if (!required) return null;
+
+  const provided = (request.headers.get('X-API-Key') ?? '').trim();
+  if (provided && provided === required) return null;
+
+  return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+}
+
+type JavInfoPayload = {
+  jav_id?: string;
+  javId?: string;
+  title?: string;
+  cover_url?: string;
+  coverUrl?: string;
+  release_date?: string;
+  releaseDate?: string;
+  duration?: number;
+  director?: string;
+  maker?: string;
+  publisher?: string;
+  series?: string;
+  actors?: string[];
+  categories?: string[];
+  torrents?: unknown[];
+  detail_url?: string;
+  detailUrl?: string;
+};
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -46,14 +150,19 @@ export default {
     if (path === '/api/telemetry' && request.method === 'POST') {
       // Use waitUntil for non-blocking database write
       ctx.waitUntil(this.saveTelemetry(request, env));
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ success: true }, { headers: corsHeaders });
     }
 
     // GET /api/stats - Get statistics
     if (path === '/api/stats' && request.method === 'GET') {
       return this.getStats(env, corsHeaders);
+    }
+
+    // POST /api/javinfo - Store JavInfo (idempotent)
+    if (path === '/api/javinfo' && request.method === 'POST') {
+      const auth = requireApiKey(request, env, corsHeaders);
+      if (auth) return auth;
+      return this.saveJavInfo(request, env, corsHeaders);
     }
 
     // GET /api/data - Get paginated telemetry data
@@ -75,6 +184,7 @@ export default {
 
   async saveTelemetry(request: Request, env: Env): Promise<void> {
     try {
+      await ensureSchema(env);
       const payload: TelemetryPayload = await request.json();
       const cf = request.cf;
 
@@ -100,29 +210,112 @@ export default {
 
   async getStats(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
     try {
+      await ensureSchema(env);
       const totalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM telemetry').first<{ total: number }>();
       const uniqueMachinesResult = await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM telemetry').first<{ count: number }>();
       const uniqueUsersResult = await env.DB.prepare('SELECT COUNT(DISTINCT user_name) as count FROM telemetry').first<{ count: number }>();
       const todayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM telemetry WHERE date(created_at) = date('now')`).first<{ count: number }>();
 
-      return new Response(JSON.stringify({
+      const javInfoTotalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM javinfo').first<{ total: number }>();
+      const javInfoTodayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM javinfo WHERE date(created_at) = date('now')`).first<{ count: number }>();
+
+      return jsonResponse({
         total_records: totalResult?.total || 0,
         unique_machines: uniqueMachinesResult?.count || 0,
         unique_users: uniqueUsersResult?.count || 0,
         today_count: todayResult?.count || 0,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        javinfo_total: javInfoTotalResult?.total || 0,
+        javinfo_today: javInfoTodayResult?.count || 0,
+      }, { headers: corsHeaders });
     } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to get stats' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      console.error('Failed to get stats:', error);
+      // Fail soft so the UI can still render something.
+      return jsonResponse({
+        total_records: 0,
+        unique_machines: 0,
+        unique_users: 0,
+        today_count: 0,
+        javinfo_total: 0,
+        javinfo_today: 0,
+      }, { headers: corsHeaders });
+    }
+  },
+
+  async saveJavInfo(request: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+    try {
+      await ensureSchema(env);
+      const payload: JavInfoPayload = await request.json();
+      const javId = (payload.jav_id ?? payload.javId ?? '').trim();
+      if (!javId) {
+        return jsonResponse({ error: 'Missing jav_id' }, { status: 400, headers: corsHeaders });
+      }
+
+      // Idempotent insert: store only non-torrent metadata (avoid magnet distribution).
+      const title = payload.title ?? null;
+      const coverUrl = payload.cover_url ?? payload.coverUrl ?? null;
+      const releaseDate = payload.release_date ?? payload.releaseDate ?? null;
+      const duration = typeof payload.duration === 'number' ? payload.duration : null;
+      const director = payload.director ?? null;
+      const maker = payload.maker ?? null;
+      const publisher = payload.publisher ?? null;
+      const series = payload.series ?? null;
+      const actorsJson = payload.actors ? JSON.stringify(payload.actors) : null;
+      const categoriesJson = payload.categories ? JSON.stringify(payload.categories) : null;
+      const torrentsJson = Array.isArray(payload.torrents) ? JSON.stringify(payload.torrents) : null;
+      const detailUrl = payload.detail_url ?? payload.detailUrl ?? null;
+
+      const payloadJson = JSON.stringify({
+        jav_id: javId,
+        title,
+        cover_url: coverUrl,
+        release_date: releaseDate,
+        duration,
+        director,
+        maker,
+        publisher,
+        series,
+        actors: payload.actors ?? [],
+        categories: payload.categories ?? [],
+        torrents: payload.torrents ?? [],
+        detail_url: detailUrl,
       });
+
+      const result = await env.DB.prepare(`
+        INSERT INTO javinfo (
+          jav_id, payload_json, title, cover_url, release_date, duration,
+          director, maker, publisher, series, actors_json, categories_json, torrents_json, detail_url,
+          created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        ON CONFLICT(jav_id) DO NOTHING;
+      `).bind(
+        javId,
+        payloadJson,
+        title,
+        coverUrl,
+        releaseDate,
+        duration,
+        director,
+        maker,
+        publisher,
+        series,
+        actorsJson,
+        categoriesJson,
+        torrentsJson,
+        detailUrl
+      ).run();
+
+      const inserted = (result.meta?.changes ?? 0) > 0;
+      return jsonResponse({ jav_id: javId, inserted, existed: !inserted }, { headers: corsHeaders });
+    } catch (error) {
+      console.error('Failed to save javinfo:', error);
+      return jsonResponse({ error: 'Failed to save javinfo' }, { status: 500, headers: corsHeaders });
     }
   },
 
   async getData(env: Env, page: number, pageSize: number, corsHeaders: Record<string, string>): Promise<Response> {
     try {
+      await ensureSchema(env);
       const offset = (page - 1) * pageSize;
       const safePageSize = Math.min(Math.max(1, pageSize), 100);
       const safeOffset = Math.max(0, offset);
@@ -136,7 +329,7 @@ export default {
         LIMIT ? OFFSET ?
       `).bind(safePageSize, safeOffset).all<TelemetryRecord>();
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         data: dataResult.results,
         pagination: {
           page,
@@ -144,14 +337,14 @@ export default {
           total,
           totalPages: Math.ceil(total / safePageSize),
         },
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, { headers: corsHeaders });
     } catch (error) {
-      return new Response(JSON.stringify({ error: 'Failed to get data' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.error('Failed to get data:', error);
+      // Fail soft so the UI can render.
+      return jsonResponse({
+        data: [],
+        pagination: { page, pageSize, total: 0, totalPages: 1 },
+      }, { headers: corsHeaders });
     }
   },
 

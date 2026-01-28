@@ -9,7 +9,7 @@ A command-line tool for automated JAV content management with local caching, tor
 ## Features
 
 - Search JAV metadata and magnet links from JavDB
-- Local SQLite caching for faster repeated searches
+- Local caching for faster repeated searches
 - Check local files via Everything search engine
 - Download via qBittorrent WebUI API
 - Smart torrent selection with weight-based ranking

@@ -9,7 +9,7 @@
 ## 기능
 
 - JavDB에서 JAV 메타데이터 및 마그넷 링크 검색
-- SQLite 로컬 캐시로 반복 검색 속도 향상
+- 로컬 캐시로 반복 검색 속도 향상
 - Everything 검색 엔진으로 로컬 파일 확인
 - qBittorrent WebUI API로 다운로드
 - 가중치 기반 순위로 스마트한 토렌트 선택

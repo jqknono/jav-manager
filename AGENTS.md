@@ -15,7 +15,7 @@
 
 ## Build, Test, and Development Commands
 
-Requires .NET SDK `10.x`.
+Requires .NET SDK `8.0`.
 
 - Build: `dotnet build JavManager/JavManager.csproj`
 - Run (interactive): `dotnet run --project JavManager/JavManager.csproj`

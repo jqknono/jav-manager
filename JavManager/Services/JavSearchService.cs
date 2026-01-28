@@ -18,6 +18,7 @@ public class JavSearchService
     private readonly DownloadService _downloadService;
     private readonly ServiceAvailability _serviceAvailability;
     private readonly LocalizationService _loc;
+    private readonly IJavInfoSyncClient _javInfoSyncClient;
 
     private const string LogInfoPrefix = "[INFO] ";
     private const string LogWarnPrefix = "[WARN] ";
@@ -31,6 +32,7 @@ public class JavSearchService
         DownloadService downloadService,
         ServiceAvailability serviceAvailability,
         LocalizationService localizationService,
+        IJavInfoSyncClient javInfoSyncClient,
         IJavLocalCacheProvider? cacheProvider = null)
     {
         _javDbProvider = javDbProvider;
@@ -39,6 +41,7 @@ public class JavSearchService
         _downloadService = downloadService;
         _serviceAvailability = serviceAvailability;
         _loc = localizationService;
+        _javInfoSyncClient = javInfoSyncClient;
         _cacheProvider = cacheProvider;
     }
 
@@ -113,7 +116,10 @@ public class JavSearchService
                 }
 
                 LogInfo(result.Message, _loc.GetFormat(L.LogRemoteFoundTorrents, searchResult.Torrents.Count));
-                
+
+                // Sync JavInfo metadata to remote service (best-effort, non-blocking)
+                _javInfoSyncClient.TrySync(searchResult);
+                 
                 // 保存到本地缓存
                 if (_cacheProvider != null)
                 {
@@ -395,6 +401,9 @@ public class JavSearchService
                     LogError(result.Message, _loc.GetFormat(L.LogNoTorrentsForId, javId));
                     return result;
                 }
+
+                // Sync JavInfo metadata to remote service (best-effort, non-blocking)
+                _javInfoSyncClient.TrySync(searchResult);
 
                 // 保存到本地缓存
                 if (_cacheProvider != null)

@@ -1,7 +1,5 @@
 -- Telemetry data schema for Cloudflare D1
-DROP TABLE IF EXISTS telemetry;
-
-CREATE TABLE telemetry (
+CREATE TABLE IF NOT EXISTS telemetry (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     machine_name TEXT NOT NULL,
     user_name TEXT NOT NULL,
@@ -17,6 +15,29 @@ CREATE TABLE telemetry (
 );
 
 -- Index for pagination queries
-CREATE INDEX idx_telemetry_created_at ON telemetry(created_at DESC);
-CREATE INDEX idx_telemetry_machine_name ON telemetry(machine_name);
-CREATE INDEX idx_telemetry_user_name ON telemetry(user_name);
+CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetry_machine_name ON telemetry(machine_name);
+CREATE INDEX IF NOT EXISTS idx_telemetry_user_name ON telemetry(user_name);
+
+-- JavInfo cache schema (non-torrent metadata only)
+CREATE TABLE IF NOT EXISTS javinfo (
+    jav_id TEXT PRIMARY KEY,
+    payload_json TEXT NOT NULL,
+    title TEXT,
+    cover_url TEXT,
+    release_date TEXT,
+    duration INTEGER,
+    director TEXT,
+    maker TEXT,
+    publisher TEXT,
+    series TEXT,
+    actors_json TEXT,
+    categories_json TEXT,
+    torrents_json TEXT,
+    detail_url TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_javinfo_updated_at ON javinfo(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_javinfo_release_date ON javinfo(release_date);
