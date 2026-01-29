@@ -1,30 +1,30 @@
 # JavManager
 
-JAVコンテンツを自動管理するコマンドラインツール。高速な重複検索、トレント検索、qBittorrent連携機能を備えています。
+JAVコンテンツの自動管理を行うコマンドラインツール。高速な重複検索、トレント検索、qBittorrent統合機能を備えています。
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-> **注意:** 現在サポートしているのはEverything（ローカル検索）とqBittorrent（ダウンロード）です。HTTP APIを提供する他のツール（検索エンジンやダウンロードクライアントなど）のサポートが必要な場合は、[issueを作成](../../issues/new)してください。
+> **注意:** Everything（ローカル検索）とqBittorrent（ダウンロード）はオプションの統合機能です。これらがなくてもJavManagerは動作します（JavDBの検索とマグネットリンクの出力は可能です）。他のHTTP APIをサポートするツール（例：他の検索エンジンやダウンロードクライアント）が必要な場合は、[issueを作成してください](../../issues/new)。
 
-## 特徴
+## 機能
 
-- JavDBからJAVメタデータとマグネットリンクを検索
+- JavDBからのJAVメタデータとマグネットリンクの検索
 - 高速検索
-- Everything検索エンジンによるローカルファイルのチェック
-- qBittorrent WebUI API経由でのダウンロード
-- 重み付けランキングによるインテリジェントなトレント選択
+- Everything検索エンジンによるローカルファイルの確認
+- qBittorrent WebUI APIによるダウンロード
+- 重みベースのランキングによるスマートなトレント選択
 
 ## ワークフロー
 
 ```mermaid
 flowchart TD
-    A[JAV ID入力] --> B{データ有り？}
-    B -->|はい| C[既存メタデータを使用]
+    A[JAV IDの入力] --> B{データは利用可能か?}
+    B -->|はい| C[既存のメタデータを使用]
     B -->|いいえ| D[JavDBから取得]
     C --> E[トレントをランク付け]
     D --> E
-    E --> F{ローカルファイル有り？}
-    F -->|はい| G[オプション表示]
+    E --> F{ローカルファイルは存在するか?}
+    F -->|はい| G[オプションを表示]
     F -->|いいえ| H[ダウンローダーに追加]
     G --> H
     H --> I[完了]
@@ -38,109 +38,90 @@ flowchart TD
     class C,D,E,G neutral;
 ```
 
-## 外部依存サービス
+## 外部依存関係
 
-| サービス | 目的 | リンク |
-|---------|---------|------|
-| Everything | ローカルファイル検索 | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTPプラグイン](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
-| JavDB | メタデータ＆マグネットリンク | [javdb.com](https://javdb.com/) |
-| qBittorrent | トレントダウンロード | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
+| サービス | 必須 | 目的 | リンク |
+|---------|----------|---------|------|
+| JavDB | はい | メタデータとマグネットリンク | [javdb.com](https://javdb.com/) |
+| Everything | いいえ（オプション） | ローカルファイル検索 | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTPプラグイン](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
+| qBittorrent | いいえ（オプション） | トレントダウンロード | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
-### Cloudflare 403 問題
+### Cloudflare 403問題
 
-JavDBがHTTP 403を返す場合、Cloudflareチャレンジが原因である可能性があります。JavManagerはChromeライクなヘッダーを使用し、サードパーティツールなしでリトライします。それでも403が表示される場合は、ブラウザから`cf_clearance`と対応する`UserAgent`を設定してください（`doc/CloudflareBypass.md`参照）。
+JavDBがHTTP 403を返す場合、それはおそらくCloudflareのチャレンジによるものです。JavManagerは組み込みのChromeライクなヘッダーを使用し、サードパーティツールなしでリトライします。それでも403が表示される場合は、ブラウザから取得した`cf_clearance`と一致する`UserAgent`を構成してください（`doc/CloudflareBypass.md`を参照）。
 
 ## 設定
 
-すべての設定は`JavManager/appsettings.json`で構成します（ローカル上書きには`appsettings.Development.json`を使用）。環境変数による上書きはサポートされていません。
+すべての設定は`JavManager/appsettings.json`で構成されます（ローカルのオーバーライドには`appsettings.Development.json`を使用）。環境変数のオーバーライドはサポートされていません。
 
-### Everything
+設定リファレンス:
 
-- `BaseUrl`: Everything HTTPサーバーのベースURL（スキームとホストを含む）
-- `UserName`: オプションのベーシック認証ユーザー名
-- `Password`: オプションのベーシック認証パスワード
-
-### QBittorrent
-
-- `BaseUrl`: qBittorrent WebUIベースURL（必要な場合はポートを含む）
-- `UserName`: WebUIユーザー名
-- `Password`: WebUIパスワード
-
-### JavDb
-
-- `BaseUrl`: メインのJavDBベースURL
-- `MirrorUrls`: 追加ミラーURL（配列）
-- `RequestTimeout`: リクエストタイムアウト（ミリ秒）
-- `CfClearance`: `cf_clearance`クッキー値
-- `CfBm`: `__cf_bm`クッキー値（オプション）
-- `UserAgent`: クッキー取得元と一致するブラウザのUser-Agent文字列
-
-### Download
-
-- `DefaultSavePath`: トレントのデフォルト保存パス
-- `DefaultCategory`: qBittorrentでのデフォルトカテゴリ/タグ
-- `DefaultTags`: 作成されるダウンロードのデフォルトタグ
-
-### LocalCache
-
-- `Enabled`: ローカルキャッシュ保存の有効/無効
-- `DatabasePath`: カスタムデータベースパス（空の場合はデフォルト）
-- `CacheExpirationDays`: キャッシュのTTL（日数、0で無効）
-
-### Console
-
-- `Language`: UI言語（`en` または `zh`）
-- `HideOtherTorrents`: リストで一致しないトレントを非表示にする
-
-### Telemetry
-
-- `Enabled`: 匿名テレメトリの有効/無効
-- `Endpoint`: テレメトリエンドポイントURL
-
-### JavInfoSync
-
-- `Enabled`: JavInfo同期の有効/無効
-- `Endpoint`: JavInfo同期エンドポイントURL
-- `ApiKey`: オプションのAPIキー（エンドポイントで必要な場合）
+| セクション | キー | 必須 | デフォルト | 説明 |
+|---------|-----|----------|---------|-------------|
+| Everything | `BaseUrl` | いいえ（オプション） | `http://localhost` | Everything HTTPサーバーのベースURL（スキームとホストを含む）。利用できない場合、ローカルの重複排除はスキップされます。 |
+| Everything | `UserName` | いいえ（オプション） | _(空)_ | ベーシック認証のユーザー名。 |
+| Everything | `Password` | いいえ（オプション） | _(空)_ | ベーシック認証のパスワード。 |
+| QBittorrent | `BaseUrl` | いいえ（オプション） | `http://localhost:8080` | qBittorrent WebUIのベースURL（必要に応じてポートを含む）。利用できない/認証に失敗した場合、JavManagerはマグネットリンクを表示するのみでダウンロードキューには追加しません。 |
+| QBittorrent | `UserName` | いいえ（オプション） | `admin` | WebUIのユーザー名。 |
+| QBittorrent | `Password` | いいえ（オプション） | _(空)_ | WebUIのパスワード。 |
+| JavDb | `BaseUrl` | はい | `https://javdb.com` | プライマリJavDBのベースURL。 |
+| JavDb | `MirrorUrls` | いいえ（オプション） | `[]` | 追加のミラーURL（配列）。 |
+| JavDb | `RequestTimeout` | いいえ（オプション） | `30000` | リクエストタイムアウト（ミリ秒）。 |
+| JavDb | `CfClearance` | 時々 | _(空)_ | `cf_clearance`クッキー値（Cloudflareチャレンジがアクティブなときに必要）。 |
+| JavDb | `CfBm` | いいえ（オプション） | _(空)_ | `__cf_bm`クッキー値（オプション；成功率を向上させる可能性あり）。 |
+| JavDb | `UserAgent` | 時々 | _(空)_ | クッキーのソースに一致するブラウザのUser-Agent文字列（Cloudflareクッキーを使用するときに必要）。 |
+| Download | `DefaultSavePath` | いいえ（オプション） | _(空)_ | qBittorrentにトレントを追加するときのデフォルト保存パス。 |
+| Download | `DefaultCategory` | いいえ（オプション） | `jav` | qBittorrentのデフォルトカテゴリ。 |
+| Download | `DefaultTags` | いいえ（オプション） | `auto-download` | 作成されたダウンロードのデフォルトタグ。 |
+| LocalCache | `Enabled` | いいえ（オプション） | `true` | ローカルキャッシュストレージの有効化または無効化。 |
+| LocalCache | `DatabasePath` | いいえ（オプション） | _(空)_ | JSONキャッシュファイルパス（空のままにすると実行ファイルの隣のデフォルトの`jav_cache.json`が使用されます）。 |
+| LocalCache | `CacheExpirationDays` | いいえ（オプション） | `0` | キャッシュのTTL（日数）（0は期限切れを無効化）。 |
+| Console | `Language` | いいえ（オプション） | `en` | UI言語（`en`、`zh`、または`auto`）。 |
+| Console | `HideOtherTorrents` | いいえ（オプション） | `true` | リスト内の一致しないトレントを非表示にする。 |
+| Telemetry | `Enabled` | いいえ（オプション） | `true` | 匿名テレメトリの有効化または無効化。 |
+| Telemetry | `Endpoint` | いいえ（オプション） | _(空)_ | テレメトリエンドポイントURL（空のままにするとデフォルトが使用されます）。 |
+| JavInfoSync | `Enabled` | いいえ（オプション） | `false` | JavInfo同期の有効化または無効化。 |
+| JavInfoSync | `Endpoint` | 有効化時 | _(空)_ | JavInfo同期エンドポイントURL。 |
+| JavInfoSync | `ApiKey` | いいえ（オプション） | _(空)_ | オプションのAPIキー（`X-API-Key`で送信）。 |
 
 ## 使用方法
 
 ```bash
-# インタラクティブモード
+# 対話モード
 dotnet run --project JavManager/JavManager.csproj
 
 # 直接検索
 dotnet run --project JavManager/JavManager.csproj -- STARS-001
 
-# ヘルプ表示
+# ヘルプを表示
 dotnet run --project JavManager/JavManager.csproj -- help
 
-# バージョン表示
+# バージョンを表示
 dotnet run --project JavManager/JavManager.csproj -- version
 ```
 
-**インタラクティブコマンド:**
+**対話コマンド:**
 
 | コマンド | 説明 |
 |---------|-------------|
-| `<コード>` | JAVコードで検索（例：`STARS-001`） |
-| `r <コード>` | 検索をリフレッシュ|
-| `c` | 保存済みデータの統計を表示 |
+| `<code>` | JAVコードで検索（例: `STARS-001`） |
+| `r <code>` | 検索をリフレッシュ |
+| `c` | 保存済みデータ統計を表示 |
 | `h` | ヘルプを表示 |
 | `q` | 終了 |
 
-## ビルド＆パッケージ
+## ビルドとパッケージ化
 
 ```bash
 # ビルド
 dotnet build JavManager/JavManager.csproj
 
-# テスト実行
+# テストを実行
 dotnet test JavManager.Tests/JavManager.Tests.csproj
 
-# パッケージ化（Windowsスタンドアローンzip）
+# パッケージ化（Windowsスタンドアロンzip）
 pwsh scripts/package.ps1
 
-# PATHへのインストール（Windows）
+# PATHにインストール（Windows）
 pwsh scripts/install-windows.ps1 -AddToPath
 ```

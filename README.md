@@ -4,7 +4,7 @@ A command-line tool for automated JAV content management with fast repeat search
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-> **Note:** Currently supports Everything (local search) and qBittorrent (download). If you need support for other tools with HTTP API (e.g., other search engines or download clients), please [create an issue](../../issues/new).
+> **Note:** Everything (local search) and qBittorrent (download) are optional integrations. JavManager works without them (it can still search JavDB and output magnet links). If you need support for other tools with HTTP API (e.g., other search engines or download clients), please [create an issue](../../issues/new).
 
 ## Features
 
@@ -40,11 +40,11 @@ flowchart TD
 
 ## External Dependencies
 
-| Service | Purpose | Link |
-|---------|---------|------|
-| Everything | Local file search | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP plugin](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
-| JavDB | Metadata & magnet links | [javdb.com](https://javdb.com/) |
-| qBittorrent | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
+| Service | Required | Purpose | Link |
+|---------|----------|---------|------|
+| JavDB | Yes | Metadata & magnet links | [javdb.com](https://javdb.com/) |
+| Everything | No (optional) | Local file search | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP plugin](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
+| qBittorrent | No (optional) | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
 ### Cloudflare 403 Issue
 
@@ -54,54 +54,35 @@ If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager
 
 All settings are configured in `JavManager/appsettings.json` (use `appsettings.Development.json` for local overrides). Environment variable overrides are not supported.
 
-### Everything
+Configuration reference:
 
-- `BaseUrl`: Everything HTTP server base URL (include scheme and host).
-- `UserName`: Optional basic auth user name.
-- `Password`: Optional basic auth password.
-
-### QBittorrent
-
-- `BaseUrl`: qBittorrent WebUI base URL (include port if needed).
-- `UserName`: WebUI user name.
-- `Password`: WebUI password.
-
-### JavDb
-
-- `BaseUrl`: Primary JavDB base URL.
-- `MirrorUrls`: Additional mirror URLs (array).
-- `RequestTimeout`: Request timeout in milliseconds.
-- `CfClearance`: `cf_clearance` cookie value.
-- `CfBm`: `__cf_bm` cookie value (optional).
-- `UserAgent`: Browser User-Agent string matching the cookie source.
-
-### Download
-
-- `DefaultSavePath`: Default download path for torrents.
-- `DefaultCategory`: Default category/tag in qBittorrent.
-- `DefaultTags`: Default tags for created downloads.
-
-### LocalCache
-
-- `Enabled`: Enable or disable local cache storage.
-- `DatabasePath`: Custom database path (leave empty for default).
-- `CacheExpirationDays`: Cache TTL in days (0 disables expiration).
-
-### Console
-
-- `Language`: UI language (`en` or `zh`).
-- `HideOtherTorrents`: Hide non-matching torrents in the list.
-
-### Telemetry
-
-- `Enabled`: Enable or disable anonymous telemetry.
-- `Endpoint`: Telemetry endpoint URL.
-
-### JavInfoSync
-
-- `Enabled`: Enable or disable JavInfo sync.
-- `Endpoint`: JavInfo sync endpoint URL.
-- `ApiKey`: Optional API key (if the endpoint requires it).
+| Section | Key | Required | Default | Description |
+|---------|-----|----------|---------|-------------|
+| Everything | `BaseUrl` | No (optional) | `http://localhost` | Everything HTTP server base URL (include scheme and host). If unavailable, local dedup is skipped. |
+| Everything | `UserName` | No (optional) | _(empty)_ | Basic auth user name. |
+| Everything | `Password` | No (optional) | _(empty)_ | Basic auth password. |
+| QBittorrent | `BaseUrl` | No (optional) | `http://localhost:8080` | qBittorrent WebUI base URL (include port if needed). If unavailable/auth fails, JavManager prints magnet links without adding to download queue. |
+| QBittorrent | `UserName` | No (optional) | `admin` | WebUI user name. |
+| QBittorrent | `Password` | No (optional) | _(empty)_ | WebUI password. |
+| JavDb | `BaseUrl` | Yes | `https://javdb.com` | Primary JavDB base URL. |
+| JavDb | `MirrorUrls` | No (optional) | `[]` | Additional mirror URLs (array). |
+| JavDb | `RequestTimeout` | No (optional) | `30000` | Request timeout in milliseconds. |
+| JavDb | `CfClearance` | Sometimes | _(empty)_ | `cf_clearance` cookie value (needed when Cloudflare challenge is active). |
+| JavDb | `CfBm` | No (optional) | _(empty)_ | `__cf_bm` cookie value (optional; can improve success rate). |
+| JavDb | `UserAgent` | Sometimes | _(empty)_ | Browser User-Agent string matching the cookie source (needed when using Cloudflare cookies). |
+| Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |
+| Download | `DefaultCategory` | No (optional) | `jav` | Default category in qBittorrent. |
+| Download | `DefaultTags` | No (optional) | `auto-download` | Default tags for created downloads. |
+| LocalCache | `Enabled` | No (optional) | `true` | Enable or disable local cache storage. |
+| LocalCache | `DatabasePath` | No (optional) | _(empty)_ | JSON cache file path (leave empty for default `jav_cache.json` next to the executable). |
+| LocalCache | `CacheExpirationDays` | No (optional) | `0` | Cache TTL in days (0 disables expiration). |
+| Console | `Language` | No (optional) | `en` | UI language (`en`, `zh`, or `auto`). |
+| Console | `HideOtherTorrents` | No (optional) | `true` | Hide non-matching torrents in the list. |
+| Telemetry | `Enabled` | No (optional) | `true` | Enable or disable anonymous telemetry. |
+| Telemetry | `Endpoint` | No (optional) | _(empty)_ | Telemetry endpoint URL (leave empty to use the default). |
+| JavInfoSync | `Enabled` | No (optional) | `false` | Enable or disable JavInfo sync. |
+| JavInfoSync | `Endpoint` | If enabled | _(empty)_ | JavInfo sync endpoint URL. |
+| JavInfoSync | `ApiKey` | No (optional) | _(empty)_ | Optional API key (sent via `X-API-Key`). |
 
 ## Usage
 

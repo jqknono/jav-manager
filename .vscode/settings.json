@@ -20,5 +20,6 @@
                 }
             ]
         }
-    ]
+    ],
+    "projectTranslator.debug": true
 }

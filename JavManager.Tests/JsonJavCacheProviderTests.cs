@@ -1,27 +1,26 @@
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Models;
 using JavManager.DataProviders.LocalCache;
-using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace JavManager.Tests;
 
-public class SqliteJavCacheProviderTests
+public class JsonJavCacheProviderTests
 {
     [Fact]
     public async Task SaveAsync_PersistsAndLoadsResult()
     {
-        var dbPath = Path.Combine(Path.GetTempPath(), $"javmanager_cache_{Guid.NewGuid():N}.db");
+        var cachePath = Path.Combine(Path.GetTempPath(), $"javmanager_cache_{Guid.NewGuid():N}.json");
         try
         {
             var config = new LocalCacheConfig
             {
                 Enabled = true,
-                DatabasePath = dbPath,
+                DatabasePath = cachePath,
                 CacheExpirationDays = 0
             };
 
-            var provider = new SqliteJavCacheProvider(config);
+            var provider = new JsonJavCacheProvider(config);
             await provider.InitializeAsync();
 
             var result = new JavSearchResult
@@ -63,33 +62,24 @@ public class SqliteJavCacheProviderTests
 
             Assert.NotNull(loaded);
             Assert.Equal("ABC-123", loaded!.JavId);
+            Assert.Equal("Local", loaded.DataSource);
             Assert.Equal("Test Title", loaded.Title);
             Assert.Single(loaded.Actors);
             Assert.Single(loaded.Categories);
             Assert.Single(loaded.Torrents);
+            Assert.NotNull(loaded.CachedAt);
 
             var stats = await provider.GetStatisticsAsync();
             Assert.Equal(1, stats.TotalJavCount);
             Assert.Equal(1, stats.TotalTorrentCount);
             Assert.True(stats.DatabaseSizeBytes > 0);
             Assert.NotNull(stats.LastUpdatedAt);
-
-            await using (var connection = new SqliteConnection($"Data Source={dbPath}"))
-            {
-                await connection.OpenAsync();
-
-                // Category columns are created dynamically as Cat_<CategoryName> with basic sanitization.
-                await using var command = connection.CreateCommand();
-                command.CommandText = "SELECT Cat_Category_A FROM JavInfo WHERE JavId = 'ABC-123' LIMIT 1;";
-                var flag = Convert.ToInt32(await command.ExecuteScalarAsync());
-                Assert.Equal(1, flag);
-            }
         }
         finally
         {
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(dbPath))
-                File.Delete(dbPath);
+            if (File.Exists(cachePath))
+                File.Delete(cachePath);
         }
     }
 }
+

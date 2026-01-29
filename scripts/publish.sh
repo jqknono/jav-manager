@@ -38,11 +38,10 @@ if [[ "${SELF_CONTAINED}" != "true" && "${TRIMMED}" == "true" ]]; then
 fi
 
 INCLUDE_NATIVE_LIBS="true"
+ENABLE_COMPRESSION="true"
 if [[ "${SELF_CONTAINED}" == "true" ]]; then
-  ENABLE_COMPRESSION="true"
   STRICT_SINGLE_FILE="true"
 else
-  ENABLE_COMPRESSION="false"
   STRICT_SINGLE_FILE="false"
 fi
 

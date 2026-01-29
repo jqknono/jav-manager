@@ -44,7 +44,7 @@ $single = ToLowerBool $SingleFile
 $r2r = ToLowerBool $ReadyToRun
 $trim = ToLowerBool $Trimmed
 $includeNative = "true"
-$compression = ToLowerBool $SelfContained
+$compression = "true"
 $strictSingleFile = ToLowerBool $SelfContained
 
 if (-not $SelfContained -and $Trimmed) {

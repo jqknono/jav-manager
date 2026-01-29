@@ -641,7 +641,7 @@ class Program
 
                 // 注册本地缓存提供者
                 if (localCacheConfig.Enabled)
-                    services.AddSingleton<IJavLocalCacheProvider, SqliteJavCacheProvider>();
+                    services.AddSingleton<IJavLocalCacheProvider, JsonJavCacheProvider>();
 
                 // 运行时服务可用性（由健康检查更新）
                 services.AddSingleton<ServiceAvailability>();
