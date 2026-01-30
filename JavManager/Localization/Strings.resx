@@ -117,6 +117,12 @@
   <data name="CmdHelp" xml:space="preserve">
     <value>h                         Show help</value>
   </data>
+  <data name="CmdLang" xml:space="preserve">
+    <value>lang &lt;auto|en|zh&gt;          Change UI language</value>
+  </data>
+  <data name="CmdConfig" xml:space="preserve">
+    <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  Configure service connection</value>
+  </data>
   <data name="CmdQuit" xml:space="preserve">
     <value>q                         Quit</value>
   </data>
@@ -128,6 +134,45 @@
   </data>
   <data name="HelpTitle" xml:space="preserve">
     <value>{0} {1} - Commands:</value>
+  </data>
+  <data name="HelpOptionsTitle" xml:space="preserve">
+    <value>Options:</value>
+  </data>
+  <data name="OptLanguage" xml:space="preserve">
+    <value>--lang &lt;auto|en|zh&gt;         Set UI language</value>
+  </data>
+  <data name="OptJavDbUrl" xml:space="preserve">
+    <value>--javdb-url &lt;url&gt;            JavDB base URL</value>
+  </data>
+  <data name="OptEverythingUrl" xml:space="preserve">
+    <value>--everything-url &lt;url&gt;       Everything base URL</value>
+  </data>
+  <data name="OptEverythingUser" xml:space="preserve">
+    <value>--everything-user &lt;username&gt; Everything username</value>
+  </data>
+  <data name="OptEverythingPass" xml:space="preserve">
+    <value>--everything-pass &lt;password&gt; Everything password</value>
+  </data>
+  <data name="OptQBittorrentUrl" xml:space="preserve">
+    <value>--qb-url &lt;url&gt;               qBittorrent base URL</value>
+  </data>
+  <data name="OptQBittorrentUser" xml:space="preserve">
+    <value>--qb-user &lt;username&gt;         qBittorrent username</value>
+  </data>
+  <data name="OptQBittorrentPass" xml:space="preserve">
+    <value>--qb-pass &lt;password&gt;         qBittorrent password</value>
+  </data>
+  <data name="UsageLang" xml:space="preserve">
+    <value>Usage: lang &lt;auto|en|zh&gt;</value>
+  </data>
+  <data name="LangSwitched" xml:space="preserve">
+    <value>Language switched to: {0}</value>
+  </data>
+  <data name="UsageConfig" xml:space="preserve">
+    <value>Usage: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
+  </data>
+  <data name="ConfigUpdated" xml:space="preserve">
+    <value>Configuration updated.</value>
   </data>
 
   <!-- Prompts -->

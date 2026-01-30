@@ -66,6 +66,8 @@ public class DisplayService
         AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdHealthCheck))}");
         AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdVersion))}");
         AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdHelp))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdLang))}");
+        AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdConfig))}");
         AnsiConsole.MarkupLine($"  • {Markup.Escape(_loc.Get(L.CmdQuit))}");
         AnsiConsole.WriteLine();
     }

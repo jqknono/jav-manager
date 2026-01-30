@@ -63,8 +63,11 @@ class Program
         {
             ConfigureConsoleEncoding();
 
+            // 解析全局命令行配置覆盖（尽早解析，以支持语言/遥测等配置）
+            var (configOverrides, effectiveArgs) = ExtractConfigurationOverrides(args);
+
             // 构建配置（尽早构建，以支持语言/遥测等配置）
-            var config = BuildConfiguration();
+            var config = BuildConfiguration(configOverrides);
 
             // 初始化本地化服务（尽早初始化以支持命令行帮助显示）
             _loc = new LocalizationService(config);
@@ -75,14 +78,14 @@ class Program
             _telemetry.TrackStartup();
 
             // 测试 curl
-            if (args.Length > 0 && args[0] == "--test-curl")
+            if (effectiveArgs.Length > 0 && effectiveArgs[0] == "--test-curl")
             {
                 await TestCurl.RunTestAsync(config, _loc);
                 return;
             }
 
             // 解析命令行参数
-            var subCommand = args.Length > 0 ? args[0].Trim() : string.Empty;
+            var subCommand = effectiveArgs.Length > 0 ? effectiveArgs[0].Trim() : string.Empty;
             if (subCommand.Equals("version", StringComparison.OrdinalIgnoreCase) ||
                 subCommand.Equals("v", StringComparison.OrdinalIgnoreCase) ||
                 subCommand.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
@@ -121,9 +124,9 @@ class Program
                 await cacheProvider.InitializeAsync();
             }
 
-            if (args.Length > 0 &&
+            if (effectiveArgs.Length > 0 &&
                 await TryExecuteSubCommandAsync(
-                    args,
+                    effectiveArgs,
                     services,
                     displayService,
                     inputHandler,
@@ -136,7 +139,7 @@ class Program
                 return;
             }
 
-            var javId = ParseCommandLineArgs(args);
+            var javId = ParseCommandLineArgs(effectiveArgs);
             var startupHealthCheckTask = healthCheckService.CheckAllAsync();
             _ = startupHealthCheckTask.ContinueWith(
                 t =>
@@ -211,8 +214,29 @@ class Program
         AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdHealthCheck))}[/]");
         AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdVersion))}[/]");
         AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdHelp))}[/]");
+        AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdLang))}[/]");
+        AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdConfig))}[/]");
         AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(_loc.Get(L.CmdQuit))}[/]");
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.CmdTestCurl))}[/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.HelpOptionsTitle))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptLanguage))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptJavDbUrl))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptEverythingUrl))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptEverythingUser))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptEverythingPass))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptQBittorrentUrl))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptQBittorrentUser))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptQBittorrentPass))}[/]");
+    }
+
+    static string MaskSecret(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "-";
+        if (value.Length <= 2)
+            return "**";
+        return new string('*', Math.Min(value.Length, 8));
     }
 
     static List<string> SplitArgs(string commandLine)
@@ -284,6 +308,129 @@ class Program
             cmd.Equals("-v", StringComparison.OrdinalIgnoreCase))
         {
             displayService.ShowInfo($"{AppInfo.Name} {AppInfo.Version}");
+            return true;
+        }
+
+        if (cmd.Equals("lang", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("language", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length < 2)
+            {
+                displayService.ShowError(_loc!.Get(L.UsageLang));
+                return true;
+            }
+
+            _loc!.SetLanguage(args[1]);
+            displayService.ShowSuccess(_loc.GetFormat(L.LangSwitched, _loc.CurrentCulture.TwoLetterISOLanguageName));
+            return true;
+        }
+
+        if (cmd.Equals("cfg", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("config", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length < 2)
+            {
+                displayService.ShowError(_loc!.Get(L.UsageConfig));
+                return true;
+            }
+
+            var action = args[1].Trim();
+            if (action.Equals("show", StringComparison.OrdinalIgnoreCase))
+            {
+                var everythingConfig = services.GetRequiredService<EverythingConfig>();
+                var qbConfig = services.GetRequiredService<QBittorrentConfig>();
+                var javDbConfig = services.GetRequiredService<JavDbConfig>();
+
+                displayService.ShowInfo($"Everything.BaseUrl: {everythingConfig.BaseUrl}");
+                displayService.ShowInfo($"Everything.UserName: {everythingConfig.UserName ?? "-"}");
+                displayService.ShowInfo($"Everything.Password: {MaskSecret(everythingConfig.Password)}");
+
+                displayService.ShowInfo($"QBittorrent.BaseUrl: {qbConfig.BaseUrl}");
+                displayService.ShowInfo($"QBittorrent.UserName: {qbConfig.UserName}");
+                displayService.ShowInfo($"QBittorrent.Password: {MaskSecret(qbConfig.Password)}");
+
+                displayService.ShowInfo($"JavDb.BaseUrl: {javDbConfig.BaseUrl}");
+                return true;
+            }
+
+            if (args.Length < 4)
+            {
+                displayService.ShowError(_loc!.Get(L.UsageConfig));
+                return true;
+            }
+
+            var service = args[1].Trim();
+            var key = args[2].Trim();
+            var value = string.Join(" ", args.Skip(3)).Trim();
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                displayService.ShowError(_loc!.Get(L.UsageConfig));
+                return true;
+            }
+
+            if (service.Equals("everything", StringComparison.OrdinalIgnoreCase) ||
+                service.Equals("ev", StringComparison.OrdinalIgnoreCase))
+            {
+                var everythingConfig = services.GetRequiredService<EverythingConfig>();
+                if (key.Equals("url", StringComparison.OrdinalIgnoreCase) ||
+                    key.Equals("baseurl", StringComparison.OrdinalIgnoreCase))
+                    everythingConfig.BaseUrl = value;
+                else if (key.Equals("user", StringComparison.OrdinalIgnoreCase) ||
+                         key.Equals("username", StringComparison.OrdinalIgnoreCase))
+                    everythingConfig.UserName = value;
+                else if (key.Equals("pass", StringComparison.OrdinalIgnoreCase) ||
+                         key.Equals("password", StringComparison.OrdinalIgnoreCase))
+                    everythingConfig.Password = value;
+                else
+                {
+                    displayService.ShowError(_loc!.Get(L.UsageConfig));
+                    return true;
+                }
+
+                displayService.ShowSuccess(_loc!.Get(L.ConfigUpdated));
+                return true;
+            }
+
+            if (service.Equals("qb", StringComparison.OrdinalIgnoreCase) ||
+                service.Equals("qbittorrent", StringComparison.OrdinalIgnoreCase))
+            {
+                var qbConfig = services.GetRequiredService<QBittorrentConfig>();
+                if (key.Equals("url", StringComparison.OrdinalIgnoreCase) ||
+                    key.Equals("baseurl", StringComparison.OrdinalIgnoreCase))
+                    qbConfig.BaseUrl = value;
+                else if (key.Equals("user", StringComparison.OrdinalIgnoreCase) ||
+                         key.Equals("username", StringComparison.OrdinalIgnoreCase))
+                    qbConfig.UserName = value;
+                else if (key.Equals("pass", StringComparison.OrdinalIgnoreCase) ||
+                         key.Equals("password", StringComparison.OrdinalIgnoreCase))
+                    qbConfig.Password = value;
+                else
+                {
+                    displayService.ShowError(_loc!.Get(L.UsageConfig));
+                    return true;
+                }
+
+                displayService.ShowSuccess(_loc!.Get(L.ConfigUpdated));
+                return true;
+            }
+
+            if (service.Equals("javdb", StringComparison.OrdinalIgnoreCase))
+            {
+                var javDbConfig = services.GetRequiredService<JavDbConfig>();
+                if (key.Equals("url", StringComparison.OrdinalIgnoreCase) ||
+                    key.Equals("baseurl", StringComparison.OrdinalIgnoreCase))
+                {
+                    javDbConfig.BaseUrl = value;
+                    displayService.ShowSuccess(_loc!.Get(L.ConfigUpdated));
+                    return true;
+                }
+
+                displayService.ShowError(_loc!.Get(L.UsageConfig));
+                return true;
+            }
+
+            displayService.ShowError(_loc!.Get(L.UsageConfig));
             return true;
         }
 
@@ -546,6 +693,72 @@ class Program
         return args[0];
     }
 
+    static (Dictionary<string, string> Overrides, string[] RemainingArgs) ExtractConfigurationOverrides(string[] args)
+    {
+        var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var remaining = new List<string>();
+
+        var optionToConfigKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["--lang"] = "Console:Language",
+            ["--language"] = "Console:Language",
+
+            ["--everything-url"] = "Everything:BaseUrl",
+            ["--everything-user"] = "Everything:UserName",
+            ["--everything-username"] = "Everything:UserName",
+            ["--everything-pass"] = "Everything:Password",
+            ["--everything-password"] = "Everything:Password",
+
+            ["--qb-url"] = "QBittorrent:BaseUrl",
+            ["--qb-user"] = "QBittorrent:UserName",
+            ["--qb-username"] = "QBittorrent:UserName",
+            ["--qb-pass"] = "QBittorrent:Password",
+            ["--qb-password"] = "QBittorrent:Password",
+
+            ["--javdb-url"] = "JavDb:BaseUrl",
+        };
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (arg == "--")
+            {
+                remaining.AddRange(args.Skip(i + 1));
+                break;
+            }
+
+            var name = arg;
+            string? value = null;
+            var hasInlineValue = false;
+
+            if (arg.StartsWith("--", StringComparison.Ordinal) && arg.Contains('=') && arg.Length > 3)
+            {
+                var idx = arg.IndexOf('=');
+                name = arg[..idx];
+                value = arg[(idx + 1)..];
+                hasInlineValue = true;
+            }
+
+            if (optionToConfigKey.TryGetValue(name, out var configKey))
+            {
+                if (!hasInlineValue)
+                {
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException($"Missing value for {name}.");
+                    value = args[i + 1];
+                    i++;
+                }
+
+                overrides[configKey] = value ?? string.Empty;
+                continue;
+            }
+
+            remaining.Add(arg);
+        }
+
+        return (overrides, remaining.ToArray());
+    }
+
     static string? TryGetAppHostDirectory()
     {
         var processPath = Environment.ProcessPath;
@@ -570,14 +783,26 @@ class Program
     /// <summary>
     /// 构建配置
     /// </summary>
-    static IConfiguration BuildConfiguration()
+    static IConfiguration BuildConfiguration(IReadOnlyDictionary<string, string>? overrides)
     {
         // NOTE:
         // - For single-file releases, appsettings.json should be available without shipping an extra file.
         // - Allow users to override config by placing appsettings.json next to the executable.
         var basePath = AppContext.BaseDirectory;
 
-        var embeddedAppSettingsStream = TryOpenEmbeddedAppSettingsJson();
+        var appHostDir = TryGetAppHostDirectory();
+        var embeddedAppSettingsBytes = TryGetEmbeddedAppSettingsJsonBytes();
+
+        // If running as the native app host (single-file binary), create a user-editable config
+        // next to the executable on first run. This keeps local-only settings out of the binary.
+        if (!string.IsNullOrWhiteSpace(appHostDir) && embeddedAppSettingsBytes != null)
+        {
+            TryWriteAppSettingsJsonIfMissing(appHostDir, embeddedAppSettingsBytes);
+        }
+
+        MemoryStream? embeddedAppSettingsStream = embeddedAppSettingsBytes != null
+            ? new MemoryStream(embeddedAppSettingsBytes, writable: false)
+            : null;
 
         var builder = new ConfigurationBuilder()
             .SetBasePath(basePath);
@@ -592,7 +817,6 @@ class Program
             .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables(prefix: "JAVMANAGER_");
 
-        var appHostDir = TryGetAppHostDirectory();
         if (!string.IsNullOrWhiteSpace(appHostDir) && !IsSameDirectory(appHostDir, basePath))
         {
             builder
@@ -602,9 +826,53 @@ class Program
                 .AddEnvironmentVariables(prefix: "JAVMANAGER_");
         }
 
+        if (overrides != null && overrides.Count > 0)
+        {
+            builder.AddInMemoryCollection(
+                overrides.Select(kvp => new KeyValuePair<string, string?>(kvp.Key, kvp.Value)));
+        }
+
         var config = builder.Build();
         embeddedAppSettingsStream?.Dispose();
         return config;
+    }
+
+    static void TryWriteAppSettingsJsonIfMissing(string directory, byte[] templateBytes)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+            return;
+
+        var path = Path.Combine(directory, "appsettings.json");
+        if (File.Exists(path))
+            return;
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(path, templateBytes);
+        }
+        catch
+        {
+            // ignore: writing config should never block startup
+        }
+    }
+
+    static byte[]? TryGetEmbeddedAppSettingsJsonBytes()
+    {
+        var stream = TryOpenEmbeddedAppSettingsJson();
+        if (stream == null)
+            return null;
+
+        try
+        {
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+        finally
+        {
+            stream.Dispose();
+        }
     }
 
     static Stream? TryOpenEmbeddedAppSettingsJson()

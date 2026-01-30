@@ -82,6 +82,7 @@ jobs:
           rm -rf "${out_dir_sc}" "${out_dir_fdd}"
           mkdir -p "${out_dir_sc}" "${out_dir_fdd}"
 
+          # Self-contained single-file (portable, no runtime required)
           dotnet publish "JavManager/JavManager.csproj" \
             -c Release \
             -r "${{ matrix.rid }}" \
@@ -96,22 +97,20 @@ jobs:
             -p:PublishTrimmed=false \
             -p:DebugType=None
 
+          # Framework-dependent (requires .NET runtime; multi-file output)
           dotnet publish "JavManager/JavManager.csproj" \
             -c Release \
             -r "${{ matrix.rid }}" \
             --output "${out_dir_fdd}" \
             --self-contained false \
             -p:Version="${{ needs.meta.outputs.version }}" \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:IncludeAllContentForSelfExtract=true \
-            -p:EnableCompressionInSingleFile=true \
+            -p:PublishSingleFile=false \
             -p:PublishReadyToRun=false \
             -p:PublishTrimmed=false \
             -p:StrictSingleFileReleasePublish=false \
             -p:DebugType=None
 
-      - name: Assert single-file publish output (strict)
+      - name: Assert publish outputs
         shell: bash
         run: |
           set -euo pipefail
@@ -152,7 +151,42 @@ jobs:
           }
 
           check_output "${out_dir_sc}" "self-contained"
-          check_output "${out_dir_fdd}" "fdd"
+
+          # Framework-dependent publish should be multi-file and contain expected entry + core files.
+          if [[ ! -f "${out_dir_fdd}/${expected}" ]]; then
+            echo "FDD output missing entrypoint: ${out_dir_fdd}/${expected}" >&2
+            ls -la "${out_dir_fdd}" >&2
+            exit 1
+          fi
+          if [[ ! -f "${out_dir_fdd}/JavManager.dll" ]]; then
+            echo "FDD output missing JavManager.dll: ${out_dir_fdd}/JavManager.dll" >&2
+            ls -la "${out_dir_fdd}" >&2
+            exit 1
+          fi
+          if [[ ! -f "${out_dir_fdd}/JavManager.runtimeconfig.json" ]]; then
+            echo "FDD output missing runtimeconfig: ${out_dir_fdd}/JavManager.runtimeconfig.json" >&2
+            ls -la "${out_dir_fdd}" >&2
+            exit 1
+          fi
+          if [[ ! -f "${out_dir_fdd}/JavManager.deps.json" ]]; then
+            echo "FDD output missing deps.json: ${out_dir_fdd}/JavManager.deps.json" >&2
+            ls -la "${out_dir_fdd}" >&2
+            exit 1
+          fi
+
+          shopt -s nullglob
+          fdd_files=("${out_dir_fdd}"/*)
+          fdd_real_files=()
+          for f in "${fdd_files[@]}"; do
+            if [[ -f "${f}" ]]; then
+              fdd_real_files+=("${f}")
+            fi
+          done
+          if (( ${#fdd_real_files[@]} <= 1 )); then
+            echo "FDD output expected multi-file publish, but found ${#fdd_real_files[@]} file(s)." >&2
+            ls -la "${out_dir_fdd}" >&2
+            exit 1
+          fi
 
       - name: Prepare binary for release
         shell: bash
@@ -169,19 +203,23 @@ jobs:
           if [[ "${rid}" == win-* ]]; then
             src_sc="${out_dir_sc}/JavManager.exe"
             dest_sc="${bin_dir}/JavManager_${version}_${rid}_sc.exe"
-            src_fdd="${out_dir_fdd}/JavManager.exe"
-            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd.exe"
+            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd.zip"
           else
             src_sc="${out_dir_sc}/JavManager"
             dest_sc="${bin_dir}/JavManager_${version}_${rid}_sc"
-            src_fdd="${out_dir_fdd}/JavManager"
-            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd"
+            dest_fdd="${bin_dir}/JavManager_${version}_${rid}_fdd.tar.gz"
           fi
 
           cp "${src_sc}" "${dest_sc}"
           echo "Created: ${dest_sc}"
 
-          cp "${src_fdd}" "${dest_fdd}"
+          if [[ "${rid}" == win-* ]]; then
+            # Use PowerShell on Windows runners to create a zip archive.
+            # Note: this step runs under bash, but pwsh is available on windows-latest.
+            pwsh -NoProfile -Command "if (Test-Path '${dest_fdd}') { Remove-Item -Force '${dest_fdd}' }; Compress-Archive -Path '${out_dir_fdd}/*' -DestinationPath '${dest_fdd}'"
+          else
+            tar -czf "${dest_fdd}" -C "${out_dir_fdd}" .
+          fi
           echo "Created: ${dest_fdd}"
 
       - name: Upload artifact
@@ -236,7 +274,7 @@ jobs:
             echo "## Assets"
             echo
             echo "- Self-contained single-file binaries: *_sc"
-            echo "- Framework-dependent single-file binaries: *_fdd (requires .NET 8 runtime)"
+            echo "- Framework-dependent multi-file bundles: *_fdd (requires .NET 8 runtime)"
             echo "- `SHA256SUMS.txt` for verification."
           } > RELEASE_NOTES.md
 

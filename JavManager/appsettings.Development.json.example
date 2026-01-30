@@ -1,17 +1,17 @@
 {
   "Everything": {
-    "BaseUrl": "http://localhost:8080",
+    "BaseUrl": "",
     "UserName": null,
     "Password": null
   },
   "QBittorrent": {
-    "BaseUrl": "http://localhost:8081",
-    "UserName": "admin",
-    "Password": "your_password"
+    "BaseUrl": "",
+    "UserName": "",
+    "Password": ""
   },
   "JavDb": {
     "BaseUrl": "https://javdb.com",
-    "MirrorUrls": ["https://javdb565.com", "https://javdb564.com"],
+    "MirrorUrls": [],
     "RequestTimeout": 30000,
     "UserAgent": "",
     "CurlImpersonate": {

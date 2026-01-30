@@ -44,6 +44,11 @@ public class HttpHelper : IDisposable
         _defaultHeaders[name] = value;
     }
 
+    public bool RemoveDefaultHeader(string name)
+    {
+        return _defaultHeaders.Remove(name);
+    }
+
     /// <summary>
     /// 设置 Basic Auth
     /// </summary>

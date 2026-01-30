@@ -17,21 +17,26 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
     private readonly EverythingConfig _config;
     private readonly HttpHelper _httpHelper;
     private readonly LocalizationService _loc;
-    private readonly string _baseUrl;
 
     public EverythingHttpClient(EverythingConfig config, LocalizationService localizationService, HttpHelper? httpHelper = null)
     {
         _config = config;
         _loc = localizationService;
         _httpHelper = httpHelper ?? new HttpHelper(TimeSpan.FromSeconds(10));
+    }
 
-        // 构建基础 URL
-        _baseUrl = $"{_config.BaseUrl.TrimEnd('/')}";
+    private string GetBaseUrl()
+        => _config.BaseUrl.TrimEnd('/');
 
-        // 设置认证
+    private void ApplyRuntimeConfig()
+    {
         if (_config.UseAuthentication)
         {
-            _httpHelper.SetBasicAuth(_config.UserName!, _config.Password!);
+            _httpHelper.SetBasicAuth(_config.UserName!, _config.Password ?? string.Empty);
+        }
+        else
+        {
+            _httpHelper.RemoveDefaultHeader("Authorization");
         }
     }
 
@@ -42,9 +47,12 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
     {
         try
         {
+            ApplyRuntimeConfig();
+            var baseUrl = GetBaseUrl();
+
             // 构建查询 URL
             var query = Uri.EscapeDataString(searchTerm);
-            var url = $"{_baseUrl}/?s={query}&json=1&path_column=1&size_column=1&date_modified_column=1";
+            var url = $"{baseUrl}/?s={query}&json=1&path_column=1&size_column=1&date_modified_column=1";
 
             // 发送请求
             var response = await _httpHelper.GetAsync(url);
@@ -177,6 +185,8 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
         var healthCheckTimeout = TimeSpan.FromSeconds(3);
+        ApplyRuntimeConfig();
+        var baseUrl = GetBaseUrl();
 
         // 健康检查重试（主要应对网络/DNS 等瞬时问题）
         const int maxAttempts = 3;
@@ -187,7 +197,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
             try
             {
                 // 发送一个简单查询来测试连接
-                var url = $"{_baseUrl}/?s=test&json=1&count=1";
+                var url = $"{baseUrl}/?s=test&json=1&count=1";
                 var response = await _httpHelper.GetAsync(url, timeout: healthCheckTimeout);
 
                 // 尝试解析响应
@@ -199,7 +209,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
                         ServiceName = ((IHealthChecker)this).ServiceName,
                         IsHealthy = false,
                         Message = _loc.GetFormat(L.HealthConnectionFailed, "Missing results field"),
-                        Url = _baseUrl
+                        Url = baseUrl
                     };
                 }
 
@@ -208,7 +218,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
                     ServiceName = ((IHealthChecker)this).ServiceName,
                     IsHealthy = true,
                     Message = _loc.Get(L.HealthServiceOk),
-                    Url = _baseUrl
+                    Url = baseUrl
                 };
             }
             catch (Exception ex)
@@ -222,7 +232,7 @@ public class EverythingHttpClient : IEverythingSearchProvider, IHealthChecker
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
             Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? "Unknown error"),
-            Url = _baseUrl
+            Url = baseUrl
         };
     }
 }

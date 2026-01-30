@@ -10,7 +10,7 @@ namespace JavManager.Localization;
 public class LocalizationService
 {
     private readonly ResourceManager _resourceManager;
-    private readonly CultureInfo _culture;
+    private CultureInfo _culture;
 
     /// <summary>
     /// 当前使用的语言文化
@@ -39,6 +39,19 @@ public class LocalizationService
         var language = configuration?.GetValue<string>("Console:Language");
         if (string.IsNullOrWhiteSpace(language))
             return new CultureInfo("en"); // default: English
+
+        return ResolveCultureFromLanguageString(language);
+    }
+
+    public void SetLanguage(string language)
+    {
+        _culture = ResolveCultureFromLanguageString(language);
+    }
+
+    private static CultureInfo ResolveCultureFromLanguageString(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+            return new CultureInfo("en");
 
         language = language.Trim();
         if (language.Equals("auto", StringComparison.OrdinalIgnoreCase))
@@ -118,6 +131,22 @@ public static class L
     public const string CmdQuit = "CmdQuit";
     public const string CmdCacheStats = "CmdCacheStats";
     public const string CmdTestCurl = "CmdTestCurl";
+    public const string CmdLang = "CmdLang";
+    public const string CmdConfig = "CmdConfig";
+    public const string HelpOptionsTitle = "HelpOptionsTitle";
+    public const string OptLanguage = "OptLanguage";
+    public const string OptEverythingUrl = "OptEverythingUrl";
+    public const string OptEverythingUser = "OptEverythingUser";
+    public const string OptEverythingPass = "OptEverythingPass";
+    public const string OptQBittorrentUrl = "OptQBittorrentUrl";
+    public const string OptQBittorrentUser = "OptQBittorrentUser";
+    public const string OptQBittorrentPass = "OptQBittorrentPass";
+    public const string OptJavDbUrl = "OptJavDbUrl";
+
+    public const string UsageLang = "UsageLang";
+    public const string LangSwitched = "LangSwitched";
+    public const string UsageConfig = "UsageConfig";
+    public const string ConfigUpdated = "ConfigUpdated";
     public const string HelpTitle = "HelpTitle";
 
     // === 提示语 ===

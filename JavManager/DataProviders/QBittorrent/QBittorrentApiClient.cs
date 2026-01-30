@@ -18,19 +18,42 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     private readonly QBittorrentConfig _config;
     private readonly HttpHelper _httpHelper;
     private readonly LocalizationService _loc;
-    private readonly string _baseUrl;
     private string? _sidCookie;
     private DateTime _loginTime;
+    private string? _appliedBaseUrl;
+    private string? _appliedUserName;
+    private string? _appliedPassword;
 
     public QBittorrentApiClient(QBittorrentConfig config, LocalizationService localizationService, HttpHelper? httpHelper = null)
     {
         _config = config;
         _loc = localizationService;
         _httpHelper = httpHelper ?? new HttpHelper(TimeSpan.FromSeconds(30));
-        _baseUrl = _config.BaseUrl.TrimEnd('/');
+    }
 
-        // 设置默认请求头
-        _httpHelper.SetDefaultHeader("Referer", _baseUrl);
+    private string GetBaseUrl()
+        => _config.BaseUrl.TrimEnd('/');
+
+    private void ApplyRuntimeConfig()
+    {
+        var baseUrl = GetBaseUrl();
+        var baseChanged = !string.Equals(_appliedBaseUrl, baseUrl, StringComparison.OrdinalIgnoreCase);
+        var credentialsChanged =
+            !string.Equals(_appliedUserName, _config.UserName, StringComparison.Ordinal) ||
+            !string.Equals(_appliedPassword, _config.Password, StringComparison.Ordinal);
+
+        if (baseChanged)
+        {
+            _appliedBaseUrl = baseUrl;
+            _httpHelper.SetDefaultHeader("Referer", baseUrl);
+        }
+
+        if (baseChanged || credentialsChanged)
+        {
+            _appliedUserName = _config.UserName;
+            _appliedPassword = _config.Password;
+            _sidCookie = null;
+        }
     }
 
     /// <summary>
@@ -38,6 +61,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     /// </summary>
     public async Task LoginAsync()
     {
+        ApplyRuntimeConfig();
         try
         {
             var formData = new Dictionary<string, string>
@@ -46,7 +70,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 { "password", _config.Password }
             };
 
-            var url = $"{_baseUrl}/api/v2/auth/login";
+            var url = $"{GetBaseUrl()}/api/v2/auth/login";
             var response = await _httpHelper.PostAsync(url, formData);
 
             if (!IsOkResponse(response))
@@ -67,6 +91,8 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     /// </summary>
     private async Task EnsureLoggedInAsync()
     {
+        ApplyRuntimeConfig();
+
         // 如果未登录或超过 30 分钟，重新登录
         if (_sidCookie == null || DateTime.UtcNow - _loginTime > TimeSpan.FromMinutes(30))
         {
@@ -99,7 +125,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
             if (!string.IsNullOrEmpty(tags))
                 formData["tags"] = tags;
 
-            var url = $"{_baseUrl}/api/v2/torrents/add";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/add";
             var response = await _httpHelper.PostMultipartAsync(url, formData);
             if (!IsOkResponse(response))
                 throw new InvalidOperationException($"qBittorrent rejected torrent: {NormalizeResponseText(response)}");
@@ -139,7 +165,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
             if (!string.IsNullOrEmpty(tags))
                 formData["tags"] = tags;
 
-            var url = $"{_baseUrl}/api/v2/torrents/add";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/add";
             var response = await _httpHelper.PostMultipartAsync(url, formData);
             if (!IsOkResponse(response))
                 throw new InvalidOperationException($"qBittorrent rejected torrent URL(s): {NormalizeResponseText(response)}");
@@ -177,7 +203,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     {
         try
         {
-            var url = $"{_baseUrl}/api/v2/torrents/info?hashes={Uri.EscapeDataString(infoHash)}";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/info?hashes={Uri.EscapeDataString(infoHash)}";
             var response = await _httpHelper.GetAsync(url);
             var jsonArray = JArray.Parse(response);
             return jsonArray.Count > 0;
@@ -214,7 +240,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
 
         try
         {
-            var url = $"{_baseUrl}/api/v2/torrents/info";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/info";
             var response = await _httpHelper.GetAsync(url);
 
             return ParseTorrentList(response);
@@ -235,7 +261,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         try
         {
             var hashesStr = string.Join("|", hashes);
-            var url = $"{_baseUrl}/api/v2/torrents/stop?hashes={Uri.EscapeDataString(hashesStr)}";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/stop?hashes={Uri.EscapeDataString(hashesStr)}";
             await _httpHelper.PostAsync(url, new Dictionary<string, string>());
         }
         catch (Exception ex)
@@ -254,7 +280,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         try
         {
             var hashesStr = string.Join("|", hashes);
-            var url = $"{_baseUrl}/api/v2/torrents/start?hashes={Uri.EscapeDataString(hashesStr)}";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/start?hashes={Uri.EscapeDataString(hashesStr)}";
             await _httpHelper.PostAsync(url, new Dictionary<string, string>());
         }
         catch (Exception ex)
@@ -273,7 +299,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         try
         {
             var hashesStr = string.Join("|", hashes);
-            var url = $"{_baseUrl}/api/v2/torrents/delete?hashes={Uri.EscapeDataString(hashesStr)}&deleteFiles={deleteFiles.ToString().ToLower()}";
+            var url = $"{GetBaseUrl()}/api/v2/torrents/delete?hashes={Uri.EscapeDataString(hashesStr)}&deleteFiles={deleteFiles.ToString().ToLower()}";
             await _httpHelper.PostAsync(url, new Dictionary<string, string>());
         }
         catch (Exception ex)
@@ -334,6 +360,8 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
         var healthCheckTimeout = TimeSpan.FromSeconds(3);
+        ApplyRuntimeConfig();
+        var baseUrl = GetBaseUrl();
 
         // 健康检查重试（主要应对网络/DNS 等瞬时问题）
         const int maxAttempts = 3;
@@ -350,7 +378,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                     { "password", _config.Password }
                 };
 
-                var url = $"{_baseUrl}/api/v2/auth/login";
+                var url = $"{baseUrl}/api/v2/auth/login";
                 var response = await _httpHelper.PostAsync(url, formData, timeout: healthCheckTimeout);
                 if (!IsOkResponse(response))
                 {
@@ -359,7 +387,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                         ServiceName = ((IHealthChecker)this).ServiceName,
                         IsHealthy = false,
                         Message = _loc.GetFormat(L.HealthConnectionFailed, $"Login rejected: {NormalizeResponseText(response)}"),
-                        Url = _baseUrl
+                        Url = baseUrl
                     };
                 }
 
@@ -368,7 +396,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                     ServiceName = ((IHealthChecker)this).ServiceName,
                     IsHealthy = true,
                     Message = _loc.Get(L.HealthServiceOk),
-                    Url = _baseUrl
+                    Url = baseUrl
                 };
             }
             catch (Exception ex)
@@ -382,7 +410,7 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
             ServiceName = ((IHealthChecker)this).ServiceName,
             IsHealthy = false,
             Message = _loc.GetFormat(L.HealthConnectionFailed, lastException?.Message ?? "Unknown error"),
-            Url = _baseUrl
+            Url = baseUrl
         };
     }
 }
