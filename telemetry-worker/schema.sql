@@ -1,6 +1,7 @@
 -- User data schema for Cloudflare D1
 CREATE TABLE IF NOT EXISTS user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
     machine_name TEXT NOT NULL,
     user_name TEXT NOT NULL,
     app_version TEXT,
@@ -10,12 +11,15 @@ CREATE TABLE IF NOT EXISTS user (
     ip_address TEXT,
     user_agent TEXT,
     country TEXT,
+    region TEXT,
     city TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Index for pagination queries
 CREATE INDEX IF NOT EXISTS idx_user_created_at ON user(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_user_id ON user(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_user_id_created_at ON user(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_machine_name ON user(machine_name);
 CREATE INDEX IF NOT EXISTS idx_user_user_name ON user(user_name);
 

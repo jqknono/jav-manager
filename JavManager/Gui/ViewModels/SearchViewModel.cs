@@ -20,6 +20,8 @@ public partial class SearchViewModel : ViewModelBase
     private readonly TorrentNameParser _nameParser;
     private readonly LocalizationService _loc;
     private readonly IJavInfoTelemetryClient _javInfoTelemetryClient;
+    private int _remoteDetailLoadVersion;
+    private string _lastNormalizedQuery = string.Empty;
 
     public GuiLocalization Loc { get; }
 
@@ -42,11 +44,19 @@ public partial class SearchViewModel : ViewModelBase
     private JavSearchResult? _selectedResult;
 
     [ObservableProperty]
+    private JavSearchResult? _selectedCandidate;
+
+    [ObservableProperty]
     private TorrentInfo? _selectedTorrent;
+
+    [ObservableProperty]
+    private bool _isLoadingRemoteDetail;
 
     public ObservableCollection<TorrentInfo> SearchResults { get; } = new();
 
     public ObservableCollection<LocalFileInfo> LocalFiles { get; } = new();
+
+    public ObservableCollection<JavSearchResult> RemoteCandidates { get; } = new();
 
     public SearchViewModel(
         IJavDbDataProvider javDbProvider,
@@ -78,14 +88,19 @@ public partial class SearchViewModel : ViewModelBase
 
         IsSearching = true;
         StatusMessage = _loc.GetFormat(L.Searching, SearchQuery);
+        _remoteDetailLoadVersion++;
+        IsLoadingRemoteDetail = false;
         SearchResults.Clear();
         LocalFiles.Clear();
+        RemoteCandidates.Clear();
         SelectedResult = null;
+        SelectedCandidate = null;
         SelectedTorrent = null;
 
         try
         {
             var normalizedId = _nameParser.NormalizeJavId(SearchQuery);
+            _lastNormalizedQuery = normalizedId;
 
             // Search local files if enabled
             if (SearchLocal)
@@ -108,67 +123,52 @@ public partial class SearchViewModel : ViewModelBase
             // Search remote/cache if enabled
             if (SearchRemote)
             {
-                JavSearchResult? result = null;
+                // Try cache first (best-effort)
+                JavSearchResult? cached = null;
 
-                // Try cache first
                 if (_cacheProvider != null)
                 {
-                    result = await _cacheProvider.GetAsync(normalizedId);
-                    if (result != null)
+                    cached = await _cacheProvider.GetAsync(normalizedId);
+                    if (cached != null)
                     {
-                        if (string.IsNullOrWhiteSpace(result.JavId))
-                            result.JavId = normalizedId;
+                        if (string.IsNullOrWhiteSpace(cached.JavId))
+                            cached.JavId = normalizedId;
 
-                        _javInfoTelemetryClient.TryReport(result);
+                        _javInfoTelemetryClient.TryReport(cached);
                     }
                 }
 
-                // If not in cache, search remote
-                if (result == null || result.Torrents.Count == 0)
+                if (cached != null)
                 {
+                    // Show cached entry as a selectable "search result"
+                    RemoteCandidates.Add(cached);
+                }
+                else
+                {
+                    // Search remote candidates (do not auto-select; user chooses, then we load torrents)
                     var candidates = await _javDbProvider.SearchCandidatesAsync(normalizedId);
-                    if (candidates.Count > 0)
+                    foreach (var c in candidates)
                     {
-                        result = await _javDbProvider.GetDetailAsync(candidates[0].DetailUrl);
-                        if (result != null)
-                        {
-                            result.JavId = normalizedId;
-                            if (_cacheProvider != null)
-                            {
-                                await _cacheProvider.SaveAsync(result);
-                            }
-                        }
-
-                        if (result != null && !string.IsNullOrWhiteSpace(result.JavId))
-                        {
-                            _javInfoTelemetryClient.TryReport(result);
-                        }
-                    }
-                }
-
-                if (result != null)
-                {
-                    SelectedResult = result;
-                    var sorted = _torrentSelectionService.GetSortedTorrents(result.Torrents);
-                    foreach (var torrent in sorted)
-                    {
-                        SearchResults.Add(torrent);
+                        RemoteCandidates.Add(c);
                     }
                 }
             }
 
-            if (SearchResults.Count == 0 && LocalFiles.Count == 0)
+            if (RemoteCandidates.Count == 0 && LocalFiles.Count == 0)
             {
                 StatusMessage = _loc.Get(L.NoSearchResults);
             }
             else
             {
                 var parts = new List<string>();
-                if (SearchResults.Count > 0)
-                    parts.Add($"{SearchResults.Count} torrents");
+                if (RemoteCandidates.Count > 0)
+                    parts.Add(_loc.GetFormat("Gui_Search_StatusCountRemoteResults", RemoteCandidates.Count));
                 if (LocalFiles.Count > 0)
-                    parts.Add($"{LocalFiles.Count} local files");
-                StatusMessage = string.Join(", ", parts);
+                    parts.Add(_loc.GetFormat("Gui_Search_StatusCountLocalFiles", LocalFiles.Count));
+                var summary = string.Join(", ", parts);
+                StatusMessage = RemoteCandidates.Count > 0
+                    ? $"{summary}. {_loc.Get("Gui_Search_StatusSelectRemoteResult")}"
+                    : summary;
             }
         }
         catch (Exception ex)
@@ -178,6 +178,104 @@ public partial class SearchViewModel : ViewModelBase
         finally
         {
             IsSearching = false;
+        }
+    }
+
+    partial void OnSelectedCandidateChanged(JavSearchResult? value)
+    {
+        if (value == null)
+            return;
+
+        // Fire-and-forget; version check prevents stale updates.
+        _ = LoadRemoteDetailAsync(value);
+    }
+
+    [RelayCommand]
+    private void BackToResults()
+    {
+        SelectedTorrent = null;
+        SelectedResult = null;
+        SearchResults.Clear();
+        SelectedCandidate = null;
+        IsLoadingRemoteDetail = false;
+        _remoteDetailLoadVersion++;
+
+        if (RemoteCandidates.Count > 0)
+            StatusMessage = _loc.Get("Gui_Search_StatusSelectRemoteResult");
+    }
+
+    private async Task LoadRemoteDetailAsync(JavSearchResult candidate)
+    {
+        var version = ++_remoteDetailLoadVersion;
+
+        SelectedTorrent = null;
+        SearchResults.Clear();
+        IsLoadingRemoteDetail = true;
+        StatusMessage = _loc.Get("Gui_Search_StatusLoadingTorrents");
+
+        try
+        {
+            JavSearchResult detail;
+            if (candidate.Torrents.Count > 0)
+            {
+                detail = candidate;
+            }
+            else
+            {
+                detail = await _javDbProvider.GetDetailAsync(candidate.DetailUrl);
+            }
+
+            if (version != _remoteDetailLoadVersion)
+                return;
+
+            var inferredId = _nameParser.NormalizeJavId(
+                !string.IsNullOrWhiteSpace(candidate.JavId) ? candidate.JavId : candidate.Title);
+            if (string.IsNullOrWhiteSpace(inferredId))
+                inferredId = _lastNormalizedQuery;
+
+            if (string.IsNullOrWhiteSpace(detail.JavId))
+                detail.JavId = inferredId;
+            if (string.IsNullOrWhiteSpace(detail.DetailUrl))
+                detail.DetailUrl = candidate.DetailUrl;
+
+            SelectedResult = detail;
+
+            if (!string.IsNullOrWhiteSpace(detail.JavId))
+                _javInfoTelemetryClient.TryReport(detail);
+
+            if (_cacheProvider != null)
+            {
+                try
+                {
+                    await _cacheProvider.SaveAsync(detail);
+                }
+                catch
+                {
+                    // Cache failures should not block UI flow
+                }
+            }
+
+            var sorted = _torrentSelectionService.GetSortedTorrents(detail.Torrents);
+            foreach (var torrent in sorted)
+            {
+                SearchResults.Add(torrent);
+            }
+
+            StatusMessage = SearchResults.Count == 0
+                ? _loc.Get(L.NoTorrentsFound)
+                : _loc.GetFormat("Gui_Search_StatusCountTorrents", SearchResults.Count);
+        }
+        catch (Exception ex)
+        {
+            if (version != _remoteDetailLoadVersion)
+                return;
+
+            StatusMessage = _loc.GetFormat(L.SearchFailed, ex.Message);
+        }
+        finally
+        {
+            if (version == _remoteDetailLoadVersion)
+                IsLoadingRemoteDetail = false;
         }
     }
 

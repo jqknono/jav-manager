@@ -39,8 +39,8 @@ public class AppSettingsTemplateTests
 
             Assert.Equal(string.Empty, root.GetProperty("Everything").GetProperty("BaseUrl").GetString());
             Assert.Equal(string.Empty, root.GetProperty("QBittorrent").GetProperty("BaseUrl").GetString());
-            Assert.Equal(string.Empty, root.GetProperty("QBittorrent").GetProperty("UserName").GetString());
-            Assert.Equal(string.Empty, root.GetProperty("QBittorrent").GetProperty("Password").GetString());
+            Assert.Null(root.GetProperty("QBittorrent").GetProperty("UserName").GetString());
+            Assert.Null(root.GetProperty("QBittorrent").GetProperty("Password").GetString());
         }
         finally
         {
@@ -55,4 +55,3 @@ public class AppSettingsTemplateTests
         }
     }
 }
-

@@ -39,25 +39,79 @@
 
         <!-- Results Area -->
         <Grid Grid.Row="2" ColumnDefinitions="*,*">
-            <!-- Torrent Results -->
+            <!-- Remote Results / Torrents (two-step) -->
             <Border Grid.Column="0" 
                     BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                     BorderThickness="1" 
                     CornerRadius="4"
                     Margin="0,0,8,0">
                 <Grid RowDefinitions="Auto,*">
-                    <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Search_SectionTorrents]}" FontWeight="SemiBold" Margin="12,8"/>
+                    <!-- Remote candidates header -->
+                    <TextBlock Grid.Row="0"
+                               Text="{Binding Loc[Gui_Search_SectionRemoteResults]}"
+                               FontWeight="SemiBold"
+                               Margin="12,8"
+                               IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}"/>
+
+                    <!-- Torrents header -->
+                    <Grid Grid.Row="0"
+                          RowDefinitions="Auto,Auto"
+                          ColumnDefinitions="*,Auto"
+                          Margin="12,8"
+                          IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Grid.Row="0"
+                                   Grid.Column="0"
+                                   Text="{Binding Loc[Gui_Search_SectionTorrents]}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Row="0"
+                                Grid.Column="1"
+                                Content="{Binding Loc[Gui_Common_Back]}"
+                                Command="{Binding BackToResultsCommand}"
+                                Margin="8,0,0,0"/>
+                        <TextBlock Grid.Row="1"
+                                   Grid.ColumnSpan="2"
+                                   Text="{Binding Loc[Gui_Search_TorrentMarkersHint]}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   Margin="0,4,0,0"/>
+                    </Grid>
+
+                    <!-- Remote candidates list -->
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding RemoteCandidates}"
+                             SelectedItem="{Binding SelectedCandidate}"
+                             SelectionMode="Single"
+                             IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,*" Margin="4">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding JavId}"
+                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                               Width="90"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Torrents list -->
                     <ListBox Grid.Row="1" 
                              ItemsSource="{Binding SearchResults}"
                              SelectedItem="{Binding SelectedTorrent}"
-                             SelectionMode="Single">
+                             SelectionMode="Single"
+                             IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="4">
                                     <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Grid.Column="1" Text="UC" IsVisible="{Binding HasUncensoredMarker}" 
                                                Foreground="Green" FontWeight="Bold" Margin="8,0"/>
-                                    <TextBlock Grid.Column="2" Text="Sub" IsVisible="{Binding HasSubtitle}" 
+                                    <TextBlock Grid.Column="2" Text="SUB" IsVisible="{Binding HasSubtitle}" 
                                                Foreground="Blue" FontWeight="Bold" Margin="8,0"/>
                                     <TextBlock Grid.Column="3" Text="HD" IsVisible="{Binding HasHd}" 
                                                Foreground="Orange" FontWeight="Bold" Margin="8,0"/>

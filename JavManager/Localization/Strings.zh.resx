@@ -546,6 +546,9 @@
   <data name="Gui_Common_OpenFolder" xml:space="preserve">
     <value>打开文件夹</value>
   </data>
+  <data name="Gui_Common_Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
 
   <data name="Gui_Search_Watermark" xml:space="preserve">
     <value>输入番号（例如 STARS-001）</value>
@@ -559,11 +562,32 @@
   <data name="Gui_Search_OptionRemote" xml:space="preserve">
     <value>搜索远程（JavDB）</value>
   </data>
+  <data name="Gui_Search_SectionRemoteResults" xml:space="preserve">
+    <value>搜索结果</value>
+  </data>
   <data name="Gui_Search_SectionTorrents" xml:space="preserve">
     <value>种子</value>
   </data>
   <data name="Gui_Search_SectionLocalFiles" xml:space="preserve">
     <value>本地文件</value>
+  </data>
+  <data name="Gui_Search_TorrentMarkersHint" xml:space="preserve">
+    <value>UC=无码，SUB=字幕，HD=高清</value>
+  </data>
+  <data name="Gui_Search_StatusSelectRemoteResult" xml:space="preserve">
+    <value>请选择一个搜索结果以加载种子列表</value>
+  </data>
+  <data name="Gui_Search_StatusLoadingTorrents" xml:space="preserve">
+    <value>正在加载种子…</value>
+  </data>
+  <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
+    <value>{0} 个搜索结果</value>
+  </data>
+  <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
+    <value>{0} 个本地文件</value>
+  </data>
+  <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
+    <value>{0} 个种子</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
     <value>复制磁力链接</value>

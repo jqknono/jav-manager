@@ -546,6 +546,9 @@
   <data name="Gui_Common_OpenFolder" xml:space="preserve">
     <value>Open folder</value>
   </data>
+  <data name="Gui_Common_Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
 
   <data name="Gui_Search_Watermark" xml:space="preserve">
     <value>Enter JAV ID (e.g., STARS-001)</value>
@@ -559,11 +562,32 @@
   <data name="Gui_Search_OptionRemote" xml:space="preserve">
     <value>Search Remote (JavDB)</value>
   </data>
+  <data name="Gui_Search_SectionRemoteResults" xml:space="preserve">
+    <value>Search Results</value>
+  </data>
   <data name="Gui_Search_SectionTorrents" xml:space="preserve">
     <value>Torrents</value>
   </data>
   <data name="Gui_Search_SectionLocalFiles" xml:space="preserve">
     <value>Local Files</value>
+  </data>
+  <data name="Gui_Search_TorrentMarkersHint" xml:space="preserve">
+    <value>UC = Uncensored, SUB = Subtitles, HD = High Definition</value>
+  </data>
+  <data name="Gui_Search_StatusSelectRemoteResult" xml:space="preserve">
+    <value>Select a result to load torrents</value>
+  </data>
+  <data name="Gui_Search_StatusLoadingTorrents" xml:space="preserve">
+    <value>Loading torrents…</value>
+  </data>
+  <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
+    <value>{0} remote results</value>
+  </data>
+  <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
+    <value>{0} local files</value>
+  </data>
+  <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
+    <value>{0} torrents</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
     <value>Copy Magnet</value>

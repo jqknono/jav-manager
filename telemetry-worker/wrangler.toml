@@ -6,3 +6,8 @@ compatibility_date = "2024-01-01"
 binding = "DB"
 database_name = "jav-manager"
 database_id = "db53e6b2-5ef3-4631-930f-5ee09059f6d5"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true

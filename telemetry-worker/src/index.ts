@@ -13,6 +13,7 @@ interface TelemetryPayload {
 
 interface UserRecord {
   id: number;
+  user_id: string | null;
   machine_name: string;
   user_name: string;
   app_version: string | null;
@@ -22,6 +23,7 @@ interface UserRecord {
   ip_address: string | null;
   user_agent: string | null;
   country: string | null;
+  region: string | null;
   city: string | null;
   created_at: string;
 }
@@ -95,6 +97,7 @@ const TEXT = {
     tableTime: 'Time',
     tableMachine: 'Machine',
     tableUser: 'User',
+    tableUserId: 'User ID',
     tableVersion: 'Version',
     tableOs: 'OS',
     tableEvent: 'Event',
@@ -115,6 +118,9 @@ const TEXT = {
     loading: 'Loading...',
     empty: 'No data available',
     loadFailed: 'Failed to load data',
+    filterUserLabel: 'User',
+    filterAllUsers: 'All users',
+    filterClear: 'Clear',
   },
   zh: {
     appName: 'JavManager',
@@ -161,6 +167,7 @@ const TEXT = {
     tableTime: '時間',
     tableMachine: '機器',
     tableUser: '使用者',
+    tableUserId: '識別碼',
     tableVersion: '版本',
     tableOs: '作業系統',
     tableEvent: '事件',
@@ -181,10 +188,14 @@ const TEXT = {
     loading: '載入中...',
     empty: '暫無資料',
     loadFailed: '讀取失敗',
+    filterUserLabel: '使用者',
+    filterAllUsers: '全部使用者',
+    filterClear: '清除',
   },
 };
 
 let schemaInit: Promise<void> | null = null;
+let userIdBackfill: Promise<void> | null = null;
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers);
@@ -286,6 +297,9 @@ const BASE_STYLES = `
   tr:hover { background: #f9fafb; }
   .loading, .empty { text-align: center; padding: 2rem 1rem; color: #6b7280; }
   .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+  .filters { display: flex; align-items: center; gap: 0.5rem; color: #374151; font-size: 0.875rem; }
+  .filters button { padding: 0.45rem 0.7rem; border-radius: 0.5rem; border: 0.0625rem solid #d1d5db; background: #fff; cursor: pointer; }
+  .filters button:hover { background: #f3f4f6; }
   .page-size { display: flex; align-items: center; gap: 0.5rem; color: #374151; font-size: 0.875rem; }
   select { padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 0.0625rem solid #d1d5db; background: #fff; }
   .pagination { display: flex; justify-content: center; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
@@ -425,6 +439,7 @@ function getUserPage(url: URL, lang: PageLang): string {
               <th>${t.tableTime}</th>
               <th>${t.tableMachine}</th>
               <th>${t.tableUser}</th>
+              <th>${t.tableUserId}</th>
               <th>${t.tableVersion}</th>
               <th>${t.tableOs}</th>
               <th>${t.tableEvent}</th>
@@ -432,12 +447,17 @@ function getUserPage(url: URL, lang: PageLang): string {
             </tr>
           </thead>
           <tbody id="data-body">
-            <tr><td colspan="7" class="loading">${t.loading}</td></tr>
+            <tr><td colspan="8" class="loading">${t.loading}</td></tr>
           </tbody>
         </table>
       </div>
     </div>
     <div class="toolbar">
+      <div class="filters">
+        <span>${t.filterUserLabel}</span>
+        <select id="user-filter"></select>
+        <button id="btn-clear-filter" type="button">${t.filterClear}</button>
+      </div>
       <div class="page-size">
         <span>${t.pageSizeLabel}</span>
         <select id="page-size">${pageSizeOptions}</select>
@@ -459,21 +479,27 @@ function getUserPage(url: URL, lang: PageLang): string {
       empty: t.empty,
       loadFailed: t.loadFailed,
       pageInfo: t.pageInfo,
+      filterAllUsers: t.filterAllUsers,
     })};
     const pageSizeOptions = ${JSON.stringify(PAGE_SIZE_OPTIONS)};
     let currentPage = ${page};
     let pageSize = ${pageSize};
     let totalPages = 1;
+    let userId = '';
 
     const tbody = document.getElementById('data-body');
     const pageInfo = document.getElementById('page-info');
     const pageSizeSelect = document.getElementById('page-size');
+    const userFilterSelect = document.getElementById('user-filter');
+    const clearFilterBtn = document.getElementById('btn-clear-filter');
 
     function updateUrl() {
       const url = new URL(window.location.href);
       url.searchParams.set('page', String(currentPage));
       url.searchParams.set('pageSize', String(pageSize));
       url.searchParams.set('lang', lang);
+      if (userId) url.searchParams.set('userId', userId);
+      else url.searchParams.delete('userId');
       history.replaceState(null, '', url.pathname + url.search);
     }
 
@@ -488,7 +514,7 @@ function getUserPage(url: URL, lang: PageLang): string {
     }
 
     async function loadStats() {
-      const res = await fetch('/api/stats');
+      const res = await fetch('/api/stats' + (userId ? ('?userId=' + encodeURIComponent(userId)) : ''));
       const stats = await res.json();
       document.getElementById('stat-total').textContent = Number(stats.total_records || 0).toLocaleString(locale);
       document.getElementById('stat-machines').textContent = Number(stats.unique_machines || 0).toLocaleString(locale);
@@ -496,9 +522,40 @@ function getUserPage(url: URL, lang: PageLang): string {
       document.getElementById('stat-today').textContent = Number(stats.today_count || 0).toLocaleString(locale);
     }
 
+    async function loadUsers() {
+      userFilterSelect.innerHTML = '<option value="">' + escapeHtml(text.filterAllUsers) + '</option>';
+      try {
+        const res = await fetch('/api/users');
+        const result = await res.json();
+        const users = Array.isArray(result.data) ? result.data : [];
+        const options = users.map(u => {
+          const loc = [u.city, u.region, u.country].filter(Boolean).join(', ');
+          const shortId = u.user_id ? String(u.user_id).slice(0, 8) : '';
+          const label = [u.user_name, u.machine_name].filter(Boolean).join(' @ ')
+            + (loc ? (' (' + loc + ')') : '')
+            + (shortId ? (' [' + shortId + ']') : '')
+            + (typeof u.event_count === 'number' ? (' (' + u.event_count + ')') : '');
+          return '<option value="' + escapeHtml(u.user_id) + '">' + escapeHtml(label) + '</option>';
+        }).join('');
+        userFilterSelect.innerHTML = '<option value="">' + escapeHtml(text.filterAllUsers) + '</option>' + options;
+      } catch {
+        // ignore
+      }
+      userFilterSelect.value = userId || '';
+    }
+
+    function setUserFilter(nextUserId) {
+      userId = nextUserId || '';
+      currentPage = 1;
+      userFilterSelect.value = userId;
+      loadStats().catch(() => {});
+      loadData(currentPage).catch(() => {});
+    }
+
     async function loadData(page) {
-      tbody.innerHTML = '<tr><td colspan="7" class="loading">' + text.loading + '</td></tr>';
-      const res = await fetch('/api/user?page=' + page + '&pageSize=' + pageSize);
+      tbody.innerHTML = '<tr><td colspan="8" class="loading">' + text.loading + '</td></tr>';
+      const userParam = userId ? ('&userId=' + encodeURIComponent(userId)) : '';
+      const res = await fetch('/api/user?page=' + page + '&pageSize=' + pageSize + userParam);
       const result = await res.json();
       const rows = Array.isArray(result.data) ? result.data : [];
       currentPage = Math.max(1, Number(result.pagination?.page || 1));
@@ -507,20 +564,23 @@ function getUserPage(url: URL, lang: PageLang): string {
       updateUrl();
 
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty">' + text.empty + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty">' + text.empty + '</td></tr>';
         return;
       }
 
       tbody.innerHTML = rows.map(row => {
         const time = row.created_at ? new Date(row.created_at + 'Z').toLocaleString(locale) : '-';
-        const location = [row.city, row.country].filter(Boolean).join(', ') || '-';
+        const location = [row.city, row.region, row.country].filter(Boolean).join(', ') || '-';
+        const uidShort = row.user_id ? String(row.user_id).slice(0, 8) : '-';
+        const eventCell = (row.event_type || '-') + (row.event_data ? (': ' + row.event_data) : '');
         return '<tr>' +
           '<td>' + escapeHtml(time) + '</td>' +
           '<td>' + escapeHtml(row.machine_name || '-') + '</td>' +
           '<td>' + escapeHtml(row.user_name || '-') + '</td>' +
+          '<td><a class="link" href="#" onclick="setUserFilter(\\'' + escapeHtml(row.user_id || '') + '\\'); return false;">' + escapeHtml(uidShort) + '</a></td>' +
           '<td>' + escapeHtml(row.app_version || '-') + '</td>' +
           '<td>' + escapeHtml(row.os_info || '-') + '</td>' +
-          '<td>' + escapeHtml(row.event_type || '-') + '</td>' +
+          '<td>' + escapeHtml(eventCell) + '</td>' +
           '<td>' + escapeHtml(location) + '</td>' +
         '</tr>';
       }).join('');
@@ -549,9 +609,17 @@ function getUserPage(url: URL, lang: PageLang): string {
       loadData(currentPage);
     });
 
+    const initialUrl = new URL(window.location.href);
+    userId = initialUrl.searchParams.get('userId') || '';
+    userFilterSelect.addEventListener('change', (e) => {
+      setUserFilter(e.target.value);
+    });
+    clearFilterBtn.addEventListener('click', () => setUserFilter(''));
+
+    loadUsers().catch(() => {});
     loadStats().catch(() => {});
     loadData(currentPage).catch(() => {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty">' + text.loadFailed + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">' + text.loadFailed + '</td></tr>';
     });
   `;
   return renderPage({
@@ -760,6 +828,14 @@ async function ensureSchema(env: Env): Promise<void> {
       return !!result?.name;
     };
 
+    // Forward-only migrations for existing tables (safe no-ops if already present).
+    const ensureColumn = async (table: string, column: string, columnType: string) => {
+      const info = await env.DB.prepare(`PRAGMA table_info('${table}');`).all<{ name: string }>();
+      const existing = new Set((info.results ?? []).map(r => r.name));
+      if (existing.has(column)) return;
+      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnType};`).run();
+    };
+
     // User table (formerly "telemetry")
     // Keep only two logical tables: user + javinfo.
     // Migrate legacy deployments by renaming telemetry -> user.
@@ -770,6 +846,7 @@ async function ensureSchema(env: Env): Promise<void> {
         await env.DB.prepare(`
           CREATE TABLE IF NOT EXISTS user (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
             machine_name TEXT NOT NULL,
             user_name TEXT NOT NULL,
             app_version TEXT,
@@ -779,6 +856,7 @@ async function ensureSchema(env: Env): Promise<void> {
             ip_address TEXT,
             user_agent TEXT,
             country TEXT,
+            region TEXT,
             city TEXT,
             created_at TEXT DEFAULT (datetime('now'))
           );
@@ -786,7 +864,13 @@ async function ensureSchema(env: Env): Promise<void> {
       }
     }
 
+    // Ensure newly-added columns exist before creating dependent indices.
+    await ensureColumn('user', 'user_id', 'TEXT');
+    await ensureColumn('user', 'region', 'TEXT');
+
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_created_at ON user(created_at DESC);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_user_id ON user(user_id);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_user_id_created_at ON user(user_id, created_at DESC);`).run();
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_machine_name ON user(machine_name);`).run();
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_user_name ON user(user_name);`).run();
 
@@ -812,14 +896,6 @@ async function ensureSchema(env: Env): Promise<void> {
       );
     `).run();
 
-    // Forward-only migrations for existing tables (safe no-ops if already present).
-    const ensureColumn = async (table: string, column: string, columnType: string) => {
-      const info = await env.DB.prepare(`PRAGMA table_info('${table}');`).all<{ name: string }>();
-      const existing = new Set((info.results ?? []).map(r => r.name));
-      if (existing.has(column)) return;
-      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnType};`).run();
-    };
-
     await ensureColumn('javinfo', 'torrents_json', 'TEXT');
 
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_javinfo_updated_at ON javinfo(updated_at DESC);`).run();
@@ -833,6 +909,115 @@ function parseJsonArray(value: string | null): unknown[] {
   if (!value) return [];
   const parsed = JSON.parse(value);
   return Array.isArray(parsed) ? parsed : [];
+}
+
+function normalizeText(value: unknown, maxLen = 256): string | null {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  return str.length > maxLen ? str.slice(0, maxLen) : str;
+}
+
+function normalizeEventType(value: unknown): string {
+  const raw = normalizeText(value, 64);
+  if (!raw) return 'startup';
+  // Keep a stable key so clients can add new event types without worker updates.
+  return raw
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9._-]/g, '_')
+    .slice(0, 64);
+}
+
+function getCfLocation(cf: unknown): { country: string | null; region: string | null; city: string | null } {
+  const anyCf = cf as { country?: unknown; region?: unknown; city?: unknown } | null | undefined;
+  return {
+    country: normalizeText(anyCf?.country, 64),
+    region: normalizeText(anyCf?.region, 64),
+    city: normalizeText(anyCf?.city, 64),
+  };
+}
+
+function hexFromBuffer(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i].toString(16).padStart(2, '0');
+  }
+  return out;
+}
+
+async function computeUserId(input: {
+  machineName: string;
+  userName: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+}): Promise<string> {
+  const key = [
+    input.machineName,
+    input.userName,
+    input.country ?? '',
+    input.region ?? '',
+    input.city ?? '',
+  ].map(v => String(v).trim().toLowerCase()).join('|');
+
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
+  // 128-bit is plenty and keeps IDs shorter for URLs/UI.
+  return hexFromBuffer(digest).slice(0, 32);
+}
+
+async function backfillMissingUserIds(env: Env): Promise<void> {
+  // Best-effort background migration for existing deployments.
+  // Keep it bounded so it doesn't consume too much CPU/time per cold start.
+  await ensureSchema(env);
+
+  for (let round = 0; round < 5; round++) {
+    const rows = await env.DB.prepare(`
+      SELECT id, machine_name, user_name, country, region, city
+      FROM user
+      WHERE user_id IS NULL OR user_id = ''
+      ORDER BY id ASC
+      LIMIT 200;
+    `).all<Pick<UserRecord, 'id' | 'machine_name' | 'user_name' | 'country' | 'region' | 'city'>>();
+
+    const batch = rows.results ?? [];
+    if (batch.length === 0) return;
+
+    for (const row of batch) {
+      const userId = await computeUserId({
+        machineName: row.machine_name ?? 'unknown',
+        userName: row.user_name ?? 'unknown',
+        country: row.country ?? null,
+        region: row.region ?? null,
+        city: row.city ?? null,
+      });
+      await env.DB.prepare(`UPDATE user SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = '');`)
+        .bind(userId, row.id)
+        .run();
+    }
+  }
+}
+
+function ensureUserIdBackfill(env: Env): Promise<void> {
+  if (userIdBackfill) return userIdBackfill;
+  userIdBackfill = backfillMissingUserIds(env).catch(() => {});
+  return userIdBackfill;
+}
+
+async function pruneOldUserEvents(env: Env, userId: string, keep: number): Promise<void> {
+  // Delete events older than the newest `keep` records for this user.
+  // The ORDER BY includes id to avoid ties on second-resolution timestamps.
+  await env.DB.prepare(`
+    DELETE FROM user
+    WHERE id IN (
+      SELECT id
+      FROM user
+      WHERE user_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT -1 OFFSET ?
+    );
+  `).bind(userId, keep).run();
 }
 
 type JavInfoPayload = {
@@ -872,16 +1057,32 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    // Best-effort background migration for existing deployments.
+    if (path === '/api/user' || path === '/api/data' || path === '/api/stats' || path === '/api/users') {
+      ctx.waitUntil(ensureUserIdBackfill(env));
+    }
+
     // POST /api/telemetry - Collect telemetry data (non-blocking)
     if (path === '/api/telemetry' && request.method === 'POST') {
+      // IMPORTANT: read request body before returning a response.
+      // In production, trying to read the request stream inside waitUntil after the response is sent
+      // can throw: "Can't read from request stream after response has been sent."
+      let payload: unknown = null;
+      try {
+        payload = await request.json();
+      } catch {
+        payload = null;
+      }
+
       // Use waitUntil for non-blocking database write
-      ctx.waitUntil(this.saveTelemetry(request.clone(), env));
+      ctx.waitUntil(this.saveTelemetry(payload, request, env));
       return jsonResponse({ success: true }, { headers: corsHeaders });
     }
 
     // GET /api/stats - Get statistics
     if (path === '/api/stats' && request.method === 'GET') {
-      return this.getStats(env, corsHeaders);
+      const userId = url.searchParams.get('userId');
+      return this.getStats(env, corsHeaders, userId);
     }
 
     // GET /api/javinfo - Get paginated JavInfo data
@@ -900,14 +1101,21 @@ export default {
     if (path === '/api/user' && request.method === 'GET') {
       const page = parseInt(url.searchParams.get('page') || '1', 10);
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
-      return this.getData(env, page, pageSize, corsHeaders);
+      const userId = url.searchParams.get('userId');
+      return this.getData(env, page, pageSize, corsHeaders, userId);
     }
 
     // GET /api/data - Backward-compatible alias for /api/user
     if (path === '/api/data' && request.method === 'GET') {
       const page = parseInt(url.searchParams.get('page') || '1', 10);
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
-      return this.getData(env, page, pageSize, corsHeaders);
+      const userId = url.searchParams.get('userId');
+      return this.getData(env, page, pageSize, corsHeaders, userId);
+    }
+
+    // GET /api/users - List users for filtering (latest row + event counts)
+    if (path === '/api/users' && request.method === 'GET') {
+      return this.getUsers(env, corsHeaders);
     }
 
     // GET / - Home page
@@ -936,39 +1144,65 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 
-  async saveTelemetry(request: Request, env: Env): Promise<void> {
+  async saveTelemetry(payloadRaw: unknown, request: Request, env: Env): Promise<void> {
     try {
       await ensureSchema(env);
-      const payload: TelemetryPayload = await request.json();
       const cf = request.cf;
+      const location = getCfLocation(cf);
+      const payload = (payloadRaw ?? {}) as Partial<TelemetryPayload>;
+      const machineName = normalizeText(payload.machine_name, 128) ?? 'unknown';
+      const userName = normalizeText(payload.user_name, 128) ?? 'unknown';
+      const userId = await computeUserId({
+        machineName,
+        userName,
+        country: location.country,
+        region: location.region,
+        city: location.city,
+      });
 
       await env.DB.prepare(`
-        INSERT INTO user (machine_name, user_name, app_version, os_info, event_type, event_data, ip_address, user_agent, country, city)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO user (user_id, machine_name, user_name, app_version, os_info, event_type, event_data, ip_address, user_agent, country, region, city)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        payload.machine_name || 'unknown',
-        payload.user_name || 'unknown',
-        payload.app_version || null,
-        payload.os_info || null,
-        payload.event_type || 'startup',
-        payload.event_data || null,
+        userId,
+        machineName,
+        userName,
+        normalizeText(payload.app_version, 64),
+        normalizeText(payload.os_info, 128),
+        normalizeEventType(payload.event_type),
+        normalizeText(payload.event_data, 512),
         request.headers.get('CF-Connecting-IP') || null,
         request.headers.get('User-Agent') || null,
-        (cf?.country as string) || null,
-        (cf?.city as string) || null
+        location.country,
+        location.region,
+        location.city
       ).run();
+
+      await pruneOldUserEvents(env, userId, 999);
     } catch (error) {
       console.error('Failed to save telemetry:', error);
     }
   },
 
-  async getStats(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+  async getStats(env: Env, corsHeaders: Record<string, string>, userIdRaw?: string | null): Promise<Response> {
     try {
       await ensureSchema(env);
-      const totalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
-      const uniqueMachinesResult = await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM user').first<{ count: number }>();
-      const uniqueUsersResult = await env.DB.prepare('SELECT COUNT(DISTINCT user_name) as count FROM user').first<{ count: number }>();
-      const todayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM user WHERE date(created_at) = date('now')`).first<{ count: number }>();
+      const userId = normalizeText(userIdRaw, 128);
+      const totalResult = userId
+        ? await env.DB.prepare('SELECT COUNT(*) as total FROM user WHERE user_id = ?').bind(userId).first<{ total: number }>()
+        : await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
+
+      const uniqueMachinesResult = userId
+        ? await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM user WHERE user_id = ?').bind(userId).first<{ count: number }>()
+        : await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM user').first<{ count: number }>();
+
+      const uniqueUsersResult = userId
+        ? await env.DB.prepare('SELECT COUNT(DISTINCT user_id) as count FROM user WHERE user_id = ?').bind(userId).first<{ count: number }>()
+        : await env.DB.prepare(`SELECT COUNT(DISTINCT user_id) as count FROM user WHERE user_id IS NOT NULL AND user_id != ''`).first<{ count: number }>();
+
+      const todayResult = userId
+        ? await env.DB.prepare(`SELECT COUNT(*) as count FROM user WHERE user_id = ? AND date(created_at) = date('now')`).bind(userId).first<{ count: number }>()
+        : await env.DB.prepare(`SELECT COUNT(*) as count FROM user WHERE date(created_at) = date('now')`).first<{ count: number }>();
 
       const javInfoTotalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM javinfo').first<{ total: number }>();
       const javInfoTodayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM javinfo WHERE date(created_at) = date('now')`).first<{ count: number }>();
@@ -980,6 +1214,7 @@ export default {
         today_count: todayResult?.count || 0,
         javinfo_total: javInfoTotalResult?.total || 0,
         javinfo_today: javInfoTodayResult?.count || 0,
+        filter: userId ? { user_id: userId } : null,
       }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to get stats:', error);
@@ -1067,21 +1302,31 @@ export default {
     }
   },
 
-  async getData(env: Env, page: number, pageSize: number, corsHeaders: Record<string, string>): Promise<Response> {
+  async getData(env: Env, page: number, pageSize: number, corsHeaders: Record<string, string>, userIdRaw?: string | null): Promise<Response> {
     try {
       await ensureSchema(env);
       const safePage = Number.isFinite(page) && page > 0 ? page : 1;
       const safePageSize = Math.min(Math.max(1, pageSize), 100);
       const safeOffset = (safePage - 1) * safePageSize;
+      const userId = normalizeText(userIdRaw, 128);
 
-      const countResult = await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
-      const total = countResult?.total || 0;
+      const countResult = userId
+        ? await env.DB.prepare('SELECT COUNT(*) as total FROM user WHERE user_id = ?').bind(userId).first<{ total: number }>()
+        : await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
+      const total = countResult?.total ?? 0;
 
-      const dataResult = await env.DB.prepare(`
-        SELECT * FROM user 
-        ORDER BY created_at DESC 
-        LIMIT ? OFFSET ?
-      `).bind(safePageSize, safeOffset).all<UserRecord>();
+      const dataResult = userId
+        ? await env.DB.prepare(`
+            SELECT * FROM user
+            WHERE user_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+          `).bind(userId, safePageSize, safeOffset).all<UserRecord>()
+        : await env.DB.prepare(`
+            SELECT * FROM user 
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+          `).bind(safePageSize, safeOffset).all<UserRecord>();
 
       return jsonResponse({
         data: dataResult.results,
@@ -1091,6 +1336,7 @@ export default {
           total,
           totalPages: Math.ceil(total / safePageSize),
         },
+        filter: userId ? { user_id: userId } : null,
       }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to get data:', error);
@@ -1099,6 +1345,47 @@ export default {
         data: [],
         pagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
       }, { headers: corsHeaders });
+    }
+  },
+  async getUsers(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+    try {
+      await ensureSchema(env);
+
+      const result = await env.DB.prepare(`
+        SELECT
+          u.user_id,
+          u.machine_name,
+          u.user_name,
+          u.country,
+          u.region,
+          u.city,
+          u.created_at as last_seen,
+          stats.event_count
+        FROM user u
+        JOIN (
+          SELECT user_id, MAX(id) as last_id, COUNT(*) as event_count
+          FROM user
+          WHERE user_id IS NOT NULL AND user_id != ''
+          GROUP BY user_id
+        ) stats
+        ON u.id = stats.last_id
+        ORDER BY u.id DESC
+        LIMIT 500;
+      `).all<{
+        user_id: string;
+        machine_name: string;
+        user_name: string;
+        country: string | null;
+        region: string | null;
+        city: string | null;
+        last_seen: string;
+        event_count: number;
+      }>();
+
+      return jsonResponse({ data: result.results ?? [] }, { headers: corsHeaders });
+    } catch (error) {
+      console.error('Failed to get users:', error);
+      return jsonResponse({ data: [] }, { headers: corsHeaders });
     }
   },
   async getJavInfoData(env: Env, page: number, pageSize: number, corsHeaders: Record<string, string>): Promise<Response> {
