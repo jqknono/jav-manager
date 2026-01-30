@@ -12,6 +12,8 @@ public class LocalizationService
     private readonly ResourceManager _resourceManager;
     private CultureInfo _culture;
 
+    public event EventHandler? LanguageChanged;
+
     /// <summary>
     /// 当前使用的语言文化
     /// </summary>
@@ -45,7 +47,12 @@ public class LocalizationService
 
     public void SetLanguage(string language)
     {
-        _culture = ResolveCultureFromLanguageString(language);
+        var next = ResolveCultureFromLanguageString(language);
+        if (string.Equals(_culture.Name, next.Name, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _culture = next;
+        LanguageChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static CultureInfo ResolveCultureFromLanguageString(string language)

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Models;
+using JavManager.Utils;
 
 namespace JavManager.Services;
 
@@ -10,27 +11,24 @@ namespace JavManager.Services;
 /// Posts JavInfo metadata to a remote service (fire-and-forget).
 /// Includes torrent list and magnet links.
 /// </summary>
-public sealed class JavInfoSyncClient : IJavInfoSyncClient, IDisposable
+public sealed class JavInfoTelemetryClient : IJavInfoTelemetryClient, IDisposable
 {
     private readonly HttpClient _httpClient;
+    private readonly string _endpoint;
     private readonly bool _enabled;
-    private readonly string? _endpoint;
-    private readonly string? _apiKey;
     private bool _disposed;
 
-    public JavInfoSyncClient(JavInfoSyncConfig config)
+    public JavInfoTelemetryClient(TelemetryConfig config)
     {
         _enabled = config.Enabled;
-        _endpoint = string.IsNullOrWhiteSpace(config.Endpoint) ? null : config.Endpoint.Trim();
-        _apiKey = string.IsNullOrWhiteSpace(config.ApiKey) ? null : config.ApiKey.Trim();
+        _endpoint = TelemetryEndpoints.GetJavInfoPostUrl(config.Endpoint);
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
     }
 
-    public void TrySync(JavSearchResult result)
+    public void TryReport(JavSearchResult result)
     {
         if (_disposed) return;
         if (!_enabled) return;
-        if (string.IsNullOrWhiteSpace(_endpoint)) return;
         if (string.IsNullOrWhiteSpace(result?.JavId)) return;
 
         var payload = new JavInfoSyncPayload
@@ -78,9 +76,6 @@ public sealed class JavInfoSyncClient : IJavInfoSyncClient, IDisposable
             {
                 Content = JsonContent.Create(payload)
             };
-
-            if (!string.IsNullOrEmpty(_apiKey))
-                request.Headers.TryAddWithoutValidation("X-API-Key", _apiKey);
 
             await _httpClient.SendAsync(request);
         }

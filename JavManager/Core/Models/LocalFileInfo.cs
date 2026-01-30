@@ -29,6 +29,22 @@ public class LocalFileInfo
     /// 文件类型
     /// </summary>
     public FileType FileType { get; set; }
+
+    /// <summary>
+    /// 格式化的文件大小
+    /// </summary>
+    public string SizeDisplay
+    {
+        get
+        {
+            if (Size <= 0) return "-";
+            if (Size >= 1024L * 1024 * 1024)
+                return $"{Size / 1024.0 / 1024 / 1024:F2} GB";
+            if (Size >= 1024 * 1024)
+                return $"{Size / 1024.0 / 1024:F2} MB";
+            return $"{Size / 1024.0:F2} KB";
+        }
+    }
 }
 
 /// <summary>

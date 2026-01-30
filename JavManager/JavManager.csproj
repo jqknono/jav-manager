@@ -1,11 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <StrictSingleFileReleasePublish Condition="'$(StrictSingleFileReleasePublish)' == ''">true</StrictSingleFileReleasePublish>
+    <!-- Avalonia settings -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <!--
+    Developer UX:
+    In Debug, avoid generating/running a WinExe apphost, because it may not inherit the terminal's stdio
+    (e.g. Windows Terminal/ConPTY) and console mode appears to have "no output".
+    `dotnet run` will execute the DLL via the `dotnet` host, ensuring stdout/stderr are visible.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
   <!--
@@ -46,6 +60,12 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
+    <!-- Avalonia GUI -->
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
   </ItemGroup>
 
   <ItemGroup>

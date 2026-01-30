@@ -71,9 +71,40 @@ public class TorrentInfo
     public string? State { get; set; }
 
     /// <summary>
+    /// 下载速度（字节/秒），仅对下载器来源有效
+    /// </summary>
+    public long DlSpeed { get; set; }
+
+    /// <summary>
+    /// 剩余时间（秒），仅对下载器来源有效
+    /// </summary>
+    public long Eta { get; set; }
+
+    /// <summary>
     /// 权重分数
     /// </summary>
     public double WeightScore { get; set; }
+
+    /// <summary>
+    /// 名称（用于下载列表显示）
+    /// </summary>
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// 格式化的文件大小
+    /// </summary>
+    public string SizeDisplay
+    {
+        get
+        {
+            if (Size <= 0) return "-";
+            if (Size >= 1024L * 1024 * 1024)
+                return $"{Size / 1024.0 / 1024 / 1024:F2} GB";
+            if (Size >= 1024 * 1024)
+                return $"{Size / 1024.0 / 1024:F2} MB";
+            return $"{Size / 1024.0:F2} KB";
+        }
+    }
 }
 
 /// <summary>

@@ -4,5 +4,5 @@ compatibility_date = "2024-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "small-projects"
-database_id = "f410db86-56a3-42db-8685-f3fcab051e19"
+database_name = "jav-manager"
+database_id = "db53e6b2-5ef3-4631-930f-5ee09059f6d5"

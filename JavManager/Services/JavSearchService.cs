@@ -18,7 +18,7 @@ public class JavSearchService
     private readonly DownloadService _downloadService;
     private readonly ServiceAvailability _serviceAvailability;
     private readonly LocalizationService _loc;
-    private readonly IJavInfoSyncClient _javInfoSyncClient;
+    private readonly IJavInfoTelemetryClient _javInfoTelemetryClient;
 
     private const string LogInfoPrefix = "[INFO] ";
     private const string LogWarnPrefix = "[WARN] ";
@@ -32,7 +32,7 @@ public class JavSearchService
         DownloadService downloadService,
         ServiceAvailability serviceAvailability,
         LocalizationService localizationService,
-        IJavInfoSyncClient javInfoSyncClient,
+        IJavInfoTelemetryClient javInfoTelemetryClient,
         IJavLocalCacheProvider? cacheProvider = null)
     {
         _javDbProvider = javDbProvider;
@@ -41,7 +41,7 @@ public class JavSearchService
         _downloadService = downloadService;
         _serviceAvailability = serviceAvailability;
         _loc = localizationService;
-        _javInfoSyncClient = javInfoSyncClient;
+        _javInfoTelemetryClient = javInfoTelemetryClient;
         _cacheProvider = cacheProvider;
     }
 
@@ -87,6 +87,9 @@ public class JavSearchService
                 if (searchResult != null && searchResult.Torrents.Count > 0)
                 {
                     LogInfo(result.Message, _loc.GetFormat(L.LogCacheFoundTorrents, searchResult.Torrents.Count));
+
+                    // Report cached JavInfo metadata too (best-effort, non-blocking).
+                    _javInfoTelemetryClient.TryReport(searchResult);
                     result.Message.AppendLine();
                 }
                 else
@@ -117,8 +120,8 @@ public class JavSearchService
 
                 LogInfo(result.Message, _loc.GetFormat(L.LogRemoteFoundTorrents, searchResult.Torrents.Count));
 
-                // Sync JavInfo metadata to remote service (best-effort, non-blocking)
-                _javInfoSyncClient.TrySync(searchResult);
+                // Report JavInfo metadata (best-effort, non-blocking)
+                _javInfoTelemetryClient.TryReport(searchResult);
                  
                 // 保存到本地缓存
                 if (_cacheProvider != null)
@@ -402,8 +405,8 @@ public class JavSearchService
                     return result;
                 }
 
-                // Sync JavInfo metadata to remote service (best-effort, non-blocking)
-                _javInfoSyncClient.TrySync(searchResult);
+                // Report JavInfo metadata (best-effort, non-blocking)
+                _javInfoTelemetryClient.TryReport(searchResult);
 
                 // 保存到本地缓存
                 if (_cacheProvider != null)

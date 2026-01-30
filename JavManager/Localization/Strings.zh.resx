@@ -514,4 +514,109 @@
     <value>发生错误: {0}</value>
   </data>
 
+  <!-- GUI -->
+  <data name="Gui_Tab_Search" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="Gui_Tab_Downloads" xml:space="preserve">
+    <value>下载</value>
+  </data>
+  <data name="Gui_Tab_Settings" xml:space="preserve">
+    <value>设置</value>
+  </data>
+
+  <data name="Gui_Common_BaseUrl" xml:space="preserve">
+    <value>基础地址</value>
+  </data>
+  <data name="Gui_Common_Username" xml:space="preserve">
+    <value>用户名</value>
+  </data>
+  <data name="Gui_Common_Password" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="Gui_Common_Optional" xml:space="preserve">
+    <value>（可选）</value>
+  </data>
+  <data name="Gui_Common_Reset" xml:space="preserve">
+    <value>重置</value>
+  </data>
+  <data name="Gui_Common_Apply" xml:space="preserve">
+    <value>应用</value>
+  </data>
+  <data name="Gui_Common_OpenFolder" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+
+  <data name="Gui_Search_Watermark" xml:space="preserve">
+    <value>输入番号（例如 STARS-001）</value>
+  </data>
+  <data name="Gui_Search_ButtonSearch" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="Gui_Search_OptionLocal" xml:space="preserve">
+    <value>搜索本地文件</value>
+  </data>
+  <data name="Gui_Search_OptionRemote" xml:space="preserve">
+    <value>搜索远程（JavDB）</value>
+  </data>
+  <data name="Gui_Search_SectionTorrents" xml:space="preserve">
+    <value>种子</value>
+  </data>
+  <data name="Gui_Search_SectionLocalFiles" xml:space="preserve">
+    <value>本地文件</value>
+  </data>
+  <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
+    <value>复制磁力链接</value>
+  </data>
+  <data name="Gui_Search_ButtonDownload" xml:space="preserve">
+    <value>下载</value>
+  </data>
+  <data name="Gui_Search_StatusMagnetCopied" xml:space="preserve">
+    <value>已复制磁力链接</value>
+  </data>
+
+  <data name="Gui_Downloads_OptionDownloadingOnly" xml:space="preserve">
+    <value>仅显示下载中</value>
+  </data>
+  <data name="Gui_Downloads_ButtonRefresh" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="Gui_Downloads_StatusCount" xml:space="preserve">
+    <value>{0} 个任务</value>
+  </data>
+
+  <data name="Gui_Settings_Everything_Title" xml:space="preserve">
+    <value>Everything（本地文件搜索）</value>
+  </data>
+  <data name="Gui_Settings_QBittorrent_Title" xml:space="preserve">
+    <value>qBittorrent（下载器）</value>
+  </data>
+  <data name="Gui_Settings_JavDb_Title" xml:space="preserve">
+    <value>JavDB（远程数据库）</value>
+  </data>
+  <data name="Gui_Settings_Download_Title" xml:space="preserve">
+    <value>下载设置</value>
+  </data>
+  <data name="Gui_Settings_Download_SavePath" xml:space="preserve">
+    <value>保存路径</value>
+  </data>
+  <data name="Gui_Settings_Download_Category" xml:space="preserve">
+    <value>分类</value>
+  </data>
+  <data name="Gui_Settings_Download_Tags" xml:space="preserve">
+    <value>标签</value>
+  </data>
+  <data name="Gui_Settings_Language_Title" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Gui_Settings_Language_Label" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Gui_Settings_ButtonTestConnections" xml:space="preserve">
+    <value>测试连接</value>
+  </data>
+  <data name="Gui_Settings_StatusReset" xml:space="preserve">
+    <value>设置已重置</value>
+  </data>
+
 </root>

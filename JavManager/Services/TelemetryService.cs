@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using System.Collections.Concurrent;
+using JavManager.Utils;
 
 namespace JavManager.Services;
 
@@ -13,14 +15,14 @@ public class TelemetryService : IDisposable
     private readonly string _telemetryEndpoint;
     private readonly bool _enabled;
     private readonly TelemetryInfo _info;
+    private readonly ConcurrentDictionary<int, Task> _inFlight = new();
+    private int _inFlightId;
     private bool _disposed;
 
     public TelemetryService(string? telemetryEndpoint = null, bool enabled = true)
     {
-        // Use default endpoint if not specified or empty
-        _telemetryEndpoint = string.IsNullOrWhiteSpace(telemetryEndpoint) 
-            ? "https://jav-manager.techfetch.dev/api/telemetry" 
-            : telemetryEndpoint;
+        // TelemetryConfig.Endpoint is a "base endpoint", but keep compatibility with older full URLs.
+        _telemetryEndpoint = TelemetryEndpoints.GetTelemetryPostUrl(telemetryEndpoint);
         _enabled = enabled;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
         _info = CollectSystemInfo();
@@ -62,28 +64,38 @@ public class TelemetryService : IDisposable
     {
         if (!_enabled || _disposed) return;
 
-        // Fire-and-forget: don't await, don't block
-        _ = Task.Run(async () =>
+        var payload = new TelemetryPayload
         {
-            try
-            {
-                var payload = new TelemetryPayload
-                {
-                    MachineName = _info.MachineName,
-                    UserName = _info.UserName,
-                    AppVersion = _info.AppVersion,
-                    OsInfo = _info.OsInfo,
-                    EventType = eventType,
-                    EventData = eventData
-                };
+            MachineName = _info.MachineName,
+            UserName = _info.UserName,
+            AppVersion = _info.AppVersion,
+            OsInfo = _info.OsInfo,
+            EventType = eventType,
+            EventData = eventData
+        };
 
-                await _httpClient.PostAsJsonAsync(_telemetryEndpoint, payload);
-            }
-            catch
-            {
-                // Silently ignore errors - telemetry should never interrupt the app
-            }
-        });
+        // Fire-and-forget: start immediately, but keep a handle so a fast process exit
+        // still has a chance to flush in Dispose.
+        var task = SendAsync(payload);
+        var id = Interlocked.Increment(ref _inFlightId);
+        _inFlight[id] = task;
+        _ = task.ContinueWith(
+            _ => _inFlight.TryRemove(new KeyValuePair<int, Task>(id, task)),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task SendAsync(TelemetryPayload payload)
+    {
+        try
+        {
+            await _httpClient.PostAsJsonAsync(_telemetryEndpoint, payload);
+        }
+        catch
+        {
+            // Silently ignore errors - telemetry should never interrupt the app
+        }
     }
 
     private static TelemetryInfo CollectSystemInfo()
@@ -168,6 +180,17 @@ public class TelemetryService : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        try
+        {
+            // Best-effort flush: do not hang process shutdown.
+            Task.WhenAll(_inFlight.Values).Wait(TimeSpan.FromMilliseconds(750));
+        }
+        catch
+        {
+            // ignore
+        }
+
         _httpClient.Dispose();
     }
 

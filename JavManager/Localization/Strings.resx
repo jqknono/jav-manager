@@ -514,4 +514,109 @@
     <value>Error occurred: {0}</value>
   </data>
 
+  <!-- GUI -->
+  <data name="Gui_Tab_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Gui_Tab_Downloads" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Gui_Tab_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+
+  <data name="Gui_Common_BaseUrl" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="Gui_Common_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Gui_Common_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Gui_Common_Optional" xml:space="preserve">
+    <value>(optional)</value>
+  </data>
+  <data name="Gui_Common_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Gui_Common_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Gui_Common_OpenFolder" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+
+  <data name="Gui_Search_Watermark" xml:space="preserve">
+    <value>Enter JAV ID (e.g., STARS-001)</value>
+  </data>
+  <data name="Gui_Search_ButtonSearch" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Gui_Search_OptionLocal" xml:space="preserve">
+    <value>Search Local Files</value>
+  </data>
+  <data name="Gui_Search_OptionRemote" xml:space="preserve">
+    <value>Search Remote (JavDB)</value>
+  </data>
+  <data name="Gui_Search_SectionTorrents" xml:space="preserve">
+    <value>Torrents</value>
+  </data>
+  <data name="Gui_Search_SectionLocalFiles" xml:space="preserve">
+    <value>Local Files</value>
+  </data>
+  <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
+    <value>Copy Magnet</value>
+  </data>
+  <data name="Gui_Search_ButtonDownload" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Gui_Search_StatusMagnetCopied" xml:space="preserve">
+    <value>Magnet link copied</value>
+  </data>
+
+  <data name="Gui_Downloads_OptionDownloadingOnly" xml:space="preserve">
+    <value>Show downloading only</value>
+  </data>
+  <data name="Gui_Downloads_ButtonRefresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Gui_Downloads_StatusCount" xml:space="preserve">
+    <value>{0} downloads</value>
+  </data>
+
+  <data name="Gui_Settings_Everything_Title" xml:space="preserve">
+    <value>Everything (Local File Search)</value>
+  </data>
+  <data name="Gui_Settings_QBittorrent_Title" xml:space="preserve">
+    <value>qBittorrent (Download Manager)</value>
+  </data>
+  <data name="Gui_Settings_JavDb_Title" xml:space="preserve">
+    <value>JavDB (Remote Database)</value>
+  </data>
+  <data name="Gui_Settings_Download_Title" xml:space="preserve">
+    <value>Download Settings</value>
+  </data>
+  <data name="Gui_Settings_Download_SavePath" xml:space="preserve">
+    <value>Save Path</value>
+  </data>
+  <data name="Gui_Settings_Download_Category" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="Gui_Settings_Download_Tags" xml:space="preserve">
+    <value>Tags</value>
+  </data>
+  <data name="Gui_Settings_Language_Title" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Gui_Settings_Language_Label" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Gui_Settings_ButtonTestConnections" xml:space="preserve">
+    <value>Test Connections</value>
+  </data>
+  <data name="Gui_Settings_StatusReset" xml:space="preserve">
+    <value>Settings reset</value>
+  </data>
+
 </root>

@@ -1,5 +1,5 @@
--- Telemetry data schema for Cloudflare D1
-CREATE TABLE IF NOT EXISTS telemetry (
+-- User data schema for Cloudflare D1
+CREATE TABLE IF NOT EXISTS user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     machine_name TEXT NOT NULL,
     user_name TEXT NOT NULL,
@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS telemetry (
 );
 
 -- Index for pagination queries
-CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_telemetry_machine_name ON telemetry(machine_name);
-CREATE INDEX IF NOT EXISTS idx_telemetry_user_name ON telemetry(user_name);
+CREATE INDEX IF NOT EXISTS idx_user_created_at ON user(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_machine_name ON user(machine_name);
+CREATE INDEX IF NOT EXISTS idx_user_user_name ON user(user_name);
 
 -- JavInfo cache schema (non-torrent metadata only)
 CREATE TABLE IF NOT EXISTS javinfo (

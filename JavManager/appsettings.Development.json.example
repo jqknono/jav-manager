@@ -6,8 +6,8 @@
   },
   "QBittorrent": {
     "BaseUrl": "",
-    "UserName": "",
-    "Password": ""
+    "UserName": null,
+    "Password": null
   },
   "JavDb": {
     "BaseUrl": "https://javdb.com",
@@ -25,7 +25,7 @@
   "Download": {
     "DefaultSavePath": "/downloads/jav",
     "DefaultCategory": "jav",
-    "DefaultTags": "auto-download"
+    "DefaultTags": "jav-manager"
   },
   "LocalCache": {
     "Enabled": true,
@@ -39,10 +39,5 @@
   "Telemetry": {
     "Enabled": false,
     "Endpoint": ""
-  },
-  "JavInfoSync": {
-    "Enabled": false,
-    "Endpoint": "",
-    "ApiKey": ""
   }
 }

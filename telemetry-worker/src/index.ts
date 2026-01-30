@@ -1,6 +1,5 @@
 export interface Env {
   DB: D1Database;
-  API_KEY?: string;
 }
 
 interface TelemetryPayload {
@@ -12,7 +11,7 @@ interface TelemetryPayload {
   event_data?: string;
 }
 
-interface TelemetryRecord {
+interface UserRecord {
   id: number;
   machine_name: string;
   user_name: string;
@@ -499,7 +498,7 @@ function getUserPage(url: URL, lang: PageLang): string {
 
     async function loadData(page) {
       tbody.innerHTML = '<tr><td colspan="7" class="loading">' + text.loading + '</td></tr>';
-      const res = await fetch('/api/data?page=' + page + '&pageSize=' + pageSize);
+      const res = await fetch('/api/user?page=' + page + '&pageSize=' + pageSize);
       const result = await res.json();
       const rows = Array.isArray(result.data) ? result.data : [];
       currentPage = Math.max(1, Number(result.pagination?.page || 1));
@@ -754,27 +753,42 @@ async function ensureSchema(env: Env): Promise<void> {
   if (schemaInit) return schemaInit;
 
   schemaInit = (async () => {
-    // Telemetry table
-    await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS telemetry (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        machine_name TEXT NOT NULL,
-        user_name TEXT NOT NULL,
-        app_version TEXT,
-        os_info TEXT,
-        event_type TEXT DEFAULT 'startup',
-        event_data TEXT,
-        ip_address TEXT,
-        user_agent TEXT,
-        country TEXT,
-        city TEXT,
-        created_at TEXT DEFAULT (datetime('now'))
-      );
-    `).run();
+    const tableExists = async (table: string): Promise<boolean> => {
+      const result = await env.DB.prepare(
+        `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1;`
+      ).bind(table).first<{ name: string }>();
+      return !!result?.name;
+    };
 
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_created_at ON telemetry(created_at DESC);`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_machine_name ON telemetry(machine_name);`).run();
-    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_telemetry_user_name ON telemetry(user_name);`).run();
+    // User table (formerly "telemetry")
+    // Keep only two logical tables: user + javinfo.
+    // Migrate legacy deployments by renaming telemetry -> user.
+    if (!(await tableExists('user'))) {
+      if (await tableExists('telemetry')) {
+        await env.DB.prepare(`ALTER TABLE telemetry RENAME TO user;`).run();
+      } else {
+        await env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS user (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            machine_name TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            app_version TEXT,
+            os_info TEXT,
+            event_type TEXT DEFAULT 'startup',
+            event_data TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            country TEXT,
+            city TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+          );
+        `).run();
+      }
+    }
+
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_created_at ON user(created_at DESC);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_machine_name ON user(machine_name);`).run();
+    await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_user_name ON user(user_name);`).run();
 
     // JavInfo cache table (intentionally excludes torrent/magnet data)
     await env.DB.prepare(`
@@ -813,16 +827,6 @@ async function ensureSchema(env: Env): Promise<void> {
   })();
 
   return schemaInit;
-}
-
-function requireApiKey(request: Request, env: Env, corsHeaders: Record<string, string>): Response | null {
-  const required = (env.API_KEY ?? '').trim();
-  if (!required) return null;
-
-  const provided = (request.headers.get('X-API-Key') ?? '').trim();
-  if (provided && provided === required) return null;
-
-  return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
 }
 
 function parseJsonArray(value: string | null): unknown[] {
@@ -889,12 +893,17 @@ export default {
 
     // POST /api/javinfo - Store JavInfo (idempotent)
     if (path === '/api/javinfo' && request.method === 'POST') {
-      const auth = requireApiKey(request, env, corsHeaders);
-      if (auth) return auth;
       return this.saveJavInfo(request, env, corsHeaders);
     }
 
-    // GET /api/data - Get paginated telemetry data
+    // GET /api/user - Get paginated user data
+    if (path === '/api/user' && request.method === 'GET') {
+      const page = parseInt(url.searchParams.get('page') || '1', 10);
+      const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+      return this.getData(env, page, pageSize, corsHeaders);
+    }
+
+    // GET /api/data - Backward-compatible alias for /api/user
     if (path === '/api/data' && request.method === 'GET') {
       const page = parseInt(url.searchParams.get('page') || '1', 10);
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
@@ -934,7 +943,7 @@ export default {
       const cf = request.cf;
 
       await env.DB.prepare(`
-        INSERT INTO telemetry (machine_name, user_name, app_version, os_info, event_type, event_data, ip_address, user_agent, country, city)
+        INSERT INTO user (machine_name, user_name, app_version, os_info, event_type, event_data, ip_address, user_agent, country, city)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         payload.machine_name || 'unknown',
@@ -956,10 +965,10 @@ export default {
   async getStats(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
     try {
       await ensureSchema(env);
-      const totalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM telemetry').first<{ total: number }>();
-      const uniqueMachinesResult = await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM telemetry').first<{ count: number }>();
-      const uniqueUsersResult = await env.DB.prepare('SELECT COUNT(DISTINCT user_name) as count FROM telemetry').first<{ count: number }>();
-      const todayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM telemetry WHERE date(created_at) = date('now')`).first<{ count: number }>();
+      const totalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
+      const uniqueMachinesResult = await env.DB.prepare('SELECT COUNT(DISTINCT machine_name) as count FROM user').first<{ count: number }>();
+      const uniqueUsersResult = await env.DB.prepare('SELECT COUNT(DISTINCT user_name) as count FROM user').first<{ count: number }>();
+      const todayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM user WHERE date(created_at) = date('now')`).first<{ count: number }>();
 
       const javInfoTotalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM javinfo').first<{ total: number }>();
       const javInfoTodayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM javinfo WHERE date(created_at) = date('now')`).first<{ count: number }>();
@@ -1065,14 +1074,14 @@ export default {
       const safePageSize = Math.min(Math.max(1, pageSize), 100);
       const safeOffset = (safePage - 1) * safePageSize;
 
-      const countResult = await env.DB.prepare('SELECT COUNT(*) as total FROM telemetry').first<{ total: number }>();
+      const countResult = await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
       const total = countResult?.total || 0;
 
       const dataResult = await env.DB.prepare(`
-        SELECT * FROM telemetry 
+        SELECT * FROM user 
         ORDER BY created_at DESC 
         LIMIT ? OFFSET ?
-      `).bind(safePageSize, safeOffset).all<TelemetryRecord>();
+      `).bind(safePageSize, safeOffset).all<UserRecord>();
 
       return jsonResponse({
         data: dataResult.results,

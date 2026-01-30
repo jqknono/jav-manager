@@ -27,7 +27,11 @@ public class UserInputHandler
     public string GetJavId()
     {
         WritePrompt();
-        var input = Console.ReadLine()?.Trim() ?? string.Empty;
+        var raw = Console.ReadLine();
+        if (raw == null)
+            return "quit";
+
+        var input = raw.Trim();
 
         // 退出命令
         if (input.Equals("q", StringComparison.OrdinalIgnoreCase) ||
@@ -54,7 +58,9 @@ public class UserInputHandler
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.LocalFileOption3Details))}[/]");
         AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.Get(L.PromptLocalFileSelection))}[/]");
 
-        var input = Console.ReadLine()?.Trim() ?? string.Empty;
+        var input = Console.ReadLine()?.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+            return new UserSelectionResult { IsCancelled = true };
 
         return input switch
         {
@@ -76,7 +82,9 @@ public class UserInputHandler
         while (true)
         {
             AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.GetFormat(L.PromptTorrentSelection, maxIndex))}[/]");
-            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            var input = Console.ReadLine()?.Trim();
+            if (input == null)
+                return null;
 
             if (string.IsNullOrWhiteSpace(input))
                 return 1;
@@ -105,7 +113,9 @@ public class UserInputHandler
         while (true)
         {
             AnsiConsole.Markup($"[cyan]{Markup.Escape(_loc.GetFormat(L.PromptSearchResultSelection, maxIndex))}[/]");
-            var input = Console.ReadLine()?.Trim() ?? string.Empty;
+            var input = Console.ReadLine()?.Trim();
+            if (input == null)
+                return null;
 
             if (string.IsNullOrWhiteSpace(input))
                 return 1;

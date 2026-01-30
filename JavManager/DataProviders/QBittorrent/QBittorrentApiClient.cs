@@ -56,18 +56,35 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         }
     }
 
+    private bool HasCredentials()
+        => !string.IsNullOrWhiteSpace(_config.UserName) || !string.IsNullOrWhiteSpace(_config.Password);
+
+    private string GetUserName() => _config.UserName ?? string.Empty;
+
+    private string GetPassword() => _config.Password ?? string.Empty;
+
     /// <summary>
     /// 登录认证
     /// </summary>
     public async Task LoginAsync()
     {
         ApplyRuntimeConfig();
+
+        // qBittorrent can run with WebUI authentication disabled. In that case we treat
+        // missing credentials as "no login required" and proceed without cookies.
+        if (!HasCredentials())
+        {
+            _sidCookie = "no-auth";
+            _loginTime = DateTime.UtcNow;
+            return;
+        }
+
         try
         {
             var formData = new Dictionary<string, string>
             {
-                { "username", _config.UserName },
-                { "password", _config.Password }
+                { "username", GetUserName() },
+                { "password", GetPassword() }
             };
 
             var url = $"{GetBaseUrl()}/api/v2/auth/login";
@@ -92,6 +109,14 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
     private async Task EnsureLoggedInAsync()
     {
         ApplyRuntimeConfig();
+
+        // No credentials configured -> assume auth disabled.
+        if (!HasCredentials())
+        {
+            _sidCookie ??= "no-auth";
+            _loginTime = DateTime.UtcNow;
+            return;
+        }
 
         // 如果未登录或超过 30 分钟，重新登录
         if (_sidCookie == null || DateTime.UtcNow - _loginTime > TimeSpan.FromMinutes(30))
@@ -324,12 +349,15 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
                 results.Add(new TorrentInfo
                 {
                     Title = item["name"]?.ToString() ?? string.Empty,
+                    Name = item["name"]?.ToString(),
                     Size = item["size"]?.ToObject<long>() ?? 0,
                     Seeders = item["num_seeds"]?.ToObject<int>() ?? 0,
                     Leechers = item["num_leechs"]?.ToObject<int>() ?? 0,
                     MagnetLink = item["magnet_uri"]?.ToString() ?? string.Empty,
                     Progress = item["progress"]?.ToObject<double?>(),
                     State = item["state"]?.ToString(),
+                    DlSpeed = item["dlspeed"]?.ToObject<long>() ?? 0,
+                    Eta = item["eta"]?.ToObject<long>() ?? 0,
                     SourceSite = "qBittorrent"
                 });
             }
@@ -371,24 +399,32 @@ public class QBittorrentApiClient : IQBittorrentClient, IHealthChecker
         {
             try
             {
-                // 尝试登录来验证连接
-                var formData = new Dictionary<string, string>
+                if (HasCredentials())
                 {
-                    { "username", _config.UserName },
-                    { "password", _config.Password }
-                };
-
-                var url = $"{baseUrl}/api/v2/auth/login";
-                var response = await _httpHelper.PostAsync(url, formData, timeout: healthCheckTimeout);
-                if (!IsOkResponse(response))
-                {
-                    return new HealthCheckResult
+                    // 尝试登录来验证连接
+                    var formData = new Dictionary<string, string>
                     {
-                        ServiceName = ((IHealthChecker)this).ServiceName,
-                        IsHealthy = false,
-                        Message = _loc.GetFormat(L.HealthConnectionFailed, $"Login rejected: {NormalizeResponseText(response)}"),
-                        Url = baseUrl
+                        { "username", GetUserName() },
+                        { "password", GetPassword() }
                     };
+
+                    var url = $"{baseUrl}/api/v2/auth/login";
+                    var response = await _httpHelper.PostAsync(url, formData, timeout: healthCheckTimeout);
+                    if (!IsOkResponse(response))
+                    {
+                        return new HealthCheckResult
+                        {
+                            ServiceName = ((IHealthChecker)this).ServiceName,
+                            IsHealthy = false,
+                            Message = _loc.GetFormat(L.HealthConnectionFailed, $"Login rejected: {NormalizeResponseText(response)}"),
+                            Url = baseUrl
+                        };
+                    }
+                }
+                else
+                {
+                    // WebUI auth disabled: verify that the base URL responds to an unauthenticated endpoint.
+                    _ = await _httpHelper.GetAsync($"{baseUrl}/api/v2/app/version", timeout: healthCheckTimeout);
                 }
 
                 return new HealthCheckResult

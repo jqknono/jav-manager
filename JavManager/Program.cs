@@ -12,6 +12,10 @@ using JavManager.Utils;
 using JavManager.ConsoleUI;
 using JavManager.Core.Models;
 using JavManager.Localization;
+using JavManager.Gui;
+using JavManager.Gui.Localization;
+using JavManager.Gui.Services;
+using JavManager.Gui.ViewModels;
 using Spectre.Console;
 
 namespace JavManager;
@@ -57,10 +61,77 @@ class Program
         displayService.ShowDependencySetupHints(unhealthyServices);
     }
 
+    static bool ShouldRunGui(string[] args)
+    {
+        // Check for --no-gui flag
+        foreach (var arg in args)
+        {
+            if (arg.Equals("--no-gui", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("--console", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("-c", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        // CLI-only flags should always run in console mode
+        foreach (var arg in args)
+        {
+            if (arg.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("h", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("version", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("v", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("--version", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("-v", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("--test-curl", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        // If any arguments are provided (JAV ID, commands, etc.), run in console mode
+        if (args.Length > 0)
+        {
+            var first = args[0].Trim();
+            // Check if it's a known command or looks like a JAV ID
+            if (!first.StartsWith("--") &&
+                !first.Equals("gui", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        // Default to GUI
+        return true;
+    }
+
+    static string[] FilterGuiArgs(string[] args)
+    {
+        return args.Where(a =>
+            !a.Equals("--no-gui", StringComparison.OrdinalIgnoreCase) &&
+            !a.Equals("--console", StringComparison.OrdinalIgnoreCase) &&
+            !a.Equals("-c", StringComparison.OrdinalIgnoreCase) &&
+            !a.Equals("gui", StringComparison.OrdinalIgnoreCase)).ToArray();
+    }
+
+    [STAThread]
     static async Task Main(string[] args)
     {
         try
         {
+            // Check if we should run in GUI mode
+            var runGui = ShouldRunGui(args);
+            args = FilterGuiArgs(args);
+
+            // NOTE: This app is built as WinExe (GUI subsystem). When running in console mode,
+            // explicitly attach/allocate a console so stdout/stderr are visible.
+            if (!runGui)
+            {
+                ConsoleHost.EnsureConsole();
+            }
+
             ConfigureConsoleEncoding();
 
             // 解析全局命令行配置覆盖（尽早解析，以支持语言/遥测等配置）
@@ -75,8 +146,28 @@ class Program
             // 初始化遥测服务（尽早初始化以捕获启动事件）
             var telemetryConfig = config.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
             _telemetry = new TelemetryService(telemetryConfig.Endpoint, telemetryConfig.Enabled);
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => _telemetry?.Dispose();
             _telemetry.TrackStartup();
 
+            // GUI mode
+            if (runGui)
+            {
+                var guiHost = CreateHostBuilder(config, _loc, includeGuiServices: true).Build();
+                var guiServices = guiHost.Services;
+
+                // Initialize cache
+                var guiCacheProvider = guiServices.GetService<IJavLocalCacheProvider>();
+                if (guiCacheProvider != null)
+                {
+                    await guiCacheProvider.InitializeAsync();
+                }
+
+                // Run GUI
+                GuiStartup.Run(guiServices);
+                return;
+            }
+
+            // Console mode below
             // 测试 curl
             if (effectiveArgs.Length > 0 && effectiveArgs[0] == "--test-curl")
             {
@@ -104,7 +195,7 @@ class Program
             }
 
             // 创建主机
-            var host = CreateHostBuilder(config, _loc).Build();
+            var host = CreateHostBuilder(config, _loc, includeGuiServices: false).Build();
 
             // 初始化服务
             var services = host.Services;
@@ -170,7 +261,7 @@ class Program
                     torrentSelectionService,
                     nameParser,
                     serviceAvailability,
-                    services.GetRequiredService<IJavInfoSyncClient>(),
+                    services.GetRequiredService<IJavInfoTelemetryClient>(),
                     cacheProvider: cacheProvider,
                     autoConfirm: true);
 
@@ -220,6 +311,7 @@ class Program
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.CmdTestCurl))}[/]");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine($"[yellow]{Markup.Escape(_loc.Get(L.HelpOptionsTitle))}[/]");
+        AnsiConsole.MarkupLine($"  [grey]--no-gui, -c           Run in console mode (default: GUI)[/]");
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptLanguage))}[/]");
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptJavDbUrl))}[/]");
         AnsiConsole.MarkupLine($"  [grey]{Markup.Escape(_loc.Get(L.OptEverythingUrl))}[/]");
@@ -670,7 +762,7 @@ class Program
                 torrentSelectionService,
                 nameParser,
                 serviceAvailability,
-                services.GetRequiredService<IJavInfoSyncClient>(),
+                services.GetRequiredService<IJavInfoTelemetryClient>(),
                 cacheProvider,
                 autoConfirm: autoConfirmSearch);
             return true;
@@ -897,7 +989,7 @@ class Program
     /// <summary>
     /// 创建主机构建器
     /// </summary>
-    static IHostBuilder CreateHostBuilder(IConfiguration configuration, LocalizationService localizationService)
+    static IHostBuilder CreateHostBuilder(IConfiguration configuration, LocalizationService localizationService, bool includeGuiServices = false)
     {
         return Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
@@ -907,7 +999,7 @@ class Program
                 services.Configure<QBittorrentConfig>(configuration.GetSection("QBittorrent"));
                 services.Configure<JavDbConfig>(configuration.GetSection("JavDb"));
                 services.Configure<DownloadConfig>(configuration.GetSection("Download"));
-                services.Configure<JavInfoSyncConfig>(configuration.GetSection("JavInfoSync"));
+                services.Configure<TelemetryConfig>(configuration.GetSection("Telemetry"));
 
                 // 注册配置对象（直接注入）
                 var everythingConfig = configuration.GetSection("Everything").Get<EverythingConfig>() ?? new EverythingConfig();
@@ -915,14 +1007,32 @@ class Program
                 var javDbConfig = configuration.GetSection("JavDb").Get<JavDbConfig>() ?? new JavDbConfig();
                 var downloadConfig = configuration.GetSection("Download").Get<DownloadConfig>() ?? new DownloadConfig();
                 var localCacheConfig = configuration.GetSection("LocalCache").Get<LocalCacheConfig>() ?? new LocalCacheConfig();
-                var javInfoSyncConfig = configuration.GetSection("JavInfoSync").Get<JavInfoSyncConfig>() ?? new JavInfoSyncConfig();
+                var telemetryConfig = configuration.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
+
+                // Backward compatibility: allow legacy "JavInfoSync" section (pre-telemetry refactor).
+                // New config uses a single Telemetry.Endpoint (base endpoint) + Telemetry.Enabled.
+                if (string.IsNullOrWhiteSpace(telemetryConfig.Endpoint))
+                {
+                    var legacyEndpoint = configuration.GetValue<string>("JavInfoSync:Endpoint");
+                    var legacyBase = TelemetryEndpoints.NormalizeBaseEndpointOrNull(legacyEndpoint);
+                    if (!string.IsNullOrWhiteSpace(legacyBase))
+                        telemetryConfig.Endpoint = legacyBase;
+                }
+
+                var telemetryEnabledValue = configuration.GetValue<bool?>("Telemetry:Enabled");
+                if (telemetryEnabledValue is null)
+                {
+                    var legacyEnabled = configuration.GetValue<bool?>("JavInfoSync:Enabled");
+                    if (legacyEnabled.HasValue)
+                        telemetryConfig.Enabled = legacyEnabled.Value;
+                }
 
                 services.AddSingleton(everythingConfig);
                 services.AddSingleton(qbittorrentConfig);
                 services.AddSingleton(javDbConfig);
                 services.AddSingleton(downloadConfig);
                 services.AddSingleton(localCacheConfig);
-                services.AddSingleton(javInfoSyncConfig);
+                services.AddSingleton(telemetryConfig);
 
                 // 注册本地化服务（使用 Main 中初始化的实例，确保语言一致）
                 services.AddSingleton(localizationService);
@@ -948,16 +1058,27 @@ class Program
                 services.AddSingleton<ServiceAvailability>();
 
                 // 注册服务
-                services.AddScoped<HealthCheckService>();
-                services.AddScoped<TorrentSelectionService>();
-                services.AddScoped<LocalFileCheckService>();
-                services.AddScoped<DownloadService>();
-                services.AddSingleton<IJavInfoSyncClient, JavInfoSyncClient>();
-                services.AddScoped<JavSearchService>();
+                services.AddSingleton<HealthCheckService>();
+                services.AddSingleton<TorrentSelectionService>();
+                services.AddSingleton<LocalFileCheckService>();
+                services.AddSingleton<DownloadService>();
+                services.AddSingleton<IJavInfoTelemetryClient, JavInfoTelemetryClient>();
+                services.AddSingleton<JavSearchService>();
 
-                // 注册 UI
+                // 注册 UI (Console)
                 services.AddScoped<UserInputHandler>();
                 services.AddScoped<DisplayService>();
+
+                // 注册 GUI ViewModels
+                if (includeGuiServices)
+                {
+                    services.AddSingleton<GuiLocalization>();
+                    services.AddSingleton<GuiConfigFileService>();
+                    services.AddSingleton<SearchViewModel>();
+                    services.AddSingleton<DownloadsViewModel>();
+                    services.AddSingleton<SettingsViewModel>();
+                    services.AddSingleton<MainViewModel>();
+                }
             });
     }
 
@@ -1041,7 +1162,7 @@ class Program
                     torrentSelectionService,
                     nameParser,
                     serviceAvailability,
-                    services.GetRequiredService<IJavInfoSyncClient>(),
+                    services.GetRequiredService<IJavInfoTelemetryClient>(),
                     cacheProvider);
             }
             catch (Exception ex)
@@ -1065,7 +1186,7 @@ class Program
         TorrentSelectionService torrentSelectionService,
         TorrentNameParser nameParser,
         ServiceAvailability serviceAvailability,
-        IJavInfoSyncClient javInfoSyncClient,
+        IJavInfoTelemetryClient javInfoTelemetryClient,
         IJavLocalCacheProvider? cacheProvider = null,
         bool autoConfirm = false)
     {
@@ -1140,8 +1261,8 @@ class Program
             if (string.IsNullOrWhiteSpace(detail.JavId))
                 detail.JavId = javId;
 
-            // Sync JavInfo metadata to remote service (best-effort, non-blocking)
-            javInfoSyncClient.TrySync(detail);
+            // Report JavInfo metadata (best-effort, non-blocking)
+            javInfoTelemetryClient.TryReport(detail);
 
             if (cacheProvider != null)
             {

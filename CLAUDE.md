@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-JavManager 是一个 C# .NET 10.0 控制台应用程序，用于自动化 JAV 内容管理。
+JavManager 是一个 C# .NET 8.0 应用程序，用于自动化 JAV 内容管理。支持 **GUI** 和 **控制台** 两种运行模式。
 
 **核心工作流程**:
 1. 输入番号 (如 XXX-123)
@@ -21,9 +21,20 @@ JavManager 是一个 C# .NET 10.0 控制台应用程序，用于自动化 JAV �
 cd f:\code\jav-manager\JavManager
 dotnet build
 
-# 运行项目
+# 运行项目 (默认 GUI 模式)
 dotnet run
+
+# 控制台模式
+dotnet run -- --no-gui
+
+# 直接搜索 (控制台模式)
+dotnet run -- STARS-001
 ```
+
+### 运行模式
+
+- **GUI 模式** (默认): 直接运行 `dotnet run` 或双击可执行文件
+- **控制台模式**: 使用 `--no-gui` 或 `-c` 参数，或直接传入番号参数
 
 ---
 
@@ -52,6 +63,11 @@ Services/            # 业务逻辑层
 ConsoleUI/           # 表示层：控制台交互
 ├── UserInputHandler/  # 用户输入处理
 └── DisplayService/   # 格式化输出
+
+Gui/                 # 表示层：图形界面 (Avalonia)
+├── Views/           # AXAML 视图
+├── ViewModels/      # MVVM ViewModels
+└── App.axaml        # Avalonia 应用入口
 
 Utils/              # 工具类
 ├── WeightCalculator/   # 权重计算
@@ -177,11 +193,18 @@ Task<CacheStatistics> GetStatisticsAsync();
 ## 依赖项
 
 ```xml
-<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.1" />
+<!-- 核心 -->
+<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
 <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
 <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 <PackageReference Include="Spectre.Console" Version="0.50.0" />
+
+<!-- GUI (Avalonia) -->
+<PackageReference Include="Avalonia" Version="11.2.3" />
+<PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 ```
 
 **已移除**: Microsoft.Playwright (用户要求仅使用 API)

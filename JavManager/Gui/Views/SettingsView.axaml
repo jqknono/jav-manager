@@ -1,0 +1,166 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JavManager.Gui.ViewModels"
+             x:Class="JavManager.Gui.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <Grid RowDefinitions="*,Auto">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel Margin="16" Spacing="20">
+                <!-- Everything Settings -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Everything_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Column="1" Text="{Binding EverythingStatus}" 
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding EverythingBaseUrl}" 
+                                     Watermark="http://localhost:8080"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding EverythingUserName}" 
+                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding EverythingPassword}" 
+                                     PasswordChar="*"
+                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- qBittorrent Settings -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_QBittorrent_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Column="1" Text="{Binding QbStatus}" 
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding QbBaseUrl}" 
+                                     Watermark="http://localhost:8080"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding QbUserName}" 
+                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding QbPassword}" 
+                                     PasswordChar="*"
+                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- JavDB Settings -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Column="1" Text="{Binding JavDbStatus}" 
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding JavDbBaseUrl}" 
+                                     Watermark="https://javdb.com"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Download Settings -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{Binding Loc[Gui_Settings_Download_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_SavePath]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding DefaultSavePath}" 
+                                     Watermark="/downloads/jav"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Category]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding DefaultCategory}" 
+                                     Watermark="jav"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Tags]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding DefaultTags}" 
+                                     Watermark="jav-manager"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Language Settings -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="{Binding Loc[Gui_Settings_Language_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Language_Label]}" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1" 
+                                      ItemsSource="{Binding AvailableLanguages}"
+                                      SelectedItem="{Binding SelectedLanguage}"
+                                      MinWidth="200"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                Padding="16">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <Button Grid.Column="1" 
+                        Content="{Binding Loc[Gui_Settings_ButtonTestConnections]}" 
+                        Command="{Binding TestConnectionsCommand}"
+                        IsEnabled="{Binding !IsTesting}"
+                        Margin="0,0,8,0"/>
+                <Button Grid.Column="2" 
+                        Content="{Binding Loc[Gui_Common_Reset]}" 
+                        Command="{Binding ResetSettingsCommand}"
+                        Margin="0,0,8,0"/>
+                <Button Grid.Column="3" 
+                        Content="{Binding Loc[Gui_Common_Apply]}" 
+                        Command="{Binding ApplySettingsCommand}"
+                        Classes="accent"/>
+            </Grid>
+        </Border>
+    </Grid>
+
+    <UserControl.Styles>
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </UserControl.Styles>
+</UserControl>
