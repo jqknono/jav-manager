@@ -20,6 +20,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
     private readonly JavDbConfig _config;
     private readonly TorrentNameParser _nameParser;
     private readonly LocalizationService _loc;
+    private readonly IJavDbHttpFetcher _curlFetcher;
     private readonly JavDbHtmlParser _htmlParser;
     private readonly HttpClient _httpClient;
     private readonly CookieContainer _cookieContainer;
@@ -29,18 +30,23 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
     private const int MaxUrlCycles = 2;
     private static readonly TimeSpan RetryBaseDelay = TimeSpan.FromMilliseconds(1000);
     private const string DefaultUserAgent =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";
 
-    public JavDbWebScraper(JavDbConfig config, TorrentNameParser nameParser, LocalizationService localizationService)
+    public JavDbWebScraper(
+        JavDbConfig config,
+        TorrentNameParser nameParser,
+        LocalizationService localizationService,
+        IJavDbHttpFetcher curlFetcher)
     {
         _config = config;
         _nameParser = nameParser;
         _loc = localizationService;
+        _curlFetcher = curlFetcher;
         _htmlParser = new JavDbHtmlParser();
 
         _cookieContainer = new CookieContainer();
         _httpClient = CreateHttpClient(_cookieContainer, _config.RequestTimeout);
-        _userAgents = BuildUserAgentCandidates(_config.UserAgent);
+        _userAgents = BuildUserAgentCandidates(_config);
     }
 
     /// <summary>
@@ -71,6 +77,8 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             .Select(u => u.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        AnsiConsole.MarkupLine($"[grey][[DEBUG]] Searching candidates for {Markup.Escape(javId)}. URLs: {string.Join(", ", urls)}[/]");
 
         var lastError = "";
         for (var cycle = 0; cycle < MaxUrlCycles; cycle++)
@@ -230,15 +238,18 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         return client;
     }
 
-    private static List<string> BuildUserAgentCandidates(string? configuredUserAgent)
+    private static List<string> BuildUserAgentCandidates(JavDbConfig config)
     {
+        var configuredUserAgent = string.IsNullOrWhiteSpace(config.UserAgent)
+            ? null
+            : config.UserAgent.Trim();
         var candidates = new List<string>();
         if (!string.IsNullOrWhiteSpace(configuredUserAgent))
             candidates.Add(configuredUserAgent.Trim());
 
         candidates.Add(DefaultUserAgent);
-        candidates.Add("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        candidates.Add("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+        candidates.Add("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+        candidates.Add("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
 
         return candidates
             .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -246,19 +257,29 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             .ToList();
     }
 
+    private string SelectUserAgent(int attemptIndex)
+    {
+        if (_userAgents.Count == 0)
+            return DefaultUserAgent;
+
+        return _userAgents[attemptIndex % _userAgents.Count];
+    }
+
     private void SeedCookiesForUrl(string baseUrl)
     {
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
             return;
 
+        // Ensure default cookies are set if not already present or specific to logic
+        // But respect imported cookies if they exist. 
+        // CookieContainer handles this, but we should be careful not to overwrite if logic requires.
+        // Actually, for "over18" and "locale", it's safe to set them.
         _cookieContainer.Add(uri, new Cookie("over18", "1", "/"));
         _cookieContainer.Add(uri, new Cookie("locale", "zh", "/"));
-
-        if (!string.IsNullOrWhiteSpace(_config.CfClearance))
-            _cookieContainer.Add(uri, new Cookie("cf_clearance", _config.CfClearance, "/"));
-
-        if (!string.IsNullOrWhiteSpace(_config.CfBm))
-            _cookieContainer.Add(uri, new Cookie("__cf_bm", _config.CfBm, "/"));
+        
+        // Debug: Print current cookies for this URI
+        var cookies = _cookieContainer.GetCookies(uri);
+        // AnsiConsole.MarkupLine($"[grey][[DEBUG]] Cookies for {uri}: {string.Join(", ", cookies.Cast<Cookie>().Select(c => c.Name))}[/]");
     }
 
     private async Task<(int StatusCode, string Body, bool IsCloudflare, string? Error)> GetWithRetryAsync(
@@ -309,6 +330,39 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         int attemptIndex,
         int timeoutMs)
     {
+        // Prefer curl-impersonate (browser-like TLS/HTTP2 fingerprint) as the default path.
+        if (_config.CurlImpersonate.Enabled)
+        {
+            var cookieHeader = BuildCookieHeader(url);
+            using var curlCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+            var curl = await _curlFetcher.GetAsync(url, referer, cookieHeader, timeoutMs, curlCts.Token);
+
+            if (IsSuccessStatusCode(curl.StatusCode))
+            {
+                return (curl.StatusCode, curl.Body, false, curl.Error);
+            }
+
+            // If curl-impersonate is not available at runtime, fall back to HttpClient.
+            // Otherwise, return the curl result directly (do not double-request).
+            var curlUnavailable =
+                curl.StatusCode == 0 &&
+                !string.IsNullOrWhiteSpace(curl.Error) &&
+                (curl.Error.Contains("not available", StringComparison.OrdinalIgnoreCase) ||
+                 curl.Error.Contains("disabled", StringComparison.OrdinalIgnoreCase));
+
+            if (!curlUnavailable)
+            {
+                var body = curl.Body ?? string.Empty;
+                var isCloudflare =
+                    curl.StatusCode == 403 &&
+                    (body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase) ||
+                     body.Contains("cf-ray", StringComparison.OrdinalIgnoreCase) ||
+                     body.Contains("cf-mitigated", StringComparison.OrdinalIgnoreCase));
+
+                return (curl.StatusCode, body, isCloudflare, curl.Error);
+            }
+        }
+
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         ApplyChromeHeaders(request, referer, attemptIndex);
 
@@ -319,6 +373,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
             var body = await response.Content.ReadAsStringAsync(cts.Token);
             var isCloudflare = response.Headers.Contains("cf-mitigated") ||
                                response.Headers.Contains("cf-ray");
+
             return ((int)response.StatusCode, body, isCloudflare, null);
         }
         catch (TaskCanceledException)
@@ -331,9 +386,21 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         }
     }
 
+    private string? BuildCookieHeader(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return null;
+
+        var cookies = _cookieContainer.GetCookies(uri);
+        if (cookies.Count == 0)
+            return null;
+
+        return string.Join("; ", cookies.Cast<Cookie>().Select(c => $"{c.Name}={c.Value}"));
+    }
+
     private void ApplyChromeHeaders(HttpRequestMessage request, string? referer, int attemptIndex)
     {
-        var userAgent = _userAgents[attemptIndex % _userAgents.Count];
+        var userAgent = SelectUserAgent(attemptIndex);
         var chromeMajor = ParseChromeMajorVersion(userAgent);
         var platform = GetPlatformFromUserAgent(userAgent);
         var mobile = userAgent.Contains("Mobile", StringComparison.OrdinalIgnoreCase) ? "?1" : "?0";
@@ -559,7 +626,7 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
         if (string.IsNullOrWhiteSpace(text))
             return string.Empty;
 
-        // 将多行/多空白压缩为单空格，避免控制台表格出现“多行标题”
+        // 将多行/多空白压缩为单空格，避免控制台表格出现"多行标题"
         var normalized = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ");
         return normalized.Trim();
     }

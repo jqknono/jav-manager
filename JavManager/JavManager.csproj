@@ -13,24 +13,15 @@
     Forbid "portable/scattered" publish outputs.
     Release publish must be RID-specific, self-contained, and single-file.
   -->
-  <Target Name="EnforceSingleFileReleasePublish"
-          BeforeTargets="Publish"
-          Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
-    <Error Condition="'$(RuntimeIdentifier)' == ''"
-           Text="STRICT MODE: Release publish requires a RuntimeIdentifier. Use: dotnet publish -c Release -r &lt;RID&gt; (e.g. win-x64)." />
-    <Error Condition="$([System.String]::Copy('$(SelfContained)').ToLowerInvariant()) != 'true'"
-           Text="STRICT MODE: Release publish must be self-contained. Use: --self-contained true." />
-    <Error Condition="$([System.String]::Copy('$(PublishSingleFile)').ToLowerInvariant()) != 'true'"
-           Text="STRICT MODE: Release publish must set PublishSingleFile=true." />
-    <Error Condition="$([System.String]::Copy('$(IncludeNativeLibrariesForSelfExtract)').ToLowerInvariant()) != 'true'"
-           Text="STRICT MODE: Release publish must set IncludeNativeLibrariesForSelfExtract=true to ensure single executable output." />
-    <Error Condition="$([System.String]::Copy('$(IncludeAllContentForSelfExtract)').ToLowerInvariant()) != 'true'"
-           Text="STRICT MODE: Release publish must set IncludeAllContentForSelfExtract=true to embed appsettings.json and produce exactly one output file." />
+  <Target Name="EnforceSingleFileReleasePublish" BeforeTargets="Publish" Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
+    <Error Condition="'$(RuntimeIdentifier)' == ''" Text="STRICT MODE: Release publish requires a RuntimeIdentifier. Use: dotnet publish -c Release -r &lt;RID&gt; (e.g. win-x64)." />
+    <Error Condition="$([System.String]::Copy('$(SelfContained)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must be self-contained. Use: --self-contained true." />
+    <Error Condition="$([System.String]::Copy('$(PublishSingleFile)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must set PublishSingleFile=true." />
+    <Error Condition="$([System.String]::Copy('$(IncludeNativeLibrariesForSelfExtract)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must set IncludeNativeLibrariesForSelfExtract=true to ensure single executable output." />
+    <Error Condition="$([System.String]::Copy('$(IncludeAllContentForSelfExtract)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must set IncludeAllContentForSelfExtract=true to embed appsettings.json and produce exactly one output file." />
   </Target>
 
-  <Target Name="ValidateSingleFileReleasePublishOutput"
-          AfterTargets="Publish"
-          Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
+  <Target Name="ValidateSingleFileReleasePublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
     <PropertyGroup>
       <_StrictExpectedFile>$(AssemblyName)</_StrictExpectedFile>
       <_StrictExpectedFile Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</_StrictExpectedFile>
@@ -40,13 +31,12 @@
       <_StrictPublishFiles Include="$(PublishDir)**/*" />
     </ItemGroup>
 
-    <Error Condition="'@(_StrictPublishFiles->Count())' != '1'"
-           Text="STRICT MODE: Release publish output must contain exactly 1 file. Output: $(PublishDir). Files: @(_StrictPublishFiles, ', ')" />
-    <Error Condition="!Exists('$(PublishDir)$(_StrictExpectedFile)')"
-           Text="STRICT MODE: Expected single output file not found: $(PublishDir)$(_StrictExpectedFile)" />
+    <Error Condition="'@(_StrictPublishFiles-&gt;Count())' != '1'" Text="STRICT MODE: Release publish output must contain exactly 1 file. Output: $(PublishDir). Files: @(_StrictPublishFiles, ', ')" />
+    <Error Condition="!Exists('$(PublishDir)$(_StrictExpectedFile)')" Text="STRICT MODE: Expected single output file not found: $(PublishDir)$(_StrictExpectedFile)" />
   </Target>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
@@ -55,12 +45,33 @@
     <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="appsettings.json" />
+  </ItemGroup>
+
+  <!--
+    Vendored native libraries (optional):
+    If present, they will be embedded into the single-file publish output and
+    self-extracted at runtime (STRICT MODE requires IncludeNativeLibrariesForSelfExtract=true).
+  -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <Content Include="native\curl-impersonate\$(RuntimeIdentifier)\**\*"
+             Condition="Exists('native\curl-impersonate\$(RuntimeIdentifier)')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+    </Content>
   </ItemGroup>
 
   <!-- Localization Resources -->

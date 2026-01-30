@@ -77,7 +77,7 @@ class Program
             // 测试 curl
             if (args.Length > 0 && args[0] == "--test-curl")
             {
-                await TestCurl.RunTestAsync();
+                await TestCurl.RunTestAsync(config, _loc);
                 return;
             }
 
@@ -573,14 +573,24 @@ class Program
     static IConfiguration BuildConfiguration()
     {
         // NOTE:
-        // - For single-file releases, appsettings.json is embedded and extracted under AppContext.BaseDirectory.
+        // - For single-file releases, appsettings.json should be available without shipping an extra file.
         // - Allow users to override config by placing appsettings.json next to the executable.
         var basePath = AppContext.BaseDirectory;
 
+        var embeddedAppSettingsStream = TryOpenEmbeddedAppSettingsJson();
+
         var builder = new ConfigurationBuilder()
-            .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+            .SetBasePath(basePath);
+
+        if (embeddedAppSettingsStream != null)
+        {
+            builder.AddJsonStream(embeddedAppSettingsStream);
+        }
+
+        builder
+            .AddJsonFile("appsettings.json", optional: embeddedAppSettingsStream != null, reloadOnChange: true)
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables(prefix: "JAVMANAGER_");
 
         var appHostDir = TryGetAppHostDirectory();
         if (!string.IsNullOrWhiteSpace(appHostDir) && !IsSameDirectory(appHostDir, basePath))
@@ -588,10 +598,32 @@ class Program
             builder
                 .SetBasePath(appHostDir)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables(prefix: "JAVMANAGER_");
         }
 
-        return builder.Build();
+        var config = builder.Build();
+        embeddedAppSettingsStream?.Dispose();
+        return config;
+    }
+
+    static Stream? TryOpenEmbeddedAppSettingsJson()
+    {
+        var asm = typeof(Program).Assembly;
+
+        // Prefer an exact resource name (RootNamespace + file name), but also allow
+        // fallback scanning when the root namespace is changed.
+        var exactName = $"{asm.GetName().Name}.appsettings.json";
+        var exact = asm.GetManifestResourceStream(exactName);
+        if (exact != null)
+            return exact;
+
+        var names = asm.GetManifestResourceNames();
+        var fallbackName = names.FirstOrDefault(n => n.EndsWith(".appsettings.json", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(fallbackName))
+            return null;
+
+        return asm.GetManifestResourceStream(fallbackName);
     }
 
     /// <summary>
@@ -632,6 +664,7 @@ class Program
                 services.AddSingleton<WeightCalculator>();
 
                 // 注册数据提供者
+                services.AddSingleton<IJavDbHttpFetcher, CurlImpersonateHttpFetcher>();
                 services.AddSingleton<IEverythingSearchProvider, EverythingHttpClient>();
                 services.AddSingleton<IHealthChecker>(sp => (IHealthChecker)sp.GetRequiredService<IEverythingSearchProvider>());
                 services.AddSingleton<IQBittorrentClient, QBittorrentApiClient>();

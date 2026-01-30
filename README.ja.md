@@ -1,29 +1,29 @@
 # JavManager
 
-JAVコンテンツの自動管理を行うコマンドラインツール。高速な重複検索、トレント検索、qBittorrent統合機能を備えています。
+コマンドラインツールで、JAVコンテンツの自動管理、高速なリピート検索、トレント検索、qBittorrent統合機能を提供します。
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-> **注意:** Everything（ローカル検索）とqBittorrent（ダウンロード）はオプションの統合機能です。これらがなくてもJavManagerは動作します（JavDBの検索とマグネットリンクの出力は可能です）。他のHTTP APIをサポートするツール（例：他の検索エンジンやダウンロードクライアント）が必要な場合は、[issueを作成してください](../../issues/new)。
+> **注意:** Everything（ローカル検索）とqBittorrent（ダウンロード）はオプションの統合機能です。これらがなくてもJavManagerは動作します（JavDBの検索とマグネットリンクの出力は可能です）。HTTP APIをサポートする他のツール（他の検索エンジンやダウンロードクライアントなど）が必要な場合は、[Issueを作成してください](../../issues/new)。
 
 ## 機能
 
-- JavDBからのJAVメタデータとマグネットリンクの検索
+- JavDBからJAVのメタデータとマグネットリンクを検索
 - 高速検索
 - Everything検索エンジンによるローカルファイルの確認
-- qBittorrent WebUI APIによるダウンロード
+- qBittorrent WebUI API経由でのダウンロード
 - 重みベースのランキングによるスマートなトレント選択
 
 ## ワークフロー
 
 ```mermaid
 flowchart TD
-    A[JAV IDの入力] --> B{データは利用可能か?}
+    A[JAV IDの入力] --> B{データは利用可能?}
     B -->|はい| C[既存のメタデータを使用]
     B -->|いいえ| D[JavDBから取得]
     C --> E[トレントをランク付け]
     D --> E
-    E --> F{ローカルファイルは存在するか?}
+    E --> F[ローカルファイルは存在する?]
     F -->|はい| G[オプションを表示]
     F -->|いいえ| H[ダウンローダーに追加]
     G --> H
@@ -48,41 +48,44 @@ flowchart TD
 
 ### Cloudflare 403問題
 
-JavDBがHTTP 403を返す場合、それはおそらくCloudflareのチャレンジによるものです。JavManagerは組み込みのChromeライクなヘッダーを使用し、サードパーティツールなしでリトライします。それでも403が表示される場合は、ブラウザから取得した`cf_clearance`と一致する`UserAgent`を構成してください（`doc/CloudflareBypass.md`を参照）。
+JavDBがHTTP 403を返す場合、Cloudflareのチャレンジが原因である可能性が高いです。JavManagerは**デフォルトでcurl-impersonateを使用して**、実際のブラウザのTLS/HTTP2フィンガープリントを模倣します（ブラウザ自動化は行いません）。それでも403が表示される場合は、別のミラーURLを試すか、IPがブロックされていないか確認してください（`doc/CloudflareBypass.md`を参照）。
 
 ## 設定
 
-すべての設定は`JavManager/appsettings.json`で構成されます（ローカルのオーバーライドには`appsettings.Development.json`を使用）。環境変数のオーバーライドはサポートされていません。
+すべての設定は`JavManager/appsettings.json`で構成されます（ローカル上書きには`appsettings.Development.json`を使用）。環境変数による上書きはサポートされていません。
 
 設定リファレンス:
 
 | セクション | キー | 必須 | デフォルト | 説明 |
 |---------|-----|----------|---------|-------------|
-| Everything | `BaseUrl` | いいえ（オプション） | `http://localhost` | Everything HTTPサーバーのベースURL（スキームとホストを含む）。利用できない場合、ローカルの重複排除はスキップされます。 |
-| Everything | `UserName` | いいえ（オプション） | _(空)_ | ベーシック認証のユーザー名。 |
-| Everything | `Password` | いいえ（オプション） | _(空)_ | ベーシック認証のパスワード。 |
-| QBittorrent | `BaseUrl` | いいえ（オプション） | `http://localhost:8080` | qBittorrent WebUIのベースURL（必要に応じてポートを含む）。利用できない/認証に失敗した場合、JavManagerはマグネットリンクを表示するのみでダウンロードキューには追加しません。 |
+| Everything | `BaseUrl` | いいえ（オプション） | `http://localhost` | Everything HTTPサーバーのベースURL（スキームとホストを含む）。利用できない場合、ローカルの重複排除がスキップされます。 |
+| Everything | `UserName` | いいえ（オプション） | _(空)_ | Basic認証のユーザー名。 |
+| Everything | `Password` | いいえ（オプション） | _(空)_ | Basic認証のパスワード。 |
+| QBittorrent | `BaseUrl` | いいえ（オプション） | `http://localhost:8080` | qBittorrent WebUIのベースURL（必要に応じてポートを含む）。利用できない/認証に失敗した場合、JavManagerはマグネットリンクを表示するだけでダウンロードキューには追加しません。 |
 | QBittorrent | `UserName` | いいえ（オプション） | `admin` | WebUIのユーザー名。 |
 | QBittorrent | `Password` | いいえ（オプション） | _(空)_ | WebUIのパスワード。 |
 | JavDb | `BaseUrl` | はい | `https://javdb.com` | プライマリJavDBのベースURL。 |
 | JavDb | `MirrorUrls` | いいえ（オプション） | `[]` | 追加のミラーURL（配列）。 |
 | JavDb | `RequestTimeout` | いいえ（オプション） | `30000` | リクエストタイムアウト（ミリ秒）。 |
-| JavDb | `CfClearance` | 時々 | _(空)_ | `cf_clearance`クッキー値（Cloudflareチャレンジがアクティブなときに必要）。 |
-| JavDb | `CfBm` | いいえ（オプション） | _(空)_ | `__cf_bm`クッキー値（オプション；成功率を向上させる可能性あり）。 |
-| JavDb | `UserAgent` | 時々 | _(空)_ | クッキーのソースに一致するブラウザのUser-Agent文字列（Cloudflareクッキーを使用するときに必要）。 |
+| JavDb | `UserAgent` | いいえ（オプション） | _(空)_ | カスタムUser-Agent文字列（HttpClientフォールバックモードでのみ使用）。 |
+| JavDb | `CurlImpersonate:Enabled` | いいえ（オプション） | `true` | JavDBリクエストでcurl-impersonateを有効にする（推奨）。 |
+| JavDb | `CurlImpersonate:Target` | いいえ（オプション） | `chrome116` | `curl_easy_impersonate()`の偽装ターゲット名（例: `chrome116`）。 |
+| JavDb | `CurlImpersonate:LibraryPath` | いいえ（オプション） | _(空)_ | `libcurl.dll`へのオプションの明示的なパス（自動検出されない場合）。 |
+| JavDb | `CurlImpersonate:CaBundlePath` | いいえ（オプション） | _(空)_ | `cacert.pem`へのオプションのパス（自動検出されない場合）。 |
+| JavDb | `CurlImpersonate:DefaultHeaders` | いいえ（オプション） | `true` | curl-impersonateの組み込みデフォルトHTTPヘッダーを使用する。 |
 | Download | `DefaultSavePath` | いいえ（オプション） | _(空)_ | qBittorrentにトレントを追加するときのデフォルト保存パス。 |
 | Download | `DefaultCategory` | いいえ（オプション） | `jav` | qBittorrentのデフォルトカテゴリ。 |
 | Download | `DefaultTags` | いいえ（オプション） | `auto-download` | 作成されたダウンロードのデフォルトタグ。 |
-| LocalCache | `Enabled` | いいえ（オプション） | `true` | ローカルキャッシュストレージの有効化または無効化。 |
-| LocalCache | `DatabasePath` | いいえ（オプション） | _(空)_ | JSONキャッシュファイルパス（空のままにすると実行ファイルの隣のデフォルトの`jav_cache.json`が使用されます）。 |
-| LocalCache | `CacheExpirationDays` | いいえ（オプション） | `0` | キャッシュのTTL（日数）（0は期限切れを無効化）。 |
+| LocalCache | `Enabled` | いいえ（オプション） | `true` | ローカルキャッシュストレージを有効または無効にする。 |
+| LocalCache | `DatabasePath` | いいえ（オプション） | _(空)_ | JSONキャッシュファイルのパス（空のままにすると実行ファイルの隣のデフォルトの`jav_cache.json`が使用される）。 |
+| LocalCache | `CacheExpirationDays` | いいえ（オプション） | `0` | キャッシュのTTL（日数）（0は期限切れを無効にする）。 |
 | Console | `Language` | いいえ（オプション） | `en` | UI言語（`en`、`zh`、または`auto`）。 |
 | Console | `HideOtherTorrents` | いいえ（オプション） | `true` | リスト内の一致しないトレントを非表示にする。 |
-| Telemetry | `Enabled` | いいえ（オプション） | `true` | 匿名テレメトリの有効化または無効化。 |
-| Telemetry | `Endpoint` | いいえ（オプション） | _(空)_ | テレメトリエンドポイントURL（空のままにするとデフォルトが使用されます）。 |
-| JavInfoSync | `Enabled` | いいえ（オプション） | `false` | JavInfo同期の有効化または無効化。 |
-| JavInfoSync | `Endpoint` | 有効化時 | _(空)_ | JavInfo同期エンドポイントURL。 |
-| JavInfoSync | `ApiKey` | いいえ（オプション） | _(空)_ | オプションのAPIキー（`X-API-Key`で送信）。 |
+| Telemetry | `Enabled` | いいえ（オプション） | `true` | 匿名テレメトリを有効または無効にする。 |
+| Telemetry | `Endpoint` | いいえ（オプション） | _(空)_ | テレメトリエンドポイントURL（空のままにするとデフォルトが使用される）。 |
+| JavInfoSync | `Enabled` | いいえ（オプション） | `false` | JavInfo同期を有効または無効にする。 |
+| JavInfoSync | `Endpoint` | 有効時 | _(空)_ | JavInfo同期エンドポイントURL。 |
+| JavInfoSync | `ApiKey` | いいえ（オプション） | _(空)_ | オプションのAPIキー（`X-API-Key`経由で送信）。 |
 
 ## 使用方法
 
@@ -106,7 +109,7 @@ dotnet run --project JavManager/JavManager.csproj -- version
 |---------|-------------|
 | `<code>` | JAVコードで検索（例: `STARS-001`） |
 | `r <code>` | 検索をリフレッシュ |
-| `c` | 保存済みデータ統計を表示 |
+| `c` | 保存されたデータ統計を表示 |
 | `h` | ヘルプを表示 |
 | `q` | 終了 |
 

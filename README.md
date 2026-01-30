@@ -48,7 +48,7 @@ flowchart TD
 
 ### Cloudflare 403 Issue
 
-If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager uses built-in Chrome-like headers and retries without third-party tools. If you still see 403, configure `cf_clearance` and a matching `UserAgent` from your browser (see `doc/CloudflareBypass.md`).
+If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager uses **curl-impersonate by default** to mimic a real browser TLS/HTTP2 fingerprint (no browser automation). If you still see 403, try a different mirror URL or check if your IP is blocked (see `doc/CloudflareBypass.md`).
 
 ## Configuration
 
@@ -67,9 +67,12 @@ Configuration reference:
 | JavDb | `BaseUrl` | Yes | `https://javdb.com` | Primary JavDB base URL. |
 | JavDb | `MirrorUrls` | No (optional) | `[]` | Additional mirror URLs (array). |
 | JavDb | `RequestTimeout` | No (optional) | `30000` | Request timeout in milliseconds. |
-| JavDb | `CfClearance` | Sometimes | _(empty)_ | `cf_clearance` cookie value (needed when Cloudflare challenge is active). |
-| JavDb | `CfBm` | No (optional) | _(empty)_ | `__cf_bm` cookie value (optional; can improve success rate). |
-| JavDb | `UserAgent` | Sometimes | _(empty)_ | Browser User-Agent string matching the cookie source (needed when using Cloudflare cookies). |
+| JavDb | `UserAgent` | No (optional) | _(empty)_ | Custom User-Agent string (used only in HttpClient fallback mode). |
+| JavDb | `CurlImpersonate:Enabled` | No (optional) | `true` | Enable curl-impersonate for JavDB requests (recommended). |
+| JavDb | `CurlImpersonate:Target` | No (optional) | `chrome116` | Impersonation target name for `curl_easy_impersonate()` (e.g. `chrome116`). |
+| JavDb | `CurlImpersonate:LibraryPath` | No (optional) | _(empty)_ | Optional explicit path to `libcurl.dll` (otherwise auto-detected). |
+| JavDb | `CurlImpersonate:CaBundlePath` | No (optional) | _(empty)_ | Optional path to `cacert.pem` (otherwise auto-detected). |
+| JavDb | `CurlImpersonate:DefaultHeaders` | No (optional) | `true` | Use curl-impersonate built-in default HTTP headers. |
 | Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |
 | Download | `DefaultCategory` | No (optional) | `jav` | Default category in qBittorrent. |
 | Download | `DefaultTags` | No (optional) | `auto-download` | Default tags for created downloads. |

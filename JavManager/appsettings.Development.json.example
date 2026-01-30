@@ -13,9 +13,14 @@
     "BaseUrl": "https://javdb.com",
     "MirrorUrls": ["https://javdb565.com", "https://javdb564.com"],
     "RequestTimeout": 30000,
-    "CfClearance": "",
-    "CfBm": "",
-    "UserAgent": ""
+    "UserAgent": "",
+    "CurlImpersonate": {
+      "Enabled": true,
+      "Target": "chrome116",
+      "LibraryPath": "",
+      "CaBundlePath": "",
+      "DefaultHeaders": true
+    }
   },
   "Download": {
     "DefaultSavePath": "/downloads/jav",
