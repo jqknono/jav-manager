@@ -1,17 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <!-- Opt-in Android build: set /p:EnableAndroid=true (requires Android workload) -->
+    <TargetFrameworks Condition="'$(EnableAndroid)' == 'true'">net10.0;net10.0-android</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <StrictSingleFileReleasePublish Condition="'$(StrictSingleFileReleasePublish)' == ''">true</StrictSingleFileReleasePublish>
     <!-- Avalonia settings -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <OutputType>WinExe</OutputType>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- Application Icon (embedded in executable) -->
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <OutputType>Exe</OutputType>
+    <SupportedOSPlatformVersion>34</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <!--
@@ -20,7 +30,7 @@
     (e.g. Windows Terminal/ConPTY) and console mode appears to have "no output".
     `dotnet run` will execute the DLL via the `dotnet` host, ensuring stdout/stderr are visible.
   -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net10.0'">
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
@@ -29,7 +39,7 @@
     Forbid "portable/scattered" publish outputs.
     Release publish must be RID-specific, self-contained, and single-file.
   -->
-  <Target Name="EnforceSingleFileReleasePublish" BeforeTargets="Publish" Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
+  <Target Name="EnforceSingleFileReleasePublish" BeforeTargets="Publish" Condition="'$(Configuration)' == 'Release' and '$(TargetFramework)' == 'net10.0' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
     <Error Condition="'$(RuntimeIdentifier)' == ''" Text="STRICT MODE: Release publish requires a RuntimeIdentifier. Use: dotnet publish -c Release -r &lt;RID&gt; (e.g. win-x64)." />
     <Error Condition="$([System.String]::Copy('$(SelfContained)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must be self-contained. Use: --self-contained true." />
     <Error Condition="$([System.String]::Copy('$(PublishSingleFile)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must set PublishSingleFile=true." />
@@ -37,7 +47,7 @@
     <Error Condition="$([System.String]::Copy('$(IncludeAllContentForSelfExtract)').ToLowerInvariant()) != 'true'" Text="STRICT MODE: Release publish must set IncludeAllContentForSelfExtract=true to embed appsettings.json and produce exactly one output file." />
   </Target>
 
-  <Target Name="ValidateSingleFileReleasePublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
+  <Target Name="ValidateSingleFileReleasePublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release' and '$(TargetFramework)' == 'net10.0' and $([System.String]::Copy('$(StrictSingleFileReleasePublish)').ToLowerInvariant()) == 'true'">
     <PropertyGroup>
       <_StrictExpectedFile>$(AssemblyName)</_StrictExpectedFile>
       <_StrictExpectedFile Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">$(AssemblyName).exe</_StrictExpectedFile>
@@ -52,7 +62,6 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
@@ -63,11 +72,30 @@
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
     <!-- Avalonia GUI -->
-    <PackageReference Include="Avalonia" Version="11.2.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="Avalonia" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <PackageReference Include="Avalonia.Android" Version="11.3.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <!-- Android uses MainActivity/MainApplication as entry point -->
+    <Compile Remove="Program.cs" />
+    <!-- Desktop-only lifetime startup -->
+    <Compile Remove="Gui\GuiStartup.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <!-- Avoid compiling Android platform heads into desktop build -->
+    <Compile Remove="Platforms\Android\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -110,6 +138,15 @@
     <EmbeddedResource Update="Localization\Strings.zh.resx">
       <DependentUpon>Strings.resx</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <!--
+    i18n policy (repo + project): only ship English + Chinese resources.
+    Exclude other language .resx files from build to avoid invalid/partial translations breaking compilation.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Remove="Localization\Strings.ja.resx" />
+    <EmbeddedResource Remove="Localization\Strings.ko.resx" />
   </ItemGroup>
 
 </Project>

@@ -14,15 +14,5 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TabControl SelectedIndex="{Binding SelectedTabIndex}" Padding="8">
-        <TabItem Header="{Binding Loc[Gui_Tab_Search]}">
-            <views:SearchView DataContext="{Binding SearchViewModel}" />
-        </TabItem>
-        <TabItem Header="{Binding Loc[Gui_Tab_Downloads]}">
-            <views:DownloadsView DataContext="{Binding DownloadsViewModel}" />
-        </TabItem>
-        <TabItem Header="{Binding Loc[Gui_Tab_Settings]}">
-            <views:SettingsView DataContext="{Binding SettingsViewModel}" />
-        </TabItem>
-    </TabControl>
+    <views:MainView />
 </Window>

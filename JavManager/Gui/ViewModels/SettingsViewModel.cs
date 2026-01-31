@@ -6,6 +6,7 @@ using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Gui.Localization;
 using JavManager.Core.Interfaces;
 using JavManager.Gui.Services;
+using JavManager.Gui.Utils;
 using JavManager.Localization;
 using JavManager.Services;
 
@@ -82,10 +83,19 @@ public partial class SettingsViewModel : ViewModelBase
     private string _everythingStatus = "Unknown";
 
     [ObservableProperty]
+    private string? _everythingStatusDetails;
+
+    [ObservableProperty]
     private string _qbStatus = "Unknown";
 
     [ObservableProperty]
+    private string? _qbStatusDetails;
+
+    [ObservableProperty]
     private string _javDbStatus = "Unknown";
+
+    [ObservableProperty]
+    private string? _javDbStatusDetails;
 
     public IReadOnlyList<LanguageOption> AvailableLanguages { get; }
 
@@ -111,8 +121,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             new LanguageOption("en", "Gui_Settings_Language_English", localizationService),
             new LanguageOption("zh", "Gui_Settings_Language_Chinese", localizationService),
-            new LanguageOption("ja", "Gui_Settings_Language_Japanese", localizationService),
-            new LanguageOption("ko", "Gui_Settings_Language_Korean", localizationService),
         };
         _configFileService = configFileService;
         _healthCheckService = healthCheckService;
@@ -220,13 +228,26 @@ public partial class SettingsViewModel : ViewModelBase
 
             foreach (var r in results)
             {
-                var status = r.IsHealthy ? "OK" : r.Message;
+                var (summary, details) = r.IsHealthy
+                    ? ("OK", string.Empty)
+                    : UiMessageFormatter.ToSummaryAndDetails(r.Message);
+
+                var status = r.IsHealthy ? "OK" : summary;
                 if (r.ServiceName.Contains("Everything", StringComparison.OrdinalIgnoreCase))
+                {
                     EverythingStatus = status;
+                    EverythingStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
                 else if (r.ServiceName.Contains("qBittorrent", StringComparison.OrdinalIgnoreCase))
+                {
                     QbStatus = status;
+                    QbStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
                 else if (r.ServiceName.Contains("JavDB", StringComparison.OrdinalIgnoreCase))
+                {
                     JavDbStatus = status;
+                    JavDbStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
             }
 
             var healthy = results.Count(r => r.IsHealthy);
@@ -253,13 +274,26 @@ public partial class SettingsViewModel : ViewModelBase
 
             foreach (var r in results)
             {
-                var status = r.IsHealthy ? "OK" : r.Message;
+                var (summary, details) = r.IsHealthy
+                    ? ("OK", string.Empty)
+                    : UiMessageFormatter.ToSummaryAndDetails(r.Message);
+
+                var status = r.IsHealthy ? "OK" : summary;
                 if (r.ServiceName.Contains("Everything", StringComparison.OrdinalIgnoreCase))
+                {
                     EverythingStatus = status;
+                    EverythingStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
                 else if (r.ServiceName.Contains("qBittorrent", StringComparison.OrdinalIgnoreCase))
+                {
                     QbStatus = status;
+                    QbStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
                 else if (r.ServiceName.Contains("JavDB", StringComparison.OrdinalIgnoreCase))
+                {
                     JavDbStatus = status;
+                    JavDbStatusDetails = r.IsHealthy || string.IsNullOrWhiteSpace(details) ? null : details;
+                }
             }
         }
         catch

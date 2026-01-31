@@ -5,5 +5,8 @@
     <FileVersion>0.1.0.0</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
   </PropertyGroup>
+
+  <!-- Optional local machine overrides (do not commit). -->
+  <Import Project="Directory.Build.props.local" Condition="Exists('Directory.Build.props.local')" />
 </Project>
 

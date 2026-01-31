@@ -4,22 +4,26 @@ using Avalonia.Markup.Xaml;
 using JavManager.Gui.Views;
 using JavManager.Gui.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using AppBase = Avalonia.Application;
 
 namespace JavManager.Gui;
 
-public partial class App : Application
+public partial class App : AppBase
 {
-    private readonly IServiceProvider _services;
+    private IServiceProvider? _services;
 
     public App()
     {
-        _services = null!;
+        _services = null;
     }
 
     public App(IServiceProvider services)
     {
         _services = services;
     }
+
+    private IServiceProvider Services
+        => _services ??= GuiServiceProviderFactory.Create();
 
     public override void Initialize()
     {
@@ -28,11 +32,20 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        var services = Services;
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow
             {
-                DataContext = _services.GetRequiredService<MainViewModel>()
+                DataContext = services.GetRequiredService<MainViewModel>()
+            };
+        }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            singleView.MainView = new MainView
+            {
+                DataContext = services.GetRequiredService<MainViewModel>()
             };
         }
 

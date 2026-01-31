@@ -42,11 +42,16 @@
         </Border>
 
         <!-- Status Bar -->
-        <Grid Grid.Row="2" Margin="0,12,0,0">
-            <TextBlock Text="{Binding StatusMessage}" 
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding StatusMessage}"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding StatusMessage}"
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <ProgressBar IsVisible="{Binding IsLoading}" 
+            <ProgressBar Grid.Column="1"
+                         IsVisible="{Binding IsLoading}"
                          IsIndeterminate="True"
                          HorizontalAlignment="Right"
                          Width="100"/>

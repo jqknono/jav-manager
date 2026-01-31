@@ -16,6 +16,10 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Loc[Gui_Settings_Everything_Title]}" FontWeight="SemiBold" FontSize="14"/>
                             <TextBlock Grid.Column="1" Text="{Binding EverythingStatus}" 
+                                       ToolTip.Tip="{Binding EverythingStatusDetails}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="340"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
                         <Grid ColumnDefinitions="120,*">
@@ -46,6 +50,10 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Loc[Gui_Settings_QBittorrent_Title]}" FontWeight="SemiBold" FontSize="14"/>
                             <TextBlock Grid.Column="1" Text="{Binding QbStatus}" 
+                                       ToolTip.Tip="{Binding QbStatusDetails}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="340"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
                         <Grid ColumnDefinitions="120,*">
@@ -76,6 +84,10 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_Title]}" FontWeight="SemiBold" FontSize="14"/>
                             <TextBlock Grid.Column="1" Text="{Binding JavDbStatus}"
+                                       ToolTip.Tip="{Binding JavDbStatusDetails}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="340"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
                         <Grid ColumnDefinitions="120,*">
@@ -152,20 +164,28 @@
                 BorderThickness="0,1,0,0"
                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                 Padding="16">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Grid.Column="0" 
-                           Text="{Binding StatusMessage}" 
+            <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Grid.RowSpan="2"
+                           Text="{Binding StatusMessage}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding StatusMessage}"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <Button Grid.Column="1" 
-                        Content="{Binding Loc[Gui_Settings_ButtonTestConnections]}" 
+                <Button Grid.Column="1"
+                        Grid.Row="0"
+                        Content="{Binding Loc[Gui_Settings_ButtonTestConnections]}"
                         Command="{Binding TestConnectionsCommand}"
                         IsEnabled="{Binding !IsTesting}"
-                        Margin="0,0,8,0"/>
-                <Button Grid.Column="2" 
-                        Content="{Binding Loc[Gui_Common_Apply]}" 
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Top"/>
+                <Button Grid.Column="2"
+                        Grid.Row="0"
+                        Content="{Binding Loc[Gui_Common_Apply]}"
                         Command="{Binding ApplySettingsCommand}"
-                        Classes="accent"/>
+                        Classes="accent"
+                        VerticalAlignment="Top"/>
             </Grid>
         </Border>
     </Grid>

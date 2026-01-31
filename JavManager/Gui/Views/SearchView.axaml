@@ -157,21 +157,29 @@
         </Grid>
 
         <!-- Bottom Action Bar -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
-            <TextBlock Grid.Column="0" 
-                       Text="{Binding StatusMessage}" 
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0"
+                       Grid.RowSpan="2"
+                       Text="{Binding StatusMessage}"
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding StatusMessage}"
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <Button Grid.Column="1" 
-                    Content="{Binding Loc[Gui_Search_ButtonCopyMagnet]}" 
+            <Button Grid.Column="1"
+                    Grid.Row="0"
+                    Content="{Binding Loc[Gui_Search_ButtonCopyMagnet]}"
                     Command="{Binding CopyMagnetLinkCommand}"
                     IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Margin="0,0,8,0"/>
-            <Button Grid.Column="2" 
-                    Content="{Binding Loc[Gui_Search_ButtonDownload]}" 
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Top"/>
+            <Button Grid.Column="2"
+                    Grid.Row="0"
+                    Content="{Binding Loc[Gui_Search_ButtonDownload]}"
                     Command="{Binding DownloadSelectedCommand}"
                     IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Classes="accent"/>
+                    Classes="accent"
+                    VerticalAlignment="Top"/>
         </Grid>
     </Grid>
 

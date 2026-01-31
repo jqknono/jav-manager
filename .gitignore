@@ -4,7 +4,7 @@ JavManager/bin/Release/
 JavManager.Tests/obj/
 JavManager.Tests/bin/Debug/
 JavManager.Tests/bin/Release/
-artifacts/
+**/artifacts/
 **/node_modules/
 **/.wrangler/
 
@@ -16,6 +16,9 @@ artifacts/
 .env.production
 appsettings.Development.json
 appsettings.*.local.json
+
+# Local machine build overrides
+Directory.Build.props.local
 
 # Database files
 *.db

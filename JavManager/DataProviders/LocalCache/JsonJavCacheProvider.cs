@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
 using JavManager.Core.Models;
+using JavManager.Utils;
 
 namespace JavManager.DataProviders.LocalCache;
 
@@ -263,6 +264,9 @@ public sealed class JsonJavCacheProvider : IJavLocalCacheProvider
 
     private static string GetPreferredBaseDirectory()
     {
+        if (OperatingSystem.IsAndroid())
+            return AppPaths.GetPreferredConfigDirectory();
+
         var baseDir = AppContext.BaseDirectory;
         var appHostDir = TryGetAppHostDirectory();
         if (!string.IsNullOrWhiteSpace(appHostDir) && !IsSameDirectory(appHostDir, baseDir))
