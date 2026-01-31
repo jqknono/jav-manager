@@ -19,6 +19,26 @@
                     "lang": "ko-kr"
                 }
             ]
+        },
+        {
+            "sourceFile": {
+                "path": "JavManager\\Localization\\Strings.resx",
+                "lang": "en-us"
+            },
+            "targetFiles": [
+                {
+                    "path": "JavManager\\Localization\\Strings.zh.resx",
+                    "lang": "zh-cn"
+                },
+                {
+                    "path": "JavManager\\Localization\\Strings.ja.resx",
+                    "lang": "ja-jp"
+                },
+                {
+                    "path": "JavManager\\Localization\\Strings.ko.resx",
+                    "lang": "ko-kr"
+                }
+            ]
         }
     ]
 }

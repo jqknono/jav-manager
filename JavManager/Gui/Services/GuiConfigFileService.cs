@@ -7,7 +7,21 @@ namespace JavManager.Gui.Services;
 
 public sealed class GuiConfigFileService
 {
-    public string ConfigPath => AppPaths.GetAppSettingsPath();
+    private readonly string _configPath;
+
+    public GuiConfigFileService()
+        : this(configPath: null)
+    {
+    }
+
+    public GuiConfigFileService(string? configPath = null)
+    {
+        _configPath = string.IsNullOrWhiteSpace(configPath)
+            ? AppPaths.GetAppSettingsPath()
+            : configPath;
+    }
+
+    public string ConfigPath => _configPath;
 
     public async Task SaveAsync(
         EverythingConfig everythingConfig,
@@ -45,6 +59,9 @@ public sealed class GuiConfigFileService
 
         var javDb = (JObject?)root["JavDb"] ?? new JObject();
         javDb["BaseUrl"] = javDbConfig.BaseUrl ?? string.Empty;
+        javDb["MirrorUrls"] = new JArray((javDbConfig.MirrorUrls ?? new List<string>())
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim()));
         root["JavDb"] = javDb;
 
         var download = (JObject?)root["Download"] ?? new JObject();

@@ -1,18 +1,20 @@
 # JavManager
 
-자동화된 JAV 콘텐츠 관리를 위한 명령줄 도구로, 빠른 반복 검색, 토렌트 검색, qBittorrent 통합 기능을 제공합니다.
+경량 GUI + CLI 도구로 자동화된 JAV 콘텐츠 관리를 제공하며, 빠른 반복 검색, 토렌트 검색, 선택적 qBittorrent 통합 기능을 제공합니다.
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-> **참고:** Everything(로컬 검색)과 qBittorrent(다운로드)는 선택적 통합입니다. JavManager는 이들 없이도 작동합니다(여전히 JavDB를 검색하고 마그넷 링크를 출력할 수 있습니다). 다른 HTTP API를 지원하는 도구(예: 다른 검색 엔진이나 다운로드 클라이언트)가 필요한 경우 [이슈를 생성](../../issues/new)하세요.
+> **참고:** Everything(로컬 검색)과 qBittorrent(다운로드)는 선택적 통합 기능입니다. JavManager는 이들 없이도 작동합니다(여전히 JavDB를 검색하고 마그넷 링크를 출력할 수 있습니다). 다른 HTTP API를 지원하는 도구(예: 다른 검색 엔진이나 다운로드 클라이언트)가 필요하면 [이슈를 생성](../../issues/new)하세요.
 
 ## 기능
 
-- JavDB에서 JAV 메타데이터 및 마그넷 링크 검색
-- 빠른 검색
+- GUI(Avalonia)와 콘솔 모드(Spectre.Console)
+- 다국어 GUI(영어, 중국어, 일본어, 한국어)
+- JavDB에서 JAV 메타데이터와 토렌트/마그넷 검색
 - Everything 검색 엔진을 통한 로컬 파일 확인
 - qBittorrent WebUI API를 통한 다운로드
-- 가중치 기반 순위 매김을 통한 스마트 토렌트 선택
+- 반복 검색을 위한 로컬 JSON 캐시
+- 가중치 기반 순위 매기기를 통한 스마트 토렌트 선택(마커 + 가중치)
 
 ## 워크플로우
 
@@ -43,57 +45,106 @@ flowchart TD
 | 서비스 | 필수 | 용도 | 링크 |
 |---------|----------|---------|------|
 | JavDB | 예 | 메타데이터 및 마그넷 링크 | [javdb.com](https://javdb.com/) |
-| Everything | 아니오(선택사항) | 로컬 파일 검색 | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP 플러그인](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
-| qBittorrent | 아니오(선택사항) | 토렌트 다운로드 | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
+| Everything | 아니오(선택적) | 로컬 파일 검색 | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP 플러그인](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
+| qBittorrent | 아니오(선택적) | 토렌트 다운로드 | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
 ### Cloudflare 403 문제
 
-JavDB가 HTTP 403을 반환하면 Cloudflare 챌린지 때문일 가능성이 높습니다. JavManager는 기본적으로 **curl-impersonate를 사용하여** 실제 브라우저 TLS/HTTP2 지문을 모방합니다(브라우저 자동화 없음). 그래도 403이 표시되면 다른 미러 URL을 시도하거나 IP가 차단되었는지 확인하세요(자세한 내용은 `doc/CloudflareBypass.md` 참조).
+JavDB가 HTTP 403을 반환하면 Cloudflare 챌린지 때문일 가능성이 높습니다. JavManager는 **기본적으로 curl-impersonate를 사용하여 실제 브라우저 TLS/HTTP2 지문을 모방합니다(브라우저 자동화 없음)**. 그래도 403이 표시되면 다른 미러 URL을 시도하거나 IP가 차단되었는지 확인하세요(`doc/CloudflareBypass.md` 참조).
+
+### JavDB 도메인 API
+
+Cloudflare Worker는 공식 사이트에서 최신 JavDB 도메인을 가져오는 API 엔드포인트를 제공합니다:
+
+**엔드포인트:** `GET /api/javdb-domain`
+
+**요청 예시:**
+```bash
+curl https://your-worker-url/api/javdb-domain
+```
+
+**응답 예시:**
+```json
+{
+  "success": true,
+  "domains": ["javdb565.com"]
+}
+```
+
+**오류 응답:**
+```json
+{
+  "success": false,
+  "error": "Failed to fetch domain from javdb.com",
+  "message": "Could not extract latest domain from javdb.com"
+}
+```
+
+이 API는 `https://javdb.com/`에서 실시간으로 최신 JavDB 도메인을 가져옵니다. API에는 10초 타임아웃과 적절한 오류 처리가 포함되어 있습니다.
+
+### 원격 분석 + "Jav Trends"(선택적)
+
+`Telemetry:Enabled`가 true이면 JavManager는 다음을 게시할 수 있습니다:
+
+- `POST /api/telemetry`에 시작 이벤트
+- `POST /api/javinfo`에 JAV 메타데이터(워커 UI에서 사용; 반복 보고는 개별 ID 검색 카운터를 증가시킴)
+
+워커는 또한 작은 UI를 제공합니다:
+
+- `/` 개요
+- `/jav` "Jav Trends"(최근 JavInfo 레코드 + 검색 횟수)
 
 ## 설정
 
-모든 설정은 `JavManager/appsettings.json`에서 구성됩니다(로컬 재정의용으로 `appsettings.Development.json` 사용 가능). 환경 변수 재정의는 지원되지 않습니다.
+설정은 `appsettings.json`(및 선택적 `appsettings.Development.json`)을 통해 구성됩니다.
+
+- 개발: `JavManager/appsettings.json` 편집(이 파일은 `bin/Debug/net10.0/appsettings.json`으로 복사됨).
+- 릴리스/단일 파일: 앱은 첫 실행 시 실행 파일 옆에 있는 `appsettings.json`을 읽고(없으면 생성) 사용합니다.
 
 설정 참조:
 
 | 섹션 | 키 | 필수 | 기본값 | 설명 |
 |---------|-----|----------|---------|-------------|
-| Everything | `BaseUrl` | 아니오(선택사항) | `http://localhost` | Everything HTTP 서버 기본 URL(스키마와 호스트 포함). 사용할 수 없으면 로컬 중복 제거가 건너뜁니다. |
-| Everything | `UserName` | 아니오(선택사항) | _(비어 있음)_ | 기본 인증 사용자 이름. |
-| Everything | `Password` | 아니오(선택사항) | _(비어 있음)_ | 기본 인증 비밀번호. |
-| QBittorrent | `BaseUrl` | 아니오(선택사항) | `http://localhost:8080` | qBittorrent WebUI 기본 URL(필요한 경우 포트 포함). 사용할 수 없거나 인증이 실패하면 JavManager는 마그넷 링크를 출력하지만 다운로드 큐에 추가하지 않습니다. |
-| QBittorrent | `UserName` | 아니오(선택사항) | `admin` | WebUI 사용자 이름. |
-| QBittorrent | `Password` | 아니오(선택사항) | _(비어 있음)_ | WebUI 비밀번호. |
+| Everything | `BaseUrl` | 아니오(선택적) | _(비어 있음)_ | Everything HTTP 서버 기본 URL(스키마와 호스트 포함). 사용할 수 없으면 로컬 중복 제거가 건너뜁니다. |
+| Everything | `UserName` | 아니오(선택적) | _(비어 있음)_ | 기본 인증 사용자 이름. |
+| Everything | `Password` | 아니오(선택적) | _(비어 있음)_ | 기본 인증 비밀번호. |
+| QBittorrent | `BaseUrl` | 아니오(선택적) | _(비어 있음)_ | qBittorrent WebUI 기본 URL(필요한 경우 포트 포함). 사용할 수 없거나 인증에 실패하면 JavManager는 마그넷 링크를 출력하지만 다운로드 큐에 추가하지 않습니다. |
+| QBittorrent | `UserName` | 아니오(선택적) | _(비어 있음)_ | WebUI 사용자 이름. |
+| QBittorrent | `Password` | 아니오(선택적) | _(비어 있음)_ | WebUI 비밀번호. |
 | JavDb | `BaseUrl` | 예 | `https://javdb.com` | 기본 JavDB 기본 URL. |
-| JavDb | `MirrorUrls` | 아니오(선택사항) | `[]` | 추가 미러 URL(배열). |
-| JavDb | `RequestTimeout` | 아니오(선택사항) | `30000` | 요청 제한 시간(밀리초). |
-| JavDb | `UserAgent` | 아니오(선택사항) | _(비어 있음)_ | 사용자 지정 User-Agent 문자열(HttpClient 폴백 모드에서만 사용). |
-| JavDb | `CurlImpersonate:Enabled` | 아니오(선택사항) | `true` | JavDB 요청에 curl-impersonate 사용(권장). |
-| JavDb | `CurlImpersonate:Target` | 아니오(선택사항) | `chrome116` | `curl_easy_impersonate()`에 사용할 모방 대상 이름(예: `chrome116`). |
-| JavDb | `CurlImpersonate:LibraryPath` | 아니오(선택사항) | _(비어 있음)_ | `libcurl.dll`에 대한 선택적 명시적 경로(그렇지 않으면 자동 감지). |
-| JavDb | `CurlImpersonate:CaBundlePath` | 아니오(선택사항) | _(비어 있음)_ | `cacert.pem`에 대한 선택적 경로(그렇지 않으면 자동 감지). |
-| JavDb | `CurlImpersonate:DefaultHeaders` | 아니오(선택사항) | `true` | curl-impersonate 기본 HTTP 헤더 사용. |
-| Download | `DefaultSavePath` | 아니오(선택사항) | _(비어 있음)_ | qBittorrent에 토렌트를 추가할 때 기본 다운로드 경로. |
-| Download | `DefaultCategory` | 아니오(선택사항) | `jav` | qBittorrent의 기본 카테고리. |
-| Download | `DefaultTags` | 아니오(선택사항) | `auto-download` | 생성된 다운로드에 대한 기본 태그. |
-| LocalCache | `Enabled` | 아니오(선택사항) | `true` | 로컬 캐시 저장소 사용 여부 설정. |
-| LocalCache | `DatabasePath` | 아니오(선택사항) | _(비어 있음)_ | JSON 캐시 파일 경로(비워두면 실행 파일 옆의 기본 `jav_cache.json` 사용). |
-| LocalCache | `CacheExpirationDays` | 아니오(선택사항) | `0` | 캐시 TTL(일, 0은 만료 비활성화). |
-| Console | `Language` | 아니오(선택사항) | `en` | UI 언어(`en`, `zh`, 또는 `auto`). |
-| Console | `HideOtherTorrents` | 아니오(선택사항) | `true` | 목록에서 일치하지 않는 토렌트 숨기기. |
-| Telemetry | `Enabled` | 아니오(선택사항) | `true` | 익명 원격 분석 사용 여부 설정. |
-| Telemetry | `Endpoint` | 아니오(선택사항) | _(비어 있음)_ | 원격 분석 엔드포인트 URL(비워두면 기본값 사용). |
-| JavInfoSync | `Enabled` | 아니오(선택사항) | `false` | JavInfo 동기화 사용 여부 설정. |
-| JavInfoSync | `Endpoint` | 활성화된 경우 | _(비어 있음)_ | JavInfo 동기화 엔드포인트 URL. |
-| JavInfoSync | `ApiKey` | 아니오(선택사항) | _(비어 있음)_ | 선택적 API 키(`X-API-Key`로 전송). |
+| JavDb | `MirrorUrls` | 아니오(선택적) | `[]` | 추가 미러 URL(배열). |
+| JavDb | `RequestTimeout` | 아니오(선택적) | `30000` | 요청 타임아웃(밀리초 단위). |
+| JavDb | `UserAgent` | 아니오(선택적) | _(비어 있음)_ | 사용자 지정 User-Agent 문자열(HttpClient 폴백 모드에서만 사용). |
+| JavDb | `CurlImpersonate:Enabled` | 아니오(선택적) | `true` | JavDB 요청에 curl-impersonate 사용(권장). |
+| JavDb | `CurlImpersonate:Target` | 아니오(선택적) | `chrome116` | `curl_easy_impersonate()`에 사용할 모방 대상 이름(예: `chrome116`). |
+| JavDb | `CurlImpersonate:LibraryPath` | 아니오(선택적) | _(비어 있음)_ | `libcurl.dll`에 대한 선택적 명시적 경로(그렇지 않으면 자동 감지). |
+| JavDb | `CurlImpersonate:CaBundlePath` | 아니오(선택적) | _(비어 있음)_ | `cacert.pem`에 대한 선택적 경로(그렇지 않으면 자동 감지). |
+| JavDb | `CurlImpersonate:DefaultHeaders` | 아니오(선택적) | `true` | curl-impersonate 내장 기본 HTTP 헤더 사용. |
+| Download | `DefaultSavePath` | 아니오(선택적) | _(비어 있음)_ | qBittorrent에 토렌트를 추가할 때 기본 다운로드 경로. |
+| Download | `DefaultCategory` | 아니오(선택적) | `jav` | qBittorrent의 기본 카테고리. |
+| Download | `DefaultTags` | 아니오(선택적) | `jav-manager` | 생성된 다운로드에 대한 기본 태그. |
+| LocalCache | `Enabled` | 아니오(선택적) | `true` | 로컬 캐시 저장 활성화 여부. |
+| LocalCache | `DatabasePath` | 아니오(선택적) | _(비어 있음)_ | JSON 캐시 파일 경로(비어 있으면 기본값 `jav_cache.json`이 실행 파일 옆에 사용됨). |
+| LocalCache | `CacheExpirationDays` | 아니오(선택적) | `0` | 캐시 TTL(일 단위, 0은 만료 비활성화). |
+| Console | `Language` | 아니오(선택적) | `en` | UI 언어(`en`, `zh`, `auto`). |
+| Console | `HideOtherTorrents` | 아니오(선택적) | `true` | 목록에서 일치하지 않는 토렌트 숨기기. |
+| Telemetry | `Enabled` | 아니오(선택적) | `true` | 익명 원격 분석 활성화 여부. |
+| Telemetry | `Endpoint` | 아니오(선택적) | `https://jav-manager.techfetch.dev` | 기본 엔드포인트(앱은 `/api/telemetry`와 `/api/javinfo`에 게시). |
+
+참고:
+- `JavInfoSync:*`는 레거시 섹션 이름입니다. 새 빌드는 `Telemetry:*`를 사용합니다(앱은 하위 호환성을 위해 여전히 레거시 키를 읽습니다).
+- 고급: 설정은 또한 `JAVMANAGER_` 접두사가 있는 환경 변수를 지원합니다(중첩 키는 `__`를 사용), 하지만 파일 기반 설정이 기본적으로 지원되는 방법입니다.
 
 ## 사용법
 
 ```bash
-# 대화형 모드
+# GUI(인수가 없으면 기본값)
 dotnet run --project JavManager/JavManager.csproj
 
-# 직접 검색
+# 콘솔(대화형)
+dotnet run --project JavManager/JavManager.csproj -- --no-gui
+
+# 콘솔(비대화형)
 dotnet run --project JavManager/JavManager.csproj -- STARS-001
 
 # 도움말 표시
@@ -103,15 +154,7 @@ dotnet run --project JavManager/JavManager.csproj -- help
 dotnet run --project JavManager/JavManager.csproj -- version
 ```
 
-**대화형 명령어:**
-
-| 명령어 | 설명 |
-|---------|-------------|
-| `<코드>` | JAV 코드로 검색(예: `STARS-001`) |
-| `r <코드>` | 검색 새로고침 |
-| `c` | 저장된 데이터 통계 표시 |
-| `h` | 도움말 표시 |
-| `q` | 종료 |
+콘솔 명령의 경우 `dotnet run --project JavManager/JavManager.csproj -- help`를 실행하세요.
 
 ## 빌드 및 패키징
 
@@ -122,9 +165,23 @@ dotnet build JavManager/JavManager.csproj
 # 테스트 실행
 dotnet test JavManager.Tests/JavManager.Tests.csproj
 
-# 패키징(Windows 독립 실행형 zip)
-pwsh scripts/package.ps1
+# 게시(다중 RID, 자체 포함, 출력 경로: artifacts/publish/<rid>/)
+pwsh scripts/publish.ps1
+# 또는
+bash scripts/publish.sh
 
-# 경로에 설치(Windows)
+# PATH에 설치(Windows)
 pwsh scripts/install-windows.ps1 -AddToPath
+```
+
+### Android(실험적)
+
+Android 빌드는 선택적입니다(데스크톱 빌드가 Android 워크로드를 필요로 하지 않도록).
+
+```bash
+# 워크로드 설치(한 번)
+dotnet workload install android
+
+# Android 대상 빌드(Android SDK/JDK 구성 필요)
+dotnet build JavManager/JavManager.csproj -c Debug -f net10.0-android -p:EnableAndroid=true
 ```

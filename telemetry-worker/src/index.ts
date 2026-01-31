@@ -1,3 +1,5 @@
+import { FAVICON_ICO_BYTES } from './favicon';
+
 export interface Env {
   DB: D1Database;
 }
@@ -42,11 +44,12 @@ interface JavInfoRecord {
   categories_json: string | null;
   torrents_json: string | null;
   detail_url: string | null;
+  search_count: number | null;
   created_at: string;
   updated_at: string;
 }
 
-type PageLang = 'en' | 'zh';
+type PageLang = 'en' | 'zh' | 'ja' | 'ko';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const LATEST_RELEASE_URL = 'https://github.com/jqknono/jav-manager/releases/latest';
@@ -57,43 +60,40 @@ const TEXT = {
     appTagline: 'Automation for JAV content management.',
     navHome: 'Home',
     navUser: 'Users',
-    navJav: 'Jav Info',
-    langEnglish: 'English',
-    langChinese: '繁體中文',
-    homeTitle: 'JavManager Telemetry',
-    homeIntro: 'This site summarizes telemetry and JavInfo sync data reported by JavManager clients.',
+    navJav: 'Trends',
+    langEnglish: 'EN',
+    langChinese: '中',
+    langJapanese: '日',
+    langKorean: '한',
+    homeTitle: 'JavManager',
+    homeIntro: 'A powerful tool for managing your JAV collection efficiently.',
     homeUsageTitle: 'How to use',
     homeUsageItems: [
       'Run JavManager and input a JAV ID (e.g. IPZZ-408).',
       'The app checks local cache, then fetches from JavDB if needed.',
       'Pick a torrent and send it to your downloader.',
     ],
-    homeOverviewTitle: 'Overview',
+    homeOverviewTitle: 'Features',
     homeOverviewItems: [
-      'Search local cache first, then JavDB.',
-      'Sort torrents by markers and weights.',
-      'Optional telemetry and JavInfo sync for statistics.',
+      'Smart local cache with remote JavDB fallback.',
+      'Intelligent torrent sorting by markers and weights.',
+      'Cross-platform desktop application.',
     ],
-    homeDataTitle: 'Data collected',
-    homeDataItems: [
-      'Telemetry events: machine/user name, app version, OS, event type, and location (country/city).',
-      'JavInfo sync: metadata such as title, actors, categories, release date, and detail link.',
-    ],
-    homePagesTitle: 'Pages',
-    homePagesItems: ['JavInfo data: /jav'],
+    homePagesTitle: 'Explore',
+    homePagesItems: ['Browse popular trends'],
     viewUsers: 'View Users',
-    viewJav: 'View Jav Info',
-    downloadLatest: 'Download latest binary',
+    viewJav: 'Browse Trends',
+    downloadLatest: 'Download',
     userTitle: 'User Telemetry',
     userSubtitle: 'Anonymous usage events from clients.',
-    javTitle: 'Jav Info',
-    javSubtitle: 'Metadata synced from remote JavDB.',
+    javTitle: 'Trends',
+    javSubtitle: 'Popular searches from the community.',
     statsTotal: 'Total Records',
     statsMachines: 'Unique Machines',
     statsUsers: 'Unique Users',
     statsToday: 'Today',
-    statsJavTotal: 'JavInfo Total',
-    statsJavToday: 'JavInfo Today',
+    statsJavTotal: 'Total Entries',
+    statsJavToday: 'New Today',
     tableTime: 'Time',
     tableMachine: 'Machine',
     tableUser: 'User',
@@ -102,12 +102,13 @@ const TEXT = {
     tableOs: 'OS',
     tableEvent: 'Event',
     tableLocation: 'Location',
-    tableJavId: 'Jav ID',
+    tableJavId: 'ID',
     tableTitle: 'Title',
     tableRelease: 'Release',
     tableActors: 'Actors',
     tableCategories: 'Categories',
-    tableTorrents: 'Torrents',
+    tableTorrents: 'Sources',
+    tableSearchCount: 'Popularity',
     tableDetail: 'Detail',
     pageSizeLabel: 'Per page',
     paginationFirst: 'First',
@@ -124,73 +125,207 @@ const TEXT = {
   },
   zh: {
     appName: 'JavManager',
-    appTagline: 'JAV 內容管理的自動化工具。',
-    navHome: '首頁',
-    navUser: '使用者',
-    navJav: 'Jav 資訊',
-    langEnglish: 'English',
-    langChinese: '繁體中文',
-    homeTitle: 'JavManager 遙測',
-    homeIntro: '此頁彙整 JavManager 回傳的遙測與 JavInfo 同步資料。',
+    appTagline: 'JAV 内容管理的自动化工具。',
+    navHome: '首页',
+    navUser: '用户',
+    navJav: '趋势',
+    langEnglish: 'EN',
+    langChinese: '中',
+    langJapanese: '日',
+    langKorean: '한',
+    homeTitle: 'JavManager',
+    homeIntro: '高效管理您的 JAV 收藏的强大工具。',
     homeUsageTitle: '使用方式',
     homeUsageItems: [
-      '啟動 JavManager 後輸入番號（例如 IPZZ-408）。',
-      '先查本地快取，未命中則查詢 JavDB。',
-      '選擇種子並送到下載器。',
+      '启动 JavManager 后输入番号（例如 IPZZ-408）。',
+      '先查本地缓存，未命中则查询 JavDB。',
+      '选择种子并发送到下载器。',
     ],
-    homeOverviewTitle: '功能概覽',
+    homeOverviewTitle: '功能特性',
     homeOverviewItems: [
-      '先查本地快取，再查 JavDB。',
-      '依標記與權重排序種子。',
-      '可選擇啟用遙測與 JavInfo 同步。',
+      '智能本地缓存，支持远程 JavDB 回退。',
+      '基于标记和权重的智能种子排序。',
+      '跨平台桌面应用程序。',
     ],
-    homeDataTitle: '收集資料',
-    homeDataItems: [
-      '遙測事件：機器名稱、使用者名稱、版本、作業系統、事件類型與地理位置（國家/城市）。',
-      'JavInfo 同步：標題、演員、分類、發行日期、詳情連結等中繼資料。',
-    ],
-    homePagesTitle: '頁面',
-    homePagesItems: ['Jav 資訊：/jav'],
-    viewUsers: '查看使用者',
-    viewJav: '查看 Jav 資訊',
-    downloadLatest: '下載最新版本',
-    userTitle: '使用者遙測',
-    userSubtitle: '匿名使用事件與統計。',
-    javTitle: 'Jav 資訊',
-    javSubtitle: '從 remote JavDB 同步的中繼資料。',
-    statsTotal: '總筆數',
-    statsMachines: '唯一機器',
-    statsUsers: '唯一使用者',
+    homePagesTitle: '探索',
+    homePagesItems: ['浏览热门趋势'],
+    viewUsers: '查看用户',
+    viewJav: '浏览趋势',
+    downloadLatest: '下载',
+    userTitle: '用户遥测',
+    userSubtitle: '匿名使用事件与统计。',
+    javTitle: '趋势',
+    javSubtitle: '社区热门搜索。',
+    statsTotal: '总记录数',
+    statsMachines: '唯一机器',
+    statsUsers: '唯一用户',
     statsToday: '今日',
-    statsJavTotal: 'JavInfo 總數',
-    statsJavToday: '今日 JavInfo',
-    tableTime: '時間',
-    tableMachine: '機器',
-    tableUser: '使用者',
-    tableUserId: '識別碼',
+    statsJavTotal: '总条目',
+    statsJavToday: '今日新增',
+    tableTime: '时间',
+    tableMachine: '机器',
+    tableUser: '用户',
+    tableUserId: '识别码',
     tableVersion: '版本',
-    tableOs: '作業系統',
+    tableOs: '操作系统',
     tableEvent: '事件',
     tableLocation: '位置',
-    tableJavId: '番號',
-    tableTitle: '標題',
-    tableRelease: '發行日',
-    tableActors: '演員',
-    tableCategories: '分類',
-    tableTorrents: '種子',
-    tableDetail: '詳情',
-    pageSizeLabel: '每頁',
-    paginationFirst: '第一頁',
-    paginationPrev: '上一頁',
-    paginationNext: '下一頁',
-    paginationLast: '最後一頁',
-    pageInfo: '第 {current} / {total} 頁',
-    loading: '載入中...',
-    empty: '暫無資料',
-    loadFailed: '讀取失敗',
-    filterUserLabel: '使用者',
-    filterAllUsers: '全部使用者',
+    tableJavId: '番号',
+    tableTitle: '标题',
+    tableRelease: '发行日',
+    tableActors: '演员',
+    tableCategories: '分类',
+    tableTorrents: '片源',
+    tableSearchCount: '热度',
+    tableDetail: '详情',
+    pageSizeLabel: '每页',
+    paginationFirst: '首页',
+    paginationPrev: '上一页',
+    paginationNext: '下一页',
+    paginationLast: '末页',
+    pageInfo: '第 {current} / {total} 页',
+    loading: '加载中...',
+    empty: '暂无数据',
+    loadFailed: '读取失败',
+    filterUserLabel: '用户',
+    filterAllUsers: '全部用户',
     filterClear: '清除',
+  },
+  ja: {
+    appName: 'JavManager',
+    appTagline: 'JAVコンテンツ管理の自動化ツール。',
+    navHome: 'ホーム',
+    navUser: 'ユーザー',
+    navJav: 'トレンド',
+    langEnglish: 'EN',
+    langChinese: '中',
+    langJapanese: '日',
+    langKorean: '한',
+    homeTitle: 'JavManager',
+    homeIntro: 'JAVコレクションを効率的に管理する強力なツール。',
+    homeUsageTitle: '使い方',
+    homeUsageItems: [
+      'JavManagerを起動し、品番を入力（例：IPZZ-408）。',
+      'ローカルキャッシュを確認後、必要に応じてJavDBから取得。',
+      'トレントを選択してダウンローダーに送信。',
+    ],
+    homeOverviewTitle: '機能',
+    homeOverviewItems: [
+      'リモートJavDBフォールバック付きスマートローカルキャッシュ。',
+      'マーカーと重みによるインテリジェントなトレントソート。',
+      'クロスプラットフォームデスクトップアプリ。',
+    ],
+    homePagesTitle: '探索',
+    homePagesItems: ['人気トレンドを閲覧'],
+    viewUsers: 'ユーザーを見る',
+    viewJav: 'トレンドを見る',
+    downloadLatest: 'ダウンロード',
+    userTitle: 'ユーザーテレメトリ',
+    userSubtitle: 'クライアントからの匿名使用イベント。',
+    javTitle: 'トレンド',
+    javSubtitle: 'コミュニティの人気検索。',
+    statsTotal: '総レコード',
+    statsMachines: 'ユニークマシン',
+    statsUsers: 'ユニークユーザー',
+    statsToday: '今日',
+    statsJavTotal: '総エントリ',
+    statsJavToday: '今日の新規',
+    tableTime: '時間',
+    tableMachine: 'マシン',
+    tableUser: 'ユーザー',
+    tableUserId: 'ユーザーID',
+    tableVersion: 'バージョン',
+    tableOs: 'OS',
+    tableEvent: 'イベント',
+    tableLocation: '場所',
+    tableJavId: '品番',
+    tableTitle: 'タイトル',
+    tableRelease: 'リリース',
+    tableActors: '出演者',
+    tableCategories: 'カテゴリ',
+    tableTorrents: 'ソース',
+    tableSearchCount: '人気度',
+    tableDetail: '詳細',
+    pageSizeLabel: '表示件数',
+    paginationFirst: '最初',
+    paginationPrev: '前へ',
+    paginationNext: '次へ',
+    paginationLast: '最後',
+    pageInfo: '{current} / {total} ページ',
+    loading: '読み込み中...',
+    empty: 'データがありません',
+    loadFailed: '読み込み失敗',
+    filterUserLabel: 'ユーザー',
+    filterAllUsers: 'すべてのユーザー',
+    filterClear: 'クリア',
+  },
+  ko: {
+    appName: 'JavManager',
+    appTagline: 'JAV 콘텐츠 관리 자동화 도구.',
+    navHome: '홈',
+    navUser: '사용자',
+    navJav: '트렌드',
+    langEnglish: 'EN',
+    langChinese: '中',
+    langJapanese: '日',
+    langKorean: '한',
+    homeTitle: 'JavManager',
+    homeIntro: 'JAV 컬렉션을 효율적으로 관리하는 강력한 도구.',
+    homeUsageTitle: '사용 방법',
+    homeUsageItems: [
+      'JavManager를 실행하고 품번 입력 (예: IPZZ-408).',
+      '로컬 캐시 확인 후 필요시 JavDB에서 가져오기.',
+      '토렌트를 선택하여 다운로더로 전송.',
+    ],
+    homeOverviewTitle: '기능',
+    homeOverviewItems: [
+      '원격 JavDB 폴백이 포함된 스마트 로컬 캐시.',
+      '마커 및 가중치에 의한 지능형 토렌트 정렬.',
+      '크로스 플랫폼 데스크톱 애플리케이션.',
+    ],
+    homePagesTitle: '탐색',
+    homePagesItems: ['인기 트렌드 둘러보기'],
+    viewUsers: '사용자 보기',
+    viewJav: '트렌드 보기',
+    downloadLatest: '다운로드',
+    userTitle: '사용자 원격 측정',
+    userSubtitle: '클라이언트의 익명 사용 이벤트.',
+    javTitle: '트렌드',
+    javSubtitle: '커뮤니티 인기 검색.',
+    statsTotal: '총 레코드',
+    statsMachines: '고유 머신',
+    statsUsers: '고유 사용자',
+    statsToday: '오늘',
+    statsJavTotal: '총 항목',
+    statsJavToday: '오늘 신규',
+    tableTime: '시간',
+    tableMachine: '머신',
+    tableUser: '사용자',
+    tableUserId: '사용자 ID',
+    tableVersion: '버전',
+    tableOs: 'OS',
+    tableEvent: '이벤트',
+    tableLocation: '위치',
+    tableJavId: '품번',
+    tableTitle: '제목',
+    tableRelease: '출시일',
+    tableActors: '출연자',
+    tableCategories: '카테고리',
+    tableTorrents: '소스',
+    tableSearchCount: '인기도',
+    tableDetail: '상세',
+    pageSizeLabel: '페이지당',
+    paginationFirst: '처음',
+    paginationPrev: '이전',
+    paginationNext: '다음',
+    paginationLast: '마지막',
+    pageInfo: '{current} / {total} 페이지',
+    loading: '로딩 중...',
+    empty: '데이터 없음',
+    loadFailed: '로드 실패',
+    filterUserLabel: '사용자',
+    filterAllUsers: '모든 사용자',
+    filterClear: '지우기',
   },
 };
 
@@ -212,11 +347,16 @@ function htmlResponse(body: string, init?: ResponseInit): Response {
 function getLang(request: Request): PageLang {
   const url = new URL(request.url);
   const langParam = (url.searchParams.get('lang') ?? '').toLowerCase();
-  if (langParam === 'zh' || langParam === 'zh-tw' || langParam === 'zh-hant' || langParam === 'zh-hk')
+  if (langParam === 'zh' || langParam === 'zh-tw' || langParam === 'zh-hant' || langParam === 'zh-hk' || langParam === 'zh-cn')
     return 'zh';
+  if (langParam === 'ja') return 'ja';
+  if (langParam === 'ko') return 'ko';
   if (langParam === 'en') return 'en';
   const accept = (request.headers.get('Accept-Language') ?? '').toLowerCase();
-  return accept.includes('zh') ? 'zh' : 'en';
+  if (accept.includes('ja')) return 'ja';
+  if (accept.includes('ko')) return 'ko';
+  if (accept.includes('zh')) return 'zh';
+  return 'en';
 }
 
 function getPageParams(url: URL): { page: number; pageSize: number } {
@@ -233,16 +373,18 @@ function renderList(items: string[]): string {
 
 function buildLangSwitch(url: URL, lang: PageLang): string {
   const t = TEXT[lang];
-  const enUrl = new URL(url.toString());
-  enUrl.searchParams.set('lang', 'en');
-  const zhUrl = new URL(url.toString());
-  zhUrl.searchParams.set('lang', 'zh');
-  return `
-    <div class="lang-switch">
-      <a class="${lang === 'en' ? 'active' : ''}" href="${enUrl.pathname + enUrl.search}">${t.langEnglish}</a>
-      <a class="${lang === 'zh' ? 'active' : ''}" href="${zhUrl.pathname + zhUrl.search}">${t.langChinese}</a>
-    </div>
-  `;
+  const langs: { code: PageLang; label: string }[] = [
+    { code: 'en', label: t.langEnglish },
+    { code: 'zh', label: t.langChinese },
+    { code: 'ja', label: t.langJapanese },
+    { code: 'ko', label: t.langKorean },
+  ];
+  const links = langs.map(({ code, label }) => {
+    const u = new URL(url.toString());
+    u.searchParams.set('lang', code);
+    return `<a class="${lang === code ? 'active' : ''}" href="${u.pathname + u.search}">${label}</a>`;
+  }).join('');
+  return `<div class="lang-switch">${links}</div>`;
 }
 
 function renderNav(
@@ -263,55 +405,263 @@ function renderNav(
 
 const BASE_STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { color-scheme: light; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
-  a { color: #2563eb; text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  :root { 
+    color-scheme: light dark;
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --border: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 6px rgba(0,0,0,0.05), 0 10px 15px rgba(0,0,0,0.1);
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --accent: #818cf8;
+      --accent-hover: #a5b4fc;
+      --border: #334155;
+      --border-hover: #475569;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 4px 6px rgba(0,0,0,0.3);
+    }
+  }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'Noto Sans CJK KR', Roboto, sans-serif; 
+    background: var(--bg-primary); 
+    color: var(--text-primary); 
+    line-height: 1.6; 
+  }
+  a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+  a:hover { color: var(--accent-hover); }
   .page { min-height: 100vh; }
-  .container { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
-  .header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .app-title { font-size: 1.75rem; font-weight: 700; color: #1f2937; }
-  .app-subtitle { color: #6b7280; font-size: 1rem; }
-  .nav { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .nav a { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: #fff; border: 0.0625rem solid #e5e7eb; }
-  .nav a.active { background: #2563eb; color: #fff; border-color: #2563eb; }
-  .lang-switch { display: flex; gap: 0.75rem; font-size: 0.875rem; }
-  .lang-switch a { color: #374151; }
-  .lang-switch a.active { font-weight: 700; color: #111827; }
-  .hero { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+  .container { max-width: 76rem; margin: 0 auto; padding: 2rem 1.5rem; }
+  .header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    gap: 1.5rem; 
+    margin-bottom: 2rem; 
+    flex-wrap: wrap;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-title { 
+    font-size: 1.875rem; 
+    font-weight: 800; 
+    color: var(--text-primary);
+    letter-spacing: -0.025em;
+  }
+  .app-subtitle { color: var(--text-secondary); font-size: 0.9375rem; margin-top: 0.25rem; }
+  .nav { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .nav a { 
+    padding: 0.625rem 1rem; 
+    border-radius: var(--radius); 
+    background: var(--bg-secondary); 
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.15s;
+  }
+  .nav a:hover { border-color: var(--border-hover); color: var(--text-primary); }
+  .nav a.active { 
+    background: var(--accent); 
+    color: #fff; 
+    border-color: var(--accent);
+  }
+  .lang-switch { 
+    display: flex; 
+    gap: 0.25rem; 
+    font-size: 0.8125rem;
+    background: var(--bg-tertiary);
+    padding: 0.25rem;
+    border-radius: var(--radius);
+  }
+  .lang-switch a { 
+    color: var(--text-muted); 
+    padding: 0.375rem 0.625rem;
+    border-radius: calc(var(--radius) - 0.125rem);
+    transition: all 0.15s;
+  }
+  .lang-switch a:hover { color: var(--text-primary); background: var(--bg-secondary); }
+  .lang-switch a.active { 
+    font-weight: 600; 
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow);
+  }
+  .hero { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 1.5rem; 
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+  .hero .section-title { font-size: 1.5rem; }
   .button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-  .button { display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border-radius: 0.5rem; border: 0.0625rem solid #2563eb; background: #2563eb; color: #fff; font-weight: 600; }
-  .button.secondary { background: #fff; color: #2563eb; }
-  .section { margin-bottom: 1.5rem; }
-  .section-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #1f2937; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
-  .card { background: #fff; padding: 1rem; border-radius: 0.75rem; border: 0.0625rem solid #e5e7eb; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.04); }
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-  .stat-title { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; letter-spacing: 0.04em; }
-  .stat-value { font-size: 1.75rem; font-weight: 700; color: #2563eb; margin-top: 0.25rem; }
+  .button { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 0.75rem 1.5rem; 
+    border-radius: var(--radius); 
+    border: none;
+    background: var(--accent); 
+    color: #fff; 
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: var(--shadow);
+  }
+  .button:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .button.secondary { 
+    background: var(--bg-secondary); 
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+  .button.secondary:hover { border-color: var(--border-hover); }
+  .section { margin-bottom: 2rem; }
+  .section-title { 
+    font-size: 1.125rem; 
+    font-weight: 700; 
+    margin-bottom: 0.75rem; 
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.25rem; }
+  .card { 
+    background: var(--bg-secondary); 
+    padding: 1.5rem; 
+    border-radius: var(--radius-lg); 
+    border: 1px solid var(--border); 
+    box-shadow: var(--shadow);
+    transition: all 0.15s;
+  }
+  .card:hover { box-shadow: var(--shadow-lg); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stats-grid .card { text-align: center; padding: 1.25rem; }
+  .stat-title { 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    color: var(--text-muted); 
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .stat-value { 
+    font-size: 2rem; 
+    font-weight: 800; 
+    color: var(--accent); 
+    margin-top: 0.5rem;
+    letter-spacing: -0.025em;
+  }
   .table-card { padding: 0; overflow: hidden; }
   .table-wrapper { width: 100%; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 0.0625rem solid #f3f4f6; vertical-align: top; }
-  th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 0.875rem; }
-  tr:hover { background: #f9fafb; }
-  .loading, .empty { text-align: center; padding: 2rem 1rem; color: #6b7280; }
-  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
-  .filters { display: flex; align-items: center; gap: 0.5rem; color: #374151; font-size: 0.875rem; }
-  .filters button { padding: 0.45rem 0.7rem; border-radius: 0.5rem; border: 0.0625rem solid #d1d5db; background: #fff; cursor: pointer; }
-  .filters button:hover { background: #f3f4f6; }
-  .page-size { display: flex; align-items: center; gap: 0.5rem; color: #374151; font-size: 0.875rem; }
-  select { padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 0.0625rem solid #d1d5db; background: #fff; }
-  .pagination { display: flex; justify-content: center; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
-  .pagination button { padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 0.0625rem solid #d1d5db; background: #fff; cursor: pointer; }
-  .pagination button:hover:not(:disabled) { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .page-info { color: #4b5563; font-size: 0.875rem; }
-  .list { padding-left: 1.25rem; display: grid; gap: 0.5rem; }
-  .muted { color: #6b7280; }
-  .link { color: #2563eb; word-break: break-all; }
+  th, td { 
+    padding: 0.875rem 1rem; 
+    text-align: left; 
+    border-bottom: 1px solid var(--border); 
+    vertical-align: top; 
+  }
+  th { 
+    background: var(--bg-tertiary); 
+    font-weight: 600; 
+    color: var(--text-secondary); 
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  td { font-size: 0.875rem; color: var(--text-secondary); }
+  tr:hover td { background: var(--bg-tertiary); }
+  .loading, .empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .toolbar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    gap: 1rem; 
+    margin: 1.25rem 0; 
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .filters { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; }
+  .filters button { 
+    padding: 0.5rem 0.875rem; 
+    border-radius: var(--radius); 
+    border: 1px solid var(--border); 
+    background: var(--bg-secondary); 
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: all 0.15s;
+  }
+  .filters button:hover { background: var(--bg-tertiary); border-color: var(--border-hover); }
+  .page-size { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; }
+  select { 
+    padding: 0.5rem 0.75rem; 
+    border-radius: var(--radius); 
+    border: 1px solid var(--border); 
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+  .pagination { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    gap: 0.375rem; 
+    flex-wrap: wrap; 
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .pagination button { 
+    padding: 0.5rem 0.875rem; 
+    border-radius: var(--radius); 
+    border: 1px solid var(--border); 
+    background: var(--bg-secondary); 
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: all 0.15s;
+  }
+  .pagination button:hover:not(:disabled) { 
+    background: var(--accent); 
+    border-color: var(--accent); 
+    color: #fff; 
+  }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-info { color: var(--text-muted); font-size: 0.8125rem; padding: 0 0.5rem; }
+  .list { padding-left: 1.25rem; display: grid; gap: 0.625rem; color: var(--text-secondary); font-size: 0.9375rem; }
+  .list li::marker { color: var(--accent); }
+  .muted { color: var(--text-muted); }
+  .link { color: var(--accent); word-break: break-all; }
+  .link:hover { color: var(--accent-hover); }
   @media (max-width: 48rem) {
     .header { flex-direction: column; align-items: flex-start; }
+    .container { padding: 1.25rem; }
+    .hero { padding: 1.5rem; }
   }
 `;
 
@@ -327,7 +677,8 @@ function renderPage(params: {
 }): string {
   const { lang, title, description, active, hideUserNav, body, script, requestUrl } = params;
   const t = TEXT[lang];
-  const htmlLang = lang === 'zh' ? 'zh-Hant' : 'en';
+  const htmlLangMap: Record<PageLang, string> = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
+  const htmlLang = htmlLangMap[lang] ?? 'en';
   const pageTitle = title ? `${title} - ${t.appName}` : t.appName;
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">
@@ -335,6 +686,7 @@ function renderPage(params: {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${pageTitle}</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <style>${BASE_STYLES}</style>
 </head>
 <body>
@@ -365,8 +717,8 @@ function getHomePage(url: URL, lang: PageLang): string {
         <p class="muted">${t.homeIntro}</p>
       </div>
       <div class="button-row">
-        <a class="button" href="/jav?lang=${lang}">${t.viewJav}</a>
-        <a class="button secondary" href="${LATEST_RELEASE_URL}" target="_blank" rel="noopener">${t.downloadLatest}</a>
+        <a class="button" href="${LATEST_RELEASE_URL}" target="_blank" rel="noopener">${t.downloadLatest}</a>
+        <a class="button secondary" href="/jav?lang=${lang}">${t.viewJav}</a>
       </div>
     </section>
     <section class="section">
@@ -378,16 +730,6 @@ function getHomePage(url: URL, lang: PageLang): string {
         <div class="card">
           <div class="section-title">${t.homeOverviewTitle}</div>
           ${renderList(t.homeOverviewItems)}
-        </div>
-        <div class="card">
-          <div class="section-title">${t.homeDataTitle}</div>
-          ${renderList(t.homeDataItems)}
-        </div>
-        <div class="card">
-          <div class="section-title">${t.homePagesTitle}</div>
-          ${renderList([
-            `${t.navJav}: <a class="link" href="/jav?lang=${lang}">/jav</a>`,
-          ])}
         </div>
       </div>
     </section>
@@ -473,7 +815,8 @@ function getUserPage(url: URL, lang: PageLang): string {
   `;
   const script = `
     const lang = ${JSON.stringify(lang)};
-    const locale = lang === 'zh' ? 'zh-Hant' : 'en';
+    const localeMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
+    const locale = localeMap[lang] || 'en';
     const text = ${JSON.stringify({
       loading: t.loading,
       empty: t.empty,
@@ -553,7 +896,7 @@ function getUserPage(url: URL, lang: PageLang): string {
     }
 
     async function loadData(page) {
-      tbody.innerHTML = '<tr><td colspan="8" class="loading">' + text.loading + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="loading">' + text.loading + '</td></tr>';
       const userParam = userId ? ('&userId=' + encodeURIComponent(userId)) : '';
       const res = await fetch('/api/user?page=' + page + '&pageSize=' + pageSize + userParam);
       const result = await res.json();
@@ -658,21 +1001,22 @@ function getJavPage(url: URL, lang: PageLang): string {
       <div class="table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th>${t.tableTime}</th>
-              <th>${t.tableJavId}</th>
-              <th>${t.tableTitle}</th>
-              <th>${t.tableRelease}</th>
-              <th>${t.tableActors}</th>
-              <th>${t.tableCategories}</th>
-              <th>${t.tableTorrents}</th>
-              <th>${t.tableDetail}</th>
-            </tr>
-          </thead>
-          <tbody id="data-body">
-            <tr><td colspan="8" class="loading">${t.loading}</td></tr>
-          </tbody>
-        </table>
+          <tr>
+            <th>${t.tableTime}</th>
+            <th>${t.tableJavId}</th>
+            <th>${t.tableTitle}</th>
+            <th>${t.tableRelease}</th>
+            <th>${t.tableActors}</th>
+            <th>${t.tableCategories}</th>
+            <th>${t.tableTorrents}</th>
+            <th>${t.tableSearchCount}</th>
+            <th>${t.tableDetail}</th>
+          </tr>
+        </thead>
+        <tbody id="data-body">
+            <tr><td colspan="9" class="loading">${t.loading}</td></tr>
+        </tbody>
+      </table>
       </div>
     </div>
     <div class="toolbar">
@@ -691,7 +1035,8 @@ function getJavPage(url: URL, lang: PageLang): string {
   `;
   const script = `
     const lang = ${JSON.stringify(lang)};
-    const locale = lang === 'zh' ? 'zh-Hant' : 'en';
+    const localeMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
+    const locale = localeMap[lang] || 'en';
     const text = ${JSON.stringify({
       loading: t.loading,
       empty: t.empty,
@@ -733,7 +1078,7 @@ function getJavPage(url: URL, lang: PageLang): string {
     }
 
     async function loadData(page) {
-      tbody.innerHTML = '<tr><td colspan="8" class="loading">' + text.loading + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="loading">' + text.loading + '</td></tr>';
       const res = await fetch('/api/javinfo?page=' + page + '&pageSize=' + pageSize);
       const result = await res.json();
       const rows = Array.isArray(result.data) ? result.data : [];
@@ -743,7 +1088,7 @@ function getJavPage(url: URL, lang: PageLang): string {
       updateUrl();
 
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty">' + text.empty + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">' + text.empty + '</td></tr>';
         return;
       }
 
@@ -754,6 +1099,8 @@ function getJavPage(url: URL, lang: PageLang): string {
         const categories = formatList(row.categories);
         const torrents = Number(row.torrents_count || 0);
         const detailUrl = typeof row.detail_url === 'string' && row.detail_url.startsWith('http') ? row.detail_url : '';
+        const searchCountValue = Number(row.search_count);
+        const searchCount = Number.isFinite(searchCountValue) ? searchCountValue : 0;
         const detailLink = detailUrl
           ? '<a class="link" href="' + escapeHtml(detailUrl) + '" target="_blank" rel="noopener">' + escapeHtml(detailUrl) + '</a>'
           : '-';
@@ -765,6 +1112,7 @@ function getJavPage(url: URL, lang: PageLang): string {
           '<td>' + actors + '</td>' +
           '<td>' + categories + '</td>' +
           '<td>' + escapeHtml(torrents) + '</td>' +
+          '<td>' + escapeHtml(searchCount.toLocaleString(locale)) + '</td>' +
           '<td>' + detailLink + '</td>' +
         '</tr>';
       }).join('');
@@ -897,6 +1245,7 @@ async function ensureSchema(env: Env): Promise<void> {
     `).run();
 
     await ensureColumn('javinfo', 'torrents_json', 'TEXT');
+    await ensureColumn('javinfo', 'search_count', 'INTEGER NOT NULL DEFAULT 0');
 
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_javinfo_updated_at ON javinfo(updated_at DESC);`).run();
     await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_javinfo_release_date ON javinfo(release_date);`).run();
@@ -1057,6 +1406,15 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    // GET /favicon.ico - Site icon
+    if (path === '/favicon.ico' && (request.method === 'GET' || request.method === 'HEAD')) {
+      const headers = new Headers({
+        'Content-Type': 'image/x-icon',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      });
+      return new Response(request.method === 'HEAD' ? null : FAVICON_ICO_BYTES, { headers });
+    }
+
     // Best-effort background migration for existing deployments.
     if (path === '/api/user' || path === '/api/data' || path === '/api/stats' || path === '/api/users') {
       ctx.waitUntil(ensureUserIdBackfill(env));
@@ -1116,6 +1474,11 @@ export default {
     // GET /api/users - List users for filtering (latest row + event counts)
     if (path === '/api/users' && request.method === 'GET') {
       return this.getUsers(env, corsHeaders);
+    }
+
+    // GET /api/javdb-domain - Get latest JavDB domain
+    if (path === '/api/javdb-domain' && request.method === 'GET') {
+      return this.getJavDbDomain(corsHeaders);
     }
 
     // GET / - Home page
@@ -1272,11 +1635,26 @@ export default {
       const result = await env.DB.prepare(`
         INSERT INTO javinfo (
           jav_id, payload_json, title, cover_url, release_date, duration,
-          director, maker, publisher, series, actors_json, categories_json, torrents_json, detail_url,
-          created_at, updated_at
+          director, maker, publisher, series, actors_json, categories_json,
+          torrents_json, detail_url, search_count, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(jav_id) DO NOTHING;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+        ON CONFLICT(jav_id) DO UPDATE SET
+          payload_json = excluded.payload_json,
+          title = excluded.title,
+          cover_url = excluded.cover_url,
+          release_date = excluded.release_date,
+          duration = excluded.duration,
+          director = excluded.director,
+          maker = excluded.maker,
+          publisher = excluded.publisher,
+          series = excluded.series,
+          actors_json = excluded.actors_json,
+          categories_json = excluded.categories_json,
+          torrents_json = excluded.torrents_json,
+          detail_url = excluded.detail_url,
+          search_count = javinfo.search_count + 1,
+          updated_at = datetime('now');
       `).bind(
         javId,
         payloadJson,
@@ -1294,7 +1672,7 @@ export default {
         detailUrl
       ).run();
 
-      const inserted = (result.meta?.changes ?? 0) > 0;
+      const inserted = (result.meta?.last_row_id ?? 0) > 0;
       return jsonResponse({ jav_id: javId, inserted, existed: !inserted }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to save javinfo:', error);
@@ -1401,7 +1779,7 @@ export default {
       const dataResult = await env.DB.prepare(`
         SELECT
           jav_id, title, cover_url, release_date, duration, director, maker, publisher, series,
-          actors_json, categories_json, torrents_json, detail_url, created_at, updated_at
+          actors_json, categories_json, torrents_json, detail_url, search_count, created_at, updated_at
         FROM javinfo
         ORDER BY updated_at DESC
         LIMIT ? OFFSET ?
@@ -1425,6 +1803,7 @@ export default {
           categories,
           torrents_count: Array.isArray(torrents) ? torrents.length : 0,
           detail_url: record.detail_url,
+          search_count: record.search_count ?? 0,
           created_at: record.created_at,
           updated_at: record.updated_at,
         };
@@ -1445,6 +1824,45 @@ export default {
         data: [],
         pagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
       }, { headers: corsHeaders });
+    }
+  },
+
+  async getJavDbDomain(corsHeaders: Record<string, string>): Promise<Response> {
+    try {
+      // 从 javdb.com 获取 HTML
+      const response = await fetch('https://javdb.com/', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(10000), // 10秒超时
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+
+      // 只提取"最新域名"
+      const latestDomainMatch = html.match(/最新域名:\s*<a[^>]+href="https:\/\/([^"]+)"[^>]*>([^<]+)<\/a>/);
+
+      if (!latestDomainMatch) {
+        throw new Error('Could not extract latest domain from javdb.com');
+      }
+
+      const latestDomain = latestDomainMatch[2];
+
+      return jsonResponse({
+        success: true,
+        domains: [latestDomain],
+      }, { headers: corsHeaders });
+    } catch (error) {
+      console.error('Failed to get JavDB domain:', error);
+      return jsonResponse({
+        success: false,
+        error: 'Failed to fetch domains from javdb.com',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      }, { status: 500, headers: corsHeaders });
     }
   },
 };

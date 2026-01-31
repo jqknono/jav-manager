@@ -68,21 +68,32 @@
                 </Border>
 
                 <!-- JavDB Settings -->
-                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
-                        BorderThickness="1" 
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1"
                         CornerRadius="4"
                         Padding="16">
                     <StackPanel Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Grid.Column="1" Text="{Binding JavDbStatus}" 
+                            <TextBlock Grid.Column="1" Text="{Binding JavDbStatus}"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
                         <Grid ColumnDefinitions="120,*">
                             <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding JavDbBaseUrl}" 
+                            <TextBox Grid.Column="1" Text="{Binding JavDbBaseUrl}"
                                      Watermark="https://javdb.com"/>
                         </Grid>
+                        <Grid ColumnDefinitions="120,*">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_MirrorUrls]}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Text="{Binding JavDbMirrorUrls}"
+                                     Watermark="{Binding Loc[Gui_Settings_JavDb_MirrorUrls_Watermark]}"/>
+                        </Grid>
+                        <Button Content="{Binding Loc[Gui_Settings_ButtonUpdateJavDbDomain]}"
+                                Command="{Binding UpdateJavDbDomainCommand}"
+                                IsEnabled="{Binding !IsUpdatingJavDbDomain}"
+                                MinWidth="120"
+                                HorizontalAlignment="Left"
+                                Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -122,8 +133,14 @@
                             <TextBlock Text="{Binding Loc[Gui_Settings_Language_Label]}" VerticalAlignment="Center"/>
                             <ComboBox Grid.Column="1" 
                                       ItemsSource="{Binding AvailableLanguages}"
-                                      SelectedItem="{Binding SelectedLanguage}"
-                                      MinWidth="200"/>
+                                      SelectedItem="{Binding SelectedLanguageOption}"
+                                      MinWidth="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayName}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -135,7 +152,7 @@
                 BorderThickness="0,1,0,0"
                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                 Padding="16">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Grid.Column="0" 
                            Text="{Binding StatusMessage}" 
                            VerticalAlignment="Center"
@@ -146,10 +163,6 @@
                         IsEnabled="{Binding !IsTesting}"
                         Margin="0,0,8,0"/>
                 <Button Grid.Column="2" 
-                        Content="{Binding Loc[Gui_Common_Reset]}" 
-                        Command="{Binding ResetSettingsCommand}"
-                        Margin="0,0,8,0"/>
-                <Button Grid.Column="3" 
                         Content="{Binding Loc[Gui_Common_Apply]}" 
                         Command="{Binding ApplySettingsCommand}"
                         Classes="accent"/>

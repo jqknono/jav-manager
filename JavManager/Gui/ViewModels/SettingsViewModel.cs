@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JavManager.Core.Configuration.ConfigSections;
@@ -15,6 +17,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly QBittorrentConfig _qbConfig;
     private readonly JavDbConfig _javDbConfig;
     private readonly DownloadConfig _downloadConfig;
+    private readonly TelemetryConfig _telemetryConfig;
     private readonly LocalizationService _loc;
     private readonly GuiConfigFileService _configFileService;
     private readonly HealthCheckService _healthCheckService;
@@ -45,6 +48,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _javDbBaseUrl = string.Empty;
 
+    [ObservableProperty]
+    private string _javDbMirrorUrls = string.Empty;
+
     // Download settings
     [ObservableProperty]
     private string _defaultSavePath = string.Empty;
@@ -60,7 +66,13 @@ public partial class SettingsViewModel : ViewModelBase
     private string _selectedLanguage = "en";
 
     [ObservableProperty]
+    private LanguageOption? _selectedLanguageOption;
+
+    [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isUpdatingJavDbDomain;
 
     [ObservableProperty]
     private bool _isTesting;
@@ -75,13 +87,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _javDbStatus = "Unknown";
 
-    public string[] AvailableLanguages { get; } = { "en", "zh" };
+    public IReadOnlyList<LanguageOption> AvailableLanguages { get; }
 
     public SettingsViewModel(
         EverythingConfig everythingConfig,
         QBittorrentConfig qbConfig,
         JavDbConfig javDbConfig,
         DownloadConfig downloadConfig,
+        TelemetryConfig telemetryConfig,
         GuiLocalization guiLocalization,
         LocalizationService localizationService,
         GuiConfigFileService configFileService,
@@ -91,8 +104,16 @@ public partial class SettingsViewModel : ViewModelBase
         _qbConfig = qbConfig;
         _javDbConfig = javDbConfig;
         _downloadConfig = downloadConfig;
+        _telemetryConfig = telemetryConfig;
         Loc = guiLocalization;
         _loc = localizationService;
+        AvailableLanguages = new[]
+        {
+            new LanguageOption("en", "Gui_Settings_Language_English", localizationService),
+            new LanguageOption("zh", "Gui_Settings_Language_Chinese", localizationService),
+            new LanguageOption("ja", "Gui_Settings_Language_Japanese", localizationService),
+            new LanguageOption("ko", "Gui_Settings_Language_Korean", localizationService),
+        };
         _configFileService = configFileService;
         _healthCheckService = healthCheckService;
 
@@ -113,6 +134,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         // JavDB
         JavDbBaseUrl = _javDbConfig.BaseUrl ?? string.Empty;
+        JavDbMirrorUrls = string.Join(",", _javDbConfig.MirrorUrls ?? new List<string>());
 
         // Download
         DefaultSavePath = _downloadConfig.DefaultSavePath ?? string.Empty;
@@ -126,6 +148,19 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSelectedLanguageChanged(string value)
     {
         _loc.SetLanguage(value);
+        SelectedLanguageOption = AvailableLanguages.FirstOrDefault(
+            option => string.Equals(option.Code, value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    partial void OnSelectedLanguageOptionChanged(LanguageOption? value)
+    {
+        if (value == null)
+            return;
+
+        if (!string.Equals(SelectedLanguage, value.Code, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedLanguage = value.Code;
+        }
     }
 
     [RelayCommand]
@@ -143,6 +178,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         // JavDB
         _javDbConfig.BaseUrl = JavDbBaseUrl;
+        _javDbConfig.MirrorUrls = ParseMirrorUrls(JavDbMirrorUrls);
 
         // Download
         _downloadConfig.DefaultSavePath = DefaultSavePath;
@@ -206,10 +242,125 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void ResetSettings()
+    /// <summary>
+    /// 静默执行健康检查，不更新状态消息（用于页面加载时自动检查）
+    /// </summary>
+    public async Task PerformHealthCheckAsync()
     {
-        LoadSettings();
-        StatusMessage = _loc.Get("Gui_Settings_StatusReset");
+        try
+        {
+            var results = await _healthCheckService.CheckAllAsync();
+
+            foreach (var r in results)
+            {
+                var status = r.IsHealthy ? "OK" : r.Message;
+                if (r.ServiceName.Contains("Everything", StringComparison.OrdinalIgnoreCase))
+                    EverythingStatus = status;
+                else if (r.ServiceName.Contains("qBittorrent", StringComparison.OrdinalIgnoreCase))
+                    QbStatus = status;
+                else if (r.ServiceName.Contains("JavDB", StringComparison.OrdinalIgnoreCase))
+                    JavDbStatus = status;
+            }
+        }
+        catch
+        {
+            // 静默失败，不影响用户体验
+        }
+    }
+
+    [RelayCommand]
+    private async Task UpdateJavDbDomainAsync()
+    {
+        IsUpdatingJavDbDomain = true;
+        StatusMessage = _loc.Get("Gui_Settings_UpdatingJavDbDomain");
+
+        try
+        {
+            // 从 Telemetry API 获取最新域名列表
+            var apiEndpoint = string.IsNullOrWhiteSpace(_telemetryConfig.Endpoint)
+                ? "https://jav-manager-telemetry.workers.dev"
+                : _telemetryConfig.Endpoint.TrimEnd('/');
+
+            var response = await new HttpClient().GetAsync($"{apiEndpoint}/api/javdb-domain");
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            var result = System.Text.Json.Nodes.JsonNode.Parse(content);
+
+            if (result != null
+                && result["success"]?.GetValue<bool>() == true
+                && result["domains"] is System.Text.Json.Nodes.JsonArray domainsArray
+                && domainsArray.Count > 0)
+            {
+                var domains = domainsArray
+                    .Select(d => d?.ToString())
+                    .Where(d => !string.IsNullOrWhiteSpace(d))
+                    .Select(d => d!.Trim())
+                    .ToList();
+
+                if (domains.Count == 0)
+                {
+                    StatusMessage = $"{_loc.Get("Gui_Settings_JavDbDomainUpdateFailed")}: No valid domains";
+                    return;
+                }
+
+                // 所有域名作为镜像，BaseUrl 保持不变
+                var mirrorDomains = domains
+                    .Select(d => d.StartsWith("http") ? d : $"https://{d}")
+                    .ToList();
+                JavDbMirrorUrls = string.Join(",", mirrorDomains);
+
+                await ApplySettingsAsync();
+
+                var mirrorDisplay = string.Join(", ", domains);
+                StatusMessage = _loc.GetFormat("Gui_Settings_JavDbMirrorUrlsUpdated", mirrorDisplay);
+            }
+            else
+            {
+                StatusMessage = $"{_loc.Get("Gui_Settings_JavDbDomainUpdateFailed")}: Invalid API response";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"{_loc.Get("Gui_Settings_JavDbDomainUpdateFailed")}: {ex.Message}";
+        }
+        finally
+        {
+            IsUpdatingJavDbDomain = false;
+        }
+    }
+
+    private static List<string> ParseMirrorUrls(string commaSeparated)
+    {
+        if (string.IsNullOrWhiteSpace(commaSeparated))
+            return new List<string>();
+
+        return commaSeparated.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Select(url => url.Trim())
+            .ToList();
+    }
+
+    public sealed class LanguageOption : ObservableObject
+    {
+        private readonly LocalizationService _localizationService;
+        private readonly string _labelKey;
+
+        public LanguageOption(string code, string labelKey, LocalizationService localizationService)
+        {
+            Code = code;
+            _labelKey = labelKey;
+            _localizationService = localizationService;
+            _localizationService.LanguageChanged += OnLanguageChanged;
+        }
+
+        public string Code { get; }
+
+        public string DisplayName => _localizationService.Get(_labelKey);
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(DisplayName));
+        }
     }
 }

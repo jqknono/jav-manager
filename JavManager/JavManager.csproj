@@ -10,6 +10,8 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Application Icon (embedded in executable) -->
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!--
@@ -92,6 +94,12 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
     </Content>
+  </ItemGroup>
+
+  <!-- Application Icon Resources -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.ico" />
+    <AvaloniaResource Include="Assets\icon.svg" />
   </ItemGroup>
 
   <!-- Localization Resources -->

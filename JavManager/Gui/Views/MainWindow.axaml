@@ -5,6 +5,7 @@
         x:Class="JavManager.Gui.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{Binding Title}"
+        Icon="/Assets/icon.ico"
         Width="900" Height="650"
         MinWidth="700" MinHeight="500"
         WindowStartupLocation="CenterScreen">

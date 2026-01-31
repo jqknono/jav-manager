@@ -1,6 +1,6 @@
 # JavManager
 
-A command-line tool for automated JAV content management with fast repeat searches, torrent search, and qBittorrent integration.
+A lightweight GUI + CLI tool for automated JAV content management with fast repeat searches, torrent search, and optional qBittorrent integration.
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -8,11 +8,13 @@ A command-line tool for automated JAV content management with fast repeat search
 
 ## Features
 
-- Search JAV metadata and magnet links from JavDB
-- Fast searches
+- GUI (Avalonia) and console mode (Spectre.Console)
+- Multilingual GUI (English, Chinese, Japanese, Korean)
+- Search JAV metadata and torrents/magnets from JavDB
 - Check local files via Everything search engine
 - Download via qBittorrent WebUI API
-- Smart torrent selection with weight-based ranking
+- Local JSON cache for repeat searches
+- Smart torrent selection with weight-based ranking (markers + weights)
 
 ## Workflow
 
@@ -50,19 +52,64 @@ flowchart TD
 
 If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager uses **curl-impersonate by default** to mimic a real browser TLS/HTTP2 fingerprint (no browser automation). If you still see 403, try a different mirror URL or check if your IP is blocked (see `doc/CloudflareBypass.md`).
 
+### JavDB Domain API
+
+The Cloudflare Worker provides an API endpoint to get the latest JavDB domain from the official site:
+
+**Endpoint:** `GET /api/javdb-domain`
+
+**Example Request:**
+```bash
+curl https://your-worker-url/api/javdb-domain
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "domains": ["javdb565.com"]
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Failed to fetch domain from javdb.com",
+  "message": "Could not extract latest domain from javdb.com"
+}
+```
+
+This API fetches the latest JavDB domain from `https://javdb.com/` in real-time. The API includes a 10-second timeout and proper error handling.
+
+### Telemetry + "Jav Trends" (Optional)
+
+If `Telemetry:Enabled` is true, JavManager can post:
+
+- A startup event to `POST /api/telemetry`
+- JAV metadata to `POST /api/javinfo` (used by the worker UI; repeated reports increment the per-ID search counter)
+
+The worker also serves a small UI:
+
+- `/` overview
+- `/jav` "Jav Trends" (recent JavInfo records + search counts)
+
 ## Configuration
 
-All settings are configured in `JavManager/appsettings.json` (use `appsettings.Development.json` for local overrides). Environment variable overrides are not supported.
+Settings are configured via `appsettings.json` (and optional `appsettings.Development.json`).
+
+- Development: edit `JavManager/appsettings.json` (it is copied to `bin/Debug/net10.0/appsettings.json`).
+- Release/single-file: the app will read (and if missing, create) an `appsettings.json` next to the executable on first run.
 
 Configuration reference:
 
 | Section | Key | Required | Default | Description |
 |---------|-----|----------|---------|-------------|
-| Everything | `BaseUrl` | No (optional) | `http://localhost` | Everything HTTP server base URL (include scheme and host). If unavailable, local dedup is skipped. |
+| Everything | `BaseUrl` | No (optional) | _(empty)_ | Everything HTTP server base URL (include scheme and host). If unavailable, local dedup is skipped. |
 | Everything | `UserName` | No (optional) | _(empty)_ | Basic auth user name. |
 | Everything | `Password` | No (optional) | _(empty)_ | Basic auth password. |
-| QBittorrent | `BaseUrl` | No (optional) | `http://localhost:8080` | qBittorrent WebUI base URL (include port if needed). If unavailable/auth fails, JavManager prints magnet links without adding to download queue. |
-| QBittorrent | `UserName` | No (optional) | `admin` | WebUI user name. |
+| QBittorrent | `BaseUrl` | No (optional) | _(empty)_ | qBittorrent WebUI base URL (include port if needed). If unavailable/auth fails, JavManager prints magnet links without adding to download queue. |
+| QBittorrent | `UserName` | No (optional) | _(empty)_ | WebUI user name. |
 | QBittorrent | `Password` | No (optional) | _(empty)_ | WebUI password. |
 | JavDb | `BaseUrl` | Yes | `https://javdb.com` | Primary JavDB base URL. |
 | JavDb | `MirrorUrls` | No (optional) | `[]` | Additional mirror URLs (array). |
@@ -75,25 +122,29 @@ Configuration reference:
 | JavDb | `CurlImpersonate:DefaultHeaders` | No (optional) | `true` | Use curl-impersonate built-in default HTTP headers. |
 | Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |
 | Download | `DefaultCategory` | No (optional) | `jav` | Default category in qBittorrent. |
-| Download | `DefaultTags` | No (optional) | `auto-download` | Default tags for created downloads. |
+| Download | `DefaultTags` | No (optional) | `jav-manager` | Default tags for created downloads. |
 | LocalCache | `Enabled` | No (optional) | `true` | Enable or disable local cache storage. |
-| LocalCache | `DatabasePath` | No (optional) | _(empty)_ | JSON cache file path (leave empty for default `jav_cache.json` next to the executable). |
+| LocalCache | `DatabasePath` | No (optional) | _(empty)_ | JSON cache file path (leave empty for default `jav_cache.json` next to executable). |
 | LocalCache | `CacheExpirationDays` | No (optional) | `0` | Cache TTL in days (0 disables expiration). |
 | Console | `Language` | No (optional) | `en` | UI language (`en`, `zh`, or `auto`). |
-| Console | `HideOtherTorrents` | No (optional) | `true` | Hide non-matching torrents in the list. |
+| Console | `HideOtherTorrents` | No (optional) | `true` | Hide non-matching torrents in list. |
 | Telemetry | `Enabled` | No (optional) | `true` | Enable or disable anonymous telemetry. |
-| Telemetry | `Endpoint` | No (optional) | _(empty)_ | Telemetry endpoint URL (leave empty to use the default). |
-| JavInfoSync | `Enabled` | No (optional) | `false` | Enable or disable JavInfo sync. |
-| JavInfoSync | `Endpoint` | If enabled | _(empty)_ | JavInfo sync endpoint URL. |
-| JavInfoSync | `ApiKey` | No (optional) | _(empty)_ | Optional API key (sent via `X-API-Key`). |
+| Telemetry | `Endpoint` | No (optional) | `https://jav-manager.techfetch.dev` | Base endpoint (the app posts to `/api/telemetry` and `/api/javinfo`). |
+
+Notes:
+- `JavInfoSync:*` is a legacy section name; newer builds use `Telemetry:*` (the app still reads the legacy keys for backward compatibility).
+- Advanced: configuration also supports environment variables with the `JAVMANAGER_` prefix (nested keys use `__`), but file-based config is the primary supported method.
 
 ## Usage
 
 ```bash
-# Interactive mode
+# GUI (default when no args)
 dotnet run --project JavManager/JavManager.csproj
 
-# Direct search
+# Console (interactive)
+dotnet run --project JavManager/JavManager.csproj -- --no-gui
+
+# Console (non-interactive)
 dotnet run --project JavManager/JavManager.csproj -- STARS-001
 
 # Show help
@@ -103,15 +154,7 @@ dotnet run --project JavManager/JavManager.csproj -- help
 dotnet run --project JavManager/JavManager.csproj -- version
 ```
 
-**Interactive Commands:**
-
-| Command | Description |
-|---------|-------------|
-| `<code>` | Search by JAV code (e.g., `STARS-001`) |
-| `r <code>` | Refresh search|
-| `c` | Show saved data statistics |
-| `h` | Show help |
-| `q` | Quit |
+For console commands, run `dotnet run --project JavManager/JavManager.csproj -- help`.
 
 ## Build & Package
 
@@ -122,9 +165,23 @@ dotnet build JavManager/JavManager.csproj
 # Run tests
 dotnet test JavManager.Tests/JavManager.Tests.csproj
 
-# Package (Windows standalone zip)
-pwsh scripts/package.ps1
+# Publish (multi-RID, self-contained, outputs to artifacts/publish/<rid>/)
+pwsh scripts/publish.ps1
+# or
+bash scripts/publish.sh
 
 # Install to PATH (Windows)
 pwsh scripts/install-windows.ps1 -AddToPath
+```
+
+### Android (experimental)
+
+Android build is opt-in (so desktop builds don’t require the Android workload).
+
+```bash
+# Install workload (once)
+dotnet workload install android
+
+# Build Android target (requires Android SDK/JDK configured)
+dotnet build JavManager/JavManager.csproj -c Debug -f net10.0-android -p:EnableAndroid=true
 ```

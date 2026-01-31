@@ -15,7 +15,7 @@
 
 ## Build, Test, and Development Commands
 
-Requires .NET SDK `8.0`.
+Requires .NET SDK `10.0`.
 
 - Build: `dotnet build JavManager/JavManager.csproj`
 - Run (interactive): `dotnet run --project JavManager/JavManager.csproj`
@@ -27,6 +27,13 @@ Requires .NET SDK `8.0`.
 ## Documentation Guidelines
 
 - Only edit `README.md` unless explicitly requested; do not modify other language readmes.
+
+## Localization / i18n Guidelines
+
+- When updating UI text, only update the English i18n assets:
+  - GUI resources: `JavManager/Localization/Strings.resx`
+  - Documentation: `README.md`
+- Do **not** update other languages (e.g. `Strings.zh.resx`, `Strings.ja.resx`, `Strings.ko.resx`, `README.zh.md`, `README.ja.md`, `README.ko.md`) unless explicitly requested. Other language maintainers will update them via translation services.
 
 ## Coding Style & Naming Conventions
 

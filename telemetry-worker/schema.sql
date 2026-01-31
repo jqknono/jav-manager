@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS javinfo (
     categories_json TEXT,
     torrents_json TEXT,
     detail_url TEXT,
+    search_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );

@@ -71,6 +71,10 @@ public class LocalizationService
 
         if (language.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
             return new CultureInfo("zh");
+        if (language.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
+            return new CultureInfo("ja");
+        if (language.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
+            return new CultureInfo("ko");
         if (language.StartsWith("en", StringComparison.OrdinalIgnoreCase))
             return new CultureInfo("en");
 
