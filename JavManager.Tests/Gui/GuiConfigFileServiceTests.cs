@@ -32,8 +32,9 @@ public sealed class GuiConfigFileServiceTests
                 MirrorUrls = new List<string> { "https://a.example", " https://b.example " }
             };
             var download = new DownloadConfig();
+            var update = new UpdateConfig { Enabled = true, AutoCheckOnStartup = true, GitHubRepo = "jqknono/jav-manager" };
 
-            await service.SaveAsync(everything, qb, javDb, download, language: "en");
+            await service.SaveAsync(everything, qb, javDb, download, update, language: "en");
 
             var json = JObject.Parse(await File.ReadAllTextAsync(configPath));
             json["JavDb"]!["MirrorUrls"]!.Type.Should().Be(JTokenType.Array);

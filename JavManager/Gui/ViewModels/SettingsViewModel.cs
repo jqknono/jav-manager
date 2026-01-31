@@ -9,6 +9,7 @@ using JavManager.Gui.Services;
 using JavManager.Gui.Utils;
 using JavManager.Localization;
 using JavManager.Services;
+using JavManager.Utils;
 
 namespace JavManager.Gui.ViewModels;
 
@@ -19,9 +20,13 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly JavDbConfig _javDbConfig;
     private readonly DownloadConfig _downloadConfig;
     private readonly TelemetryConfig _telemetryConfig;
+    private readonly UpdateConfig _updateConfig;
     private readonly LocalizationService _loc;
     private readonly GuiConfigFileService _configFileService;
     private readonly HealthCheckService _healthCheckService;
+    private readonly AppUpdateService _appUpdateService;
+    private readonly WindowsSelfUpdateApplier _windowsSelfUpdateApplier;
+    private readonly IAppShutdownService _shutdownService;
 
     public GuiLocalization Loc { get; }
 
@@ -78,6 +83,27 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isTesting;
 
+    [ObservableProperty]
+    private bool _isCheckingUpdates;
+
+    [ObservableProperty]
+    private bool _isUpdatingApp;
+
+    [ObservableProperty]
+    private bool _autoUpdateEnabled = true;
+
+    [ObservableProperty]
+    private string _updateStatus = "Unknown";
+
+    [ObservableProperty]
+    private string? _updateStatusDetails;
+
+    [ObservableProperty]
+    private bool _canUpdateNow;
+
+    [ObservableProperty]
+    private bool _canCheckUpdates = true;
+
     // Health status
     [ObservableProperty]
     private string _everythingStatus = "Unknown";
@@ -105,27 +131,38 @@ public partial class SettingsViewModel : ViewModelBase
         JavDbConfig javDbConfig,
         DownloadConfig downloadConfig,
         TelemetryConfig telemetryConfig,
+        UpdateConfig updateConfig,
         GuiLocalization guiLocalization,
         LocalizationService localizationService,
         GuiConfigFileService configFileService,
-        HealthCheckService healthCheckService)
+        HealthCheckService healthCheckService,
+        AppUpdateService appUpdateService,
+        WindowsSelfUpdateApplier windowsSelfUpdateApplier,
+        IAppShutdownService shutdownService)
     {
         _everythingConfig = everythingConfig;
         _qbConfig = qbConfig;
         _javDbConfig = javDbConfig;
         _downloadConfig = downloadConfig;
         _telemetryConfig = telemetryConfig;
+        _updateConfig = updateConfig;
         Loc = guiLocalization;
         _loc = localizationService;
         AvailableLanguages = new[]
         {
             new LanguageOption("en", "Gui_Settings_Language_English", localizationService),
             new LanguageOption("zh", "Gui_Settings_Language_Chinese", localizationService),
+            new LanguageOption("ja", "Gui_Settings_Language_Japanese", localizationService),
+            new LanguageOption("ko", "Gui_Settings_Language_Korean", localizationService),
         };
         _configFileService = configFileService;
         _healthCheckService = healthCheckService;
+        _appUpdateService = appUpdateService;
+        _windowsSelfUpdateApplier = windowsSelfUpdateApplier;
+        _shutdownService = shutdownService;
 
         LoadSettings();
+        InitializeUpdateStatus();
     }
 
     private void LoadSettings()
@@ -151,6 +188,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Language
         SelectedLanguage = _loc.CurrentCulture.TwoLetterISOLanguageName;
+
+        // Update
+        AutoUpdateEnabled = _updateConfig.AutoCheckOnStartup;
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -196,6 +236,9 @@ public partial class SettingsViewModel : ViewModelBase
         // Language
         _loc.SetLanguage(SelectedLanguage);
 
+        // Update
+        _updateConfig.AutoCheckOnStartup = AutoUpdateEnabled;
+
         try
         {
             await _configFileService.SaveAsync(
@@ -203,6 +246,7 @@ public partial class SettingsViewModel : ViewModelBase
                 _qbConfig,
                 _javDbConfig,
                 _downloadConfig,
+                _updateConfig,
                 SelectedLanguage);
 
             StatusMessage = _loc.Get(L.ConfigUpdated);
@@ -362,6 +406,192 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsUpdatingJavDbDomain = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        await CheckUpdatesInternalAsync(showToasts: true);
+    }
+
+    private AppUpdateService.AppUpdateCheckResult? _lastUpdateCheck;
+
+    private bool CanUpdateNowExecute()
+        => CanUpdateNow;
+
+    [RelayCommand(CanExecute = nameof(CanUpdateNowExecute))]
+    private async Task UpdateNowAsync()
+    {
+        if (_lastUpdateCheck?.HasUpdate != true || _lastUpdateCheck.Asset == null)
+        {
+            await CheckUpdatesInternalAsync(showToasts: true);
+        }
+
+        if (_lastUpdateCheck?.HasUpdate != true || _lastUpdateCheck.Asset == null)
+        {
+            StatusMessage = _loc.Get("Gui_Settings_Update_NoUpdate");
+            return;
+        }
+
+        if (!_windowsSelfUpdateApplier.CanApplyToCurrentProcess(out var reason))
+        {
+            StatusMessage = _loc.GetFormat("Gui_Settings_Update_NotSupported", reason);
+            return;
+        }
+
+        IsUpdatingApp = true;
+        UpdateCanUpdateNow();
+        StatusMessage = _loc.Get("Gui_Settings_Update_Downloading");
+
+        try
+        {
+            var asset = _lastUpdateCheck.Asset;
+            var installDir = Path.GetDirectoryName(Environment.ProcessPath!)!;
+
+            var tempDir = Path.Combine(installDir, ".update");
+            Directory.CreateDirectory(tempDir);
+
+            var expectedExeName = $"{AppInfo.Name}.exe";
+            var downloadedPath = Path.Combine(tempDir, asset.Name);
+            var newExePath = Path.Combine(tempDir, expectedExeName + ".new");
+
+            await _appUpdateService.DownloadAssetToFileAsync(asset, downloadedPath, cancellationToken: default);
+
+            if (asset.IsZip)
+            {
+                var ok = AppUpdateService.TryExtractSingleFileFromZip(downloadedPath, expectedExeName, newExePath);
+                if (!ok)
+                {
+                    StatusMessage = _loc.GetFormat("Gui_Settings_Update_Failed", "Zip missing expected executable.");
+                    return;
+                }
+            }
+            else
+            {
+                // Direct exe download
+                File.Copy(downloadedPath, newExePath, overwrite: true);
+            }
+
+            // Quick sanity check: Windows PE header.
+            using (var fs = File.OpenRead(newExePath))
+            {
+                var header = new byte[2];
+                var read = fs.Read(header, 0, 2);
+                if (read != 2 || header[0] != (byte)'M' || header[1] != (byte)'Z')
+                    throw new InvalidDataException("Downloaded file is not a valid Windows executable.");
+            }
+
+            var currentExe = Environment.ProcessPath!;
+            var finalNewExePath = Path.Combine(Path.GetDirectoryName(currentExe)!, $"{AppInfo.Name}.exe.new");
+            File.Copy(newExePath, finalNewExePath, overwrite: true);
+
+            StatusMessage = _loc.Get("Gui_Settings_Update_Installing");
+            _windowsSelfUpdateApplier.StartReplaceAndRestart(finalNewExePath, Environment.ProcessId);
+
+            // Shut down so the updater script can replace the executable.
+            _shutdownService.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = _loc.GetFormat("Gui_Settings_Update_Failed", ex.Message);
+        }
+        finally
+        {
+            IsUpdatingApp = false;
+            UpdateCanUpdateNow();
+        }
+    }
+
+    public async Task PerformUpdateCheckIfEnabledAsync()
+    {
+        if (!_updateConfig.Enabled || !_updateConfig.AutoCheckOnStartup)
+            return;
+
+        await CheckUpdatesInternalAsync(showToasts: false);
+    }
+
+    private void InitializeUpdateStatus()
+    {
+        if (!_updateConfig.Enabled)
+        {
+            UpdateStatus = _loc.Get("Gui_Settings_Update_Disabled");
+            UpdateCanUpdateNow();
+            return;
+        }
+
+        UpdateStatus = _loc.Get("Gui_Settings_Update_Unknown");
+        UpdateCanUpdateNow();
+    }
+
+    private async Task CheckUpdatesInternalAsync(bool showToasts)
+    {
+        if (!_updateConfig.Enabled)
+        {
+            UpdateStatus = _loc.Get("Gui_Settings_Update_Disabled");
+            if (showToasts)
+                StatusMessage = _loc.Get("Gui_Settings_Update_Disabled");
+            return;
+        }
+
+        IsCheckingUpdates = true;
+        UpdateCanUpdateNow();
+        UpdateStatus = _loc.Get("Gui_Settings_Update_Checking");
+        UpdateStatusDetails = null;
+
+        try
+        {
+            var result = await _appUpdateService.CheckForUpdatesAsync();
+            _lastUpdateCheck = result;
+            UpdateCanUpdateNow();
+
+            if (!result.IsSuccess)
+            {
+                UpdateStatus = _loc.Get("Gui_Settings_Update_CheckFailed");
+                UpdateStatusDetails = result.Error;
+                if (showToasts)
+                    StatusMessage = _loc.GetFormat("Gui_Settings_Update_Failed", result.Error ?? "Unknown error");
+                return;
+            }
+
+            if (result.HasUpdate)
+            {
+                UpdateStatus = _loc.GetFormat("Gui_Settings_Update_Available", result.LatestVersion);
+                UpdateStatusDetails = result.ReleasePageUrl;
+                if (showToasts)
+                    StatusMessage = _loc.GetFormat("Gui_Settings_Update_Available", result.LatestVersion);
+            }
+            else
+            {
+                UpdateStatus = _loc.GetFormat("Gui_Settings_Update_UpToDate", result.CurrentVersion);
+                if (showToasts)
+                    StatusMessage = _loc.Get("Gui_Settings_Update_NoUpdate");
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus = _loc.Get("Gui_Settings_Update_CheckFailed");
+            UpdateStatusDetails = ex.Message;
+            if (showToasts)
+                StatusMessage = _loc.GetFormat("Gui_Settings_Update_Failed", ex.Message);
+        }
+        finally
+        {
+            IsCheckingUpdates = false;
+            UpdateCanUpdateNow();
+        }
+    }
+
+    partial void OnIsCheckingUpdatesChanged(bool value) => UpdateCanUpdateNow();
+
+    partial void OnIsUpdatingAppChanged(bool value) => UpdateCanUpdateNow();
+
+    private void UpdateCanUpdateNow()
+    {
+        CanCheckUpdates = _updateConfig.Enabled && !IsCheckingUpdates && !IsUpdatingApp;
+
+        // Allow "Update Now" to run a check first; it will no-op if no update is available.
+        CanUpdateNow = _updateConfig.Enabled && !IsCheckingUpdates && !IsUpdatingApp;
+        UpdateNowCommand.NotifyCanExecuteChanged();
     }
 
     private static List<string> ParseMirrorUrls(string commaSeparated)

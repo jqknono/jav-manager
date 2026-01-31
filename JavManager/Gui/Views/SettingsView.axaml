@@ -134,6 +134,38 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Updates -->
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Update_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding UpdateStatus}"
+                                       ToolTip.Tip="{Binding UpdateStatusDetails}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="340"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </Grid>
+                        <CheckBox Content="{Binding Loc[Gui_Settings_Update_AutoCheck]}"
+                                  IsChecked="{Binding AutoUpdateEnabled}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="{Binding Loc[Gui_Settings_ButtonCheckUpdates]}"
+                                    Command="{Binding CheckUpdatesCommand}"
+                                    IsEnabled="{Binding CanCheckUpdates}"
+                                    MinWidth="120"/>
+                            <Button Content="{Binding Loc[Gui_Settings_ButtonUpdateNow]}"
+                                    Command="{Binding UpdateNowCommand}"
+                                    IsEnabled="{Binding CanUpdateNow}"
+                                    Classes="accent"
+                                    MinWidth="120"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Language Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                         BorderThickness="1" 

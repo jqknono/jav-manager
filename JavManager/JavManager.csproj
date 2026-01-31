@@ -138,15 +138,17 @@
     <EmbeddedResource Update="Localization\Strings.zh.resx">
       <DependentUpon>Strings.resx</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Update="Localization\Strings.ja.resx">
+      <DependentUpon>Strings.resx</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Localization\Strings.ko.resx">
+      <DependentUpon>Strings.resx</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!--
-    i18n policy (repo + project): only ship English + Chinese resources.
-    Exclude other language .resx files from build to avoid invalid/partial translations breaking compilation.
+    i18n policy: ship English + Chinese + Japanese + Korean resources for the GUI.
   -->
-  <ItemGroup>
-    <EmbeddedResource Remove="Localization\Strings.ja.resx" />
-    <EmbeddedResource Remove="Localization\Strings.ko.resx" />
-  </ItemGroup>
+  <ItemGroup />
 
 </Project>

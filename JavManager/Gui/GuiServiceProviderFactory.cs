@@ -30,6 +30,7 @@ internal static class GuiServiceProviderFactory
         services.Configure<JavDbConfig>(config.GetSection("JavDb"));
         services.Configure<DownloadConfig>(config.GetSection("Download"));
         services.Configure<TelemetryConfig>(config.GetSection("Telemetry"));
+        services.Configure<UpdateConfig>(config.GetSection("Update"));
 
         // Concrete config objects (direct injection)
         var everythingConfig = config.GetSection("Everything").Get<EverythingConfig>() ?? new EverythingConfig();
@@ -38,6 +39,7 @@ internal static class GuiServiceProviderFactory
         var downloadConfig = config.GetSection("Download").Get<DownloadConfig>() ?? new DownloadConfig();
         var localCacheConfig = config.GetSection("LocalCache").Get<LocalCacheConfig>() ?? new LocalCacheConfig();
         var telemetryConfig = config.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
+        var updateConfig = config.GetSection("Update").Get<UpdateConfig>() ?? new UpdateConfig();
 
         // Backward compatibility: legacy "JavInfoSync" section (pre-telemetry refactor).
         if (string.IsNullOrWhiteSpace(telemetryConfig.Endpoint))
@@ -62,6 +64,7 @@ internal static class GuiServiceProviderFactory
         services.AddSingleton(downloadConfig);
         services.AddSingleton(localCacheConfig);
         services.AddSingleton(telemetryConfig);
+        services.AddSingleton(updateConfig);
 
         // Localization
         services.AddSingleton(localizationService);
@@ -91,10 +94,13 @@ internal static class GuiServiceProviderFactory
         services.AddSingleton<DownloadService>();
         services.AddSingleton<IJavInfoTelemetryClient, JavInfoTelemetryClient>();
         services.AddSingleton<JavSearchService>();
+        services.AddSingleton<AppUpdateService>();
 
         // GUI
         services.AddSingleton<GuiLocalization>();
         services.AddSingleton<GuiConfigFileService>();
+        services.AddSingleton<IAppShutdownService, AvaloniaAppShutdownService>();
+        services.AddSingleton<WindowsSelfUpdateApplier>();
         services.AddSingleton<SearchViewModel>();
         services.AddSingleton<DownloadsViewModel>();
         services.AddSingleton<SettingsViewModel>();
@@ -187,4 +193,3 @@ internal static class GuiServiceProviderFactory
         return asm.GetManifestResourceStream(fallbackName);
     }
 }
-

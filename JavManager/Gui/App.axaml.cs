@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using JavManager.Gui.Views;
 using JavManager.Gui.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,17 +37,28 @@ public partial class App : AppBase
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var mainVm = services.GetRequiredService<MainViewModel>();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = services.GetRequiredService<MainViewModel>()
+                DataContext = mainVm
             };
+
+            // Background update check (if enabled) without blocking startup.
+            Dispatcher.UIThread.Post(
+                async () => await mainVm.SettingsViewModel.PerformUpdateCheckIfEnabledAsync(),
+                DispatcherPriority.Background);
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
         {
+            var mainVm = services.GetRequiredService<MainViewModel>();
             singleView.MainView = new MainView
             {
-                DataContext = services.GetRequiredService<MainViewModel>()
+                DataContext = mainVm
             };
+
+            Dispatcher.UIThread.Post(
+                async () => await mainVm.SettingsViewModel.PerformUpdateCheckIfEnabledAsync(),
+                DispatcherPriority.Background);
         }
 
         base.OnFrameworkInitializationCompleted();

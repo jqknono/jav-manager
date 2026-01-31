@@ -130,6 +130,9 @@ Configuration reference:
 | Console | `HideOtherTorrents` | No (optional) | `true` | Hide non-matching torrents in list. |
 | Telemetry | `Enabled` | No (optional) | `true` | Enable or disable anonymous telemetry. |
 | Telemetry | `Endpoint` | No (optional) | `https://jav-manager.techfetch.dev` | Base endpoint (the app posts to `/api/telemetry` and `/api/javinfo`). |
+| Update | `Enabled` | No (optional) | `true` | Enable or disable update checks. |
+| Update | `AutoCheckOnStartup` | No (optional) | `true` | Auto-check for updates on startup (GUI). |
+| Update | `GitHubRepo` | No (optional) | `jqknono/jav-manager` | GitHub repo used for update checks. |
 
 Notes:
 - `JavInfoSync:*` is a legacy section name; newer builds use `Telemetry:*` (the app still reads the legacy keys for backward compatibility).

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -40,7 +39,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
-  <!-- 通用 -->
+  <!-- General -->
   <data name="AppTitle" xml:space="preserve">
     <value>JAV下载管理器</value>
   </data>
@@ -72,15 +71,15 @@
     <value>按任意键继续...</value>
   </data>
 
-  <!-- 功能 -->
+  <!-- Features -->
   <data name="Features" xml:space="preserve">
     <value>功能：</value>
   </data>
   <data name="FeatureSearchJavDb" xml:space="preserve">
-    <value>从JavDB搜索JAV编号</value>
+    <value>从JavDB搜索JAV ID</value>
   </data>
   <data name="FeatureSmartSelection" xml:space="preserve">
-    <value>智能来源选择（无码/字幕/大小）</value>
+    <value>智能源选择（无码/字幕/大小）</value>
   </data>
   <data name="FeatureLocalCheck" xml:space="preserve">
     <value>本地文件检查（使用Everything）</value>
@@ -89,48 +88,48 @@
     <value>自动添加到qBittorrent</value>
   </data>
 
-  <!-- 命令 -->
+  <!-- Commands -->
   <data name="Commands" xml:space="preserve">
     <value>命令：</value>
   </data>
   <data name="CmdSearchDownload" xml:space="preserve">
-    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        搜索并下载（例如：IPZZ-408）</value>
+    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        搜索并下载（例如 IPZZ-408）</value>
   </data>
   <data name="CmdLocalSearch" xml:space="preserve">
-    <value>l &lt;JAV-ID&gt; [-m 100MB]       本地搜索（使用Everything，默认≥100MB）</value>
+    <value>l &lt;JAV-ID&gt; [-m 100MB]       本地搜索（Everything，默认 >=100MB）</value>
   </data>
   <data name="CmdRemoteSearch" xml:space="preserve">
-    <value>r &lt;JAV-ID&gt;                  远程搜索（JavDB）</value>
+    <value>r &lt;JAV-ID&gt;                 远程搜索（JavDB）</value>
   </data>
   <data name="CmdDownloading" xml:space="preserve">
-    <value>d                         下载列表（qBittorrent）</value>
+    <value>d                        下载列表（qBittorrent）</value>
   </data>
   <data name="CmdDownloads" xml:space="preserve">
-    <value>t                         下载任务（qBittorrent）</value>
+    <value>t                        下载任务（qBittorrent）</value>
   </data>
   <data name="CmdHealthCheck" xml:space="preserve">
-    <value>hc                        检查服务状态</value>
+    <value>hc                       检查服务状态</value>
   </data>
   <data name="CmdVersion" xml:space="preserve">
-    <value>v                         显示版本</value>
+    <value>v                        显示版本</value>
   </data>
   <data name="CmdHelp" xml:space="preserve">
-    <value>h                         显示帮助</value>
+    <value>h                        显示帮助</value>
   </data>
   <data name="CmdLang" xml:space="preserve">
-    <value>lang &lt;auto|en|zh&gt;          切换界面语言</value>
+    <value>lang &lt;auto|en|zh&gt;         更改界面语言</value>
   </data>
   <data name="CmdConfig" xml:space="preserve">
     <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  配置服务连接</value>
   </data>
   <data name="CmdQuit" xml:space="preserve">
-    <value>q                         退出</value>
+    <value>q                        退出</value>
   </data>
   <data name="CmdCacheStats" xml:space="preserve">
-    <value>c             显示本地缓存统计</value>
+    <value>c            显示本地缓存统计</value>
   </data>
   <data name="CmdTestCurl" xml:space="preserve">
-    <value>--test-curl    运行curl测试</value>
+    <value>--test-curl   运行curl测试</value>
   </data>
   <data name="HelpTitle" xml:space="preserve">
     <value>{0} {1} - 命令：</value>
@@ -142,10 +141,10 @@
     <value>--lang &lt;auto|en|zh&gt;         设置界面语言</value>
   </data>
   <data name="OptJavDbUrl" xml:space="preserve">
-    <value>--javdb-url &lt;url&gt;            JavDB基础URL</value>
+    <value>--javdb-url &lt;url&gt;           JavDB基础URL</value>
   </data>
   <data name="OptEverythingUrl" xml:space="preserve">
-    <value>--everything-url &lt;url&gt;       Everything基础URL</value>
+    <value>--everything-url &lt;url&gt;      Everything基础URL</value>
   </data>
   <data name="OptEverythingUser" xml:space="preserve">
     <value>--everything-user &lt;username&gt; Everything用户名</value>
@@ -154,50 +153,50 @@
     <value>--everything-pass &lt;password&gt; Everything密码</value>
   </data>
   <data name="OptQBittorrentUrl" xml:space="preserve">
-    <value>--qb-url &lt;url&gt;               qBittorrent基础URL</value>
+    <value>--qb-url &lt;url&gt;              qBittorrent基础URL</value>
   </data>
   <data name="OptQBittorrentUser" xml:space="preserve">
-    <value>--qb-user &lt;username&gt;         qBittorrent用户名</value>
+    <value>--qb-user &lt;username&gt;        qBittorrent用户名</value>
   </data>
   <data name="OptQBittorrentPass" xml:space="preserve">
-    <value>--qb-pass &lt;password&gt;         qBittorrent密码</value>
+    <value>--qb-pass &lt;password&gt;        qBittorrent密码</value>
   </data>
   <data name="UsageLang" xml:space="preserve">
-    <value>用法：lang &lt;auto|en|zh&gt;</value>
+    <value>用法: lang &lt;auto|en|zh&gt;</value>
   </data>
   <data name="LangSwitched" xml:space="preserve">
-    <value>语言已切换为：{0}</value>
+    <value>语言已切换为: {0}</value>
   </data>
   <data name="UsageConfig" xml:space="preserve">
-    <value>用法：cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
+    <value>用法: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
   </data>
   <data name="ConfigUpdated" xml:space="preserve">
     <value>配置已更新。</value>
   </data>
 
-  <!-- 提示 -->
+  <!-- Prompts -->
   <data name="PromptInput" xml:space="preserve">
-    <value>输入命令或JAV编号（h获取帮助，q退出）：</value>
+    <value>输入命令或JAV-ID（h显示帮助，q退出）： </value>
   </data>
   <data name="PromptTorrentSelection" xml:space="preserve">
-    <value>选择要下载的种子（1-{0}，回车选择第一个，0取消）：</value>
+    <value>选择要下载的种子（1-{0}，回车选择第一个，0取消）： </value>
   </data>
   <data name="PromptSearchResultSelection" xml:space="preserve">
-    <value>选择搜索结果（1-{0}，回车选择第一个，0取消）：</value>
+    <value>选择搜索结果（1-{0}，回车选择第一个，0取消）： </value>
   </data>
   <data name="PromptLocalFileSelection" xml:space="preserve">
-    <value>输入选项（1-3）：</value>
+    <value>输入选项（1-3）： </value>
   </data>
   <data name="PromptInvalidInput" xml:space="preserve">
     <value>无效输入。</value>
   </data>
   <data name="PromptInvalidInputRange" xml:space="preserve">
-    <value>无效输入，请输入1-{0}，或按回车选择第一项。</value>
+    <value>无效输入，请输入1-{0}，或按回车选择第一个。</value>
   </data>
 
-  <!-- 本地文件选择 -->
+  <!-- Local File Selection -->
   <data name="LocalFileExists" xml:space="preserve">
-    <value>本地文件已存在，请选择操作：</value>
+    <value>本地文件已存在，请选择选项：</value>
   </data>
   <data name="LocalFileOption1Skip" xml:space="preserve">
     <value>1. 跳过下载</value>
@@ -218,9 +217,9 @@
     <value>本地文件已存在，跳过下载。</value>
   </data>
 
-  <!-- 表格标题 -->
+  <!-- Table Headers -->
   <data name="TableIndex" xml:space="preserve">
-    <value>序号</value>
+    <value>#</value>
   </data>
   <data name="TableTitle" xml:space="preserve">
     <value>标题</value>
@@ -250,7 +249,7 @@
     <value>状态</value>
   </data>
   <data name="TableJavId" xml:space="preserve">
-    <value>JAV编号</value>
+    <value>JAV-ID</value>
   </data>
   <data name="TableService" xml:space="preserve">
     <value>服务</value>
@@ -271,9 +270,9 @@
     <value>值</value>
   </data>
 
-  <!-- 搜索结果 -->
+  <!-- Search Results -->
   <data name="NoTorrentsFound" xml:space="preserve">
-    <value>未找到种子</value>
+    <value>未找到种子文件</value>
   </data>
   <data name="NoSearchResults" xml:space="preserve">
     <value>未找到搜索结果</value>
@@ -288,10 +287,10 @@
     <value>正在搜索 {0}...</value>
   </data>
   <data name="SearchFailed" xml:space="preserve">
-    <value>远程搜索失败（JavDB）：{0}</value>
+    <value>远程搜索失败 (JavDB): {0}</value>
   </data>
 
-  <!-- 处理结果 -->
+  <!-- Process Results -->
   <data name="LocalFilesExist" xml:space="preserve">
     <value>本地文件已存在</value>
   </data>
@@ -302,13 +301,13 @@
     <value>未添加到下载队列</value>
   </data>
   <data name="MagnetLinkManual" xml:space="preserve">
-    <value>磁力链接（手动下载）：</value>
+    <value>磁力链接 (手动下载):</value>
   </data>
   <data name="ProcessFailed" xml:space="preserve">
     <value>处理失败</value>
   </data>
   <data name="LocalDedupSkipped" xml:space="preserve">
-    <value>注意：本地去重已跳过（Everything不可用）</value>
+    <value>注意: 本地去重已跳过 (Everything 不可用)</value>
   </data>
   <data name="MarkerHD" xml:space="preserve">
     <value>高清</value>
@@ -326,109 +325,109 @@
     <value>标记</value>
   </data>
 
-  <!-- 健康检查 -->
+  <!-- Health Check -->
   <data name="HealthCheckTitle" xml:space="preserve">
     <value>服务状态检查</value>
   </data>
   <data name="HealthCheckNoCheckers" xml:space="preserve">
-    <value>未注册健康检查器，无法显示服务状态。</value>
+    <value>没有注册的健康检查器，无法显示服务状态。</value>
   </data>
   <data name="StatusHealthy" xml:space="preserve">
-    <value>正常</value>
+    <value>健康</value>
   </data>
   <data name="StatusUnhealthy" xml:space="preserve">
-    <value>异常</value>
+    <value>不健康</value>
   </data>
   <data name="UnhealthyWarning" xml:space="preserve">
-    <value>警告：{0}项服务不可用，请检查配置文件appsettings.json</value>
+    <value>警告: {0} 个服务不可用，请检查配置文件 appsettings.json</value>
   </data>
   <data name="AllServicesHealthy" xml:space="preserve">
     <value>所有服务运行正常</value>
   </data>
   <data name="HealthCheckException" xml:space="preserve">
-    <value>健康检查异常：{0}</value>
+    <value>健康检查异常: {0}</value>
   </data>
   <data name="HealthCheckStarted" xml:space="preserve">
-    <value>服务状态检查已在后台启动，随时输入'hc'查看结果。</value>
+    <value>服务状态检查已在后台启动。输入 'hc' 随时查看结果。</value>
   </data>
 
-  <!-- 服务安装提示 -->
+  <!-- Service Setup Hints -->
   <data name="EverythingSetupHint" xml:space="preserve">
-    <value>未检测到Everything本地搜索服务，请安装并启用HTTP API：</value>
+    <value>未检测到 Everything 本地搜索服务，请安装并启用 HTTP API:</value>
   </data>
   <data name="EverythingDownload" xml:space="preserve">
-    <value>Everything 1.5a：https://www.voidtools.com/everything-1.5a/</value>
+    <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
   </data>
   <data name="EverythingPlugin" xml:space="preserve">
-    <value>Everything HTTP插件：https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
+    <value>Everything HTTP 插件: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
   </data>
   <data name="EverythingConfig" xml:space="preserve">
-    <value>配置：在appsettings.json中设置Everything.BaseUrl为HTTP服务地址（包含端口，例如 http://127.0.0.1:1234）</value>
+    <value>配置: 在 appsettings.json 中将 Everything.BaseUrl 设置为 HTTP 服务地址 (包含端口，例如 http://127.0.0.1:1234)</value>
   </data>
   <data name="QBittorrentSetupHint" xml:space="preserve">
-    <value>未检测到qBittorrent下载器WebUI，请安装并启用WebUI：</value>
+    <value>未检测到 qBittorrent 下载器 WebUI，请安装并启用 WebUI:</value>
   </data>
   <data name="QBittorrentDownload" xml:space="preserve">
-    <value>qBittorrent：https://github.com/qbittorrent/qBittorrent</value>
+    <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
   </data>
   <data name="QBittorrentEnhanced" xml:space="preserve">
-    <value>增强版：https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
+    <value>增强版: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
   </data>
   <data name="QBittorrentConfig" xml:space="preserve">
-    <value>配置：启用WebUI后，在appsettings.json中设置QBittorrent.BaseUrl为WebUI地址（包含端口，例如 http://127.0.0.1:8080），并设置正确的用户名/密码</value>
+    <value>配置: 启用 WebUI 后，在 appsettings.json 中将 QBittorrent.BaseUrl 设置为 WebUI 地址 (包含端口，例如 http://127.0.0.1:8080)，并设置正确的用户名/密码</value>
   </data>
   <data name="ConfigHint" xml:space="preserve">
-    <value>提示：输入'quit'退出并修改配置</value>
+    <value>提示: 输入 'quit' 退出并修改配置</value>
   </data>
 
-  <!-- 服务错误 -->
+  <!-- Service Errors -->
   <data name="JavDbUnavailable" xml:space="preserve">
-    <value>JavDB服务错误：远程搜索功能不可用。</value>
+    <value>JavDB 服务错误: 远程搜索功能不可用。</value>
   </data>
   <data name="EverythingUnavailable" xml:space="preserve">
-    <value>Everything服务错误：不支持本地搜索。</value>
+    <value>Everything 服务错误: 不支持本地搜索。</value>
   </data>
   <data name="QBittorrentUnavailable" xml:space="preserve">
-    <value>qBittorrent服务错误：不支持下载队列操作。</value>
+    <value>qBittorrent 服务错误: 不支持下载队列操作。</value>
   </data>
 
-  <!-- 服务名称 -->
+  <!-- Service Names -->
   <data name="ServiceNameEverything" xml:space="preserve">
-    <value>Everything（本地搜索）</value>
+    <value>Everything (本地搜索)</value>
   </data>
   <data name="ServiceNameQBittorrent" xml:space="preserve">
-    <value>qBittorrent（下载器）</value>
+    <value>qBittorrent (下载器)</value>
   </data>
   <data name="ServiceNameJavDb" xml:space="preserve">
-    <value>JavDB（远程数据库）</value>
+    <value>JavDB (远程数据库)</value>
   </data>
 
-  <!-- 健康检查消息 -->
+  <!-- Health Check Messages -->
   <data name="HealthServiceOk" xml:space="preserve">
     <value>服务正常</value>
   </data>
   <data name="HealthConnectionFailed" xml:space="preserve">
-    <value>连接失败：{0}</value>
+    <value>连接失败: {0}</value>
   </data>
   <data name="HealthAllUrlsFailed" xml:space="preserve">
-    <value>所有URL均不可达</value>
+    <value>所有 URL 均不可达</value>
   </data>
 
-  <!-- JavSearchService 消息 -->
+  <!-- JavSearchService Messages -->
   <data name="LocalDedupUnavailableSkipped" xml:space="preserve">
-    <value>本地去重不可用（Everything服务错误），已跳过本地检查。</value>
+    <value>本地去重不可用 (Everything 服务错误)，已跳过本地检查。</value>
   </data>
   <data name="LocalDedupException" xml:space="preserve">
-    <value>本地去重不可用（Everything错误）：{0}</value>
+    <value>本地去重不可用 (Everything 错误): {0}</value>
   </data>
   <data name="DownloaderUnavailableSkipped" xml:space="preserve">
-    <value>下载器不可用（qBittorrent服务错误），未添加到下载队列。</value>
+    <value>下载器不可用 (qBittorrent 服务错误)，未添加到下载队列。</value>
   </data>
   <data name="DownloaderException" xml:space="preserve">
-    <value>下载器错误，添加下载队列失败：{0}</value>
+    <value>下载器错误，无法添加到下载队列: {0}</value>
   </data>
 
-  <!-- 缓存 -->
+  <!-- Cache -->
   <data name="CacheStatsTitle" xml:space="preserve">
     <value>本地缓存统计</value>
   </data>
@@ -436,7 +435,7 @@
     <value>本地缓存未启用。</value>
   </data>
   <data name="CacheJavCount" xml:space="preserve">
-    <value>缓存的JAV数量</value>
+    <value>缓存的 JAV 数量</value>
   </data>
   <data name="CacheTorrentCount" xml:space="preserve">
     <value>缓存的种子数量</value>
@@ -448,9 +447,9 @@
     <value>最后更新时间</value>
   </data>
 
-  <!-- JAV详情 -->
+  <!-- JAV Details -->
   <data name="DetailJavId" xml:space="preserve">
-    <value>JAV编号</value>
+    <value>JAV-ID</value>
   </data>
   <data name="DetailTitle" xml:space="preserve">
     <value>标题</value>
@@ -477,44 +476,44 @@
     <value>演员</value>
   </data>
   <data name="DetailCategories" xml:space="preserve">
-    <value>分类</value>
+    <value>类别</value>
   </data>
   <data name="DetailDataSource" xml:space="preserve">
-    <value>数据来源</value>
+    <value>数据源</value>
   </data>
   <data name="DetailCachedAt" xml:space="preserve">
     <value>缓存时间</value>
   </data>
   <data name="DetailTorrentCount" xml:space="preserve">
-    <value>种子数量</value>
+    <value>种子数</value>
   </data>
   <data name="DurationMinutes" xml:space="preserve">
-    <value>{0}分钟</value>
+    <value>{0} 分钟</value>
   </data>
 
-  <!-- 使用提示 -->
+  <!-- Usage Hints -->
   <data name="UsageLocalSearch" xml:space="preserve">
-    <value>用法：l &lt;JAV-ID&gt; [-m 100MB]</value>
+    <value>用法: l &lt;JAV-ID&gt; [-m 100MB]</value>
   </data>
   <data name="UsageRemoteSearch" xml:space="preserve">
-    <value>用法：r &lt;JAV-ID&gt;</value>
+    <value>用法: r &lt;JAV-ID&gt;</value>
   </data>
   <data name="UsageSearch" xml:space="preserve">
-    <value>用法：s &lt;JAV-ID&gt;</value>
+    <value>用法: s &lt;JAV-ID&gt;</value>
   </data>
   <data name="InvalidJavId" xml:space="preserve">
-    <value>"{0}"不是有效的JAV编号。JAV编号格式应为&lt;字母/数字&gt;-&lt;数字&gt;。</value>
+    <value>"{0}" 不是有效的 JAV-ID。JAV-ID 必须为 &lt;字母/数字&gt;-&lt;数字&gt; 格式。</value>
   </data>
   <data name="NoFilesOverSize" xml:space="preserve">
-    <value>未找到大于{0:0.##} MB的本地文件。</value>
+    <value>没有找到大于 {0:0.##} MB 的本地文件。</value>
   </data>
 
-  <!-- 错误消息 -->
+  <!-- Error Messages -->
   <data name="ErrorOccurred" xml:space="preserve">
-    <value>发生错误：{0}</value>
+    <value>发生错误: {0}</value>
   </data>
 
-  <!-- 图形界面 -->
+  <!-- GUI -->
   <data name="Gui_Tab_Search" xml:space="preserve">
     <value>搜索</value>
   </data>
@@ -526,7 +525,7 @@
   </data>
 
   <data name="Gui_Common_BaseUrl" xml:space="preserve">
-    <value>基础URL</value>
+    <value>基础 URL</value>
   </data>
   <data name="Gui_Common_Username" xml:space="preserve">
     <value>用户名</value>
@@ -535,7 +534,7 @@
     <value>密码</value>
   </data>
   <data name="Gui_Common_Optional" xml:space="preserve">
-    <value>（可选）</value>
+    <value>(可选)</value>
   </data>
   <data name="Gui_Common_Apply" xml:space="preserve">
     <value>应用</value>
@@ -548,7 +547,7 @@
   </data>
 
   <data name="Gui_Search_Watermark" xml:space="preserve">
-    <value>输入JAV编号（例如：STARS-001）</value>
+    <value>输入 JAV ID (例如: STARS-001)</value>
   </data>
   <data name="Gui_Search_ButtonSearch" xml:space="preserve">
     <value>搜索</value>
@@ -557,7 +556,7 @@
     <value>搜索本地文件</value>
   </data>
   <data name="Gui_Search_OptionRemote" xml:space="preserve">
-    <value>远程搜索（JavDB）</value>
+    <value>搜索远程 (JavDB)</value>
   </data>
   <data name="Gui_Search_SectionRemoteResults" xml:space="preserve">
     <value>搜索结果</value>
@@ -569,25 +568,25 @@
     <value>本地文件</value>
   </data>
   <data name="Gui_Search_TorrentMarkersHint" xml:space="preserve">
-    <value>UC=无码，SUB=字幕，HD=高清</value>
+    <value>UC = 无码, SUB = 字幕, HD = 高清</value>
   </data>
   <data name="Gui_Search_StatusSelectRemoteResult" xml:space="preserve">
-    <value>选择结果以加载种子</value>
+    <value>选择一个结果以加载种子</value>
   </data>
   <data name="Gui_Search_StatusLoadingTorrents" xml:space="preserve">
     <value>正在加载种子...</value>
   </data>
   <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
-    <value>{0}项远程结果</value>
+    <value>{0} 个远程结果</value>
   </data>
   <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
-    <value>{0}个本地文件</value>
+    <value>{0} 个本地文件</value>
   </data>
   <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
-    <value>{0}个种子</value>
+    <value>{0} 个种子</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
-    <value>复制磁链</value>
+    <value>复制磁力链接</value>
   </data>
   <data name="Gui_Search_ButtonDownload" xml:space="preserve">
     <value>下载</value>
@@ -597,23 +596,23 @@
   </data>
 
   <data name="Gui_Downloads_OptionDownloadingOnly" xml:space="preserve">
-    <value>仅显示下载中任务</value>
+    <value>仅显示正在下载的</value>
   </data>
   <data name="Gui_Downloads_ButtonRefresh" xml:space="preserve">
     <value>刷新</value>
   </data>
   <data name="Gui_Downloads_StatusCount" xml:space="preserve">
-    <value>{0}个下载任务</value>
+    <value>{0} 个下载</value>
   </data>
 
   <data name="Gui_Settings_Everything_Title" xml:space="preserve">
-    <value>Everything（本地文件搜索）</value>
+    <value>Everything (本地文件搜索)</value>
   </data>
   <data name="Gui_Settings_QBittorrent_Title" xml:space="preserve">
-    <value>qBittorrent（下载管理器）</value>
+    <value>qBittorrent (下载管理器)</value>
   </data>
   <data name="Gui_Settings_JavDb_Title" xml:space="preserve">
-    <value>JavDB（远程数据库）</value>
+    <value>JavDB (远程数据库)</value>
   </data>
   <data name="Gui_Settings_Download_Title" xml:space="preserve">
     <value>下载设置</value>
@@ -622,7 +621,7 @@
     <value>保存路径</value>
   </data>
   <data name="Gui_Settings_Download_Category" xml:space="preserve">
-    <value>分类</value>
+    <value>类别</value>
   </data>
   <data name="Gui_Settings_Download_Tags" xml:space="preserve">
     <value>标签</value>
@@ -652,22 +651,68 @@
     <value>遥测端点</value>
   </data>
   <data name="Gui_Settings_ButtonUpdateJavDbDomain" xml:space="preserve">
-    <value>更新JavDB域名</value>
+    <value>更新 JavDB 域名</value>
   </data>
   <data name="Gui_Settings_UpdatingJavDbDomain" xml:space="preserve">
-    <value>正在更新JavDB镜像URL...</value>
+    <value>正在更新 JavDB 镜像 URL...</value>
   </data>
   <data name="Gui_Settings_JavDbMirrorUrlsUpdated" xml:space="preserve">
-    <value>镜像URL已更新：{0}</value>
+    <value>镜像 URL 已更新: {0}</value>
   </data>
   <data name="Gui_Settings_JavDbDomainUpdateFailed" xml:space="preserve">
-    <value>更新JavDB镜像URL失败：{0}</value>
+    <value>更新 JavDB 镜像 URL 失败: {0}</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls" xml:space="preserve">
-    <value>镜像URL</value>
+    <value>镜像 URL</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls_Watermark" xml:space="preserve">
     <value>https://javdb565.com,https://javdb564.com</value>
   </data>
+
+<data name="Gui_Settings_Update_Title" xml:space="preserve">
+  <value>更新</value>
+</data>
+<data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
+  <value>启动时自动检查更新</value>
+</data>
+<data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
+  <value>检查更新</value>
+</data>
+<data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
+  <value>立即更新</value>
+</data>
+<data name="Gui_Settings_Update_Unknown" xml:space="preserve">
+  <value>未知</value>
+</data>
+<data name="Gui_Settings_Update_Disabled" xml:space="preserve">
+  <value>已禁用</value>
+</data>
+<data name="Gui_Settings_Update_Checking" xml:space="preserve">
+  <value>检查中...</value>
+</data>
+<data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
+  <value>检查失败</value>
+</data>
+<data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
+  <value>已是最新版本 ({0})</value>
+</data>
+<data name="Gui_Settings_Update_Available" xml:space="preserve">
+  <value>有可用更新 ({0})</value>
+</data>
+<data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
+  <value>没有可用更新。</value>
+</data>
+<data name="Gui_Settings_Update_Downloading" xml:space="preserve">
+  <value>正在下载更新...</value>
+</data>
+<data name="Gui_Settings_Update_Installing" xml:space="preserve">
+  <value>正在安装更新（重启中）...</value>
+</data>
+<data name="Gui_Settings_Update_Failed" xml:space="preserve">
+  <value>更新失败: {0}</value>
+</data>
+<data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
+  <value>不支持更新: {0}</value>
+</data>
 
 </root>

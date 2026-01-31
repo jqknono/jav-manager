@@ -670,4 +670,50 @@
     <value>https://javdb565.com,https://javdb564.com</value>
   </data>
 
+  <data name="Gui_Settings_Update_Title" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
+    <value>Auto-check for updates on startup</value>
+  </data>
+  <data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
+    <value>Check Updates</value>
+  </data>
+  <data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
+    <value>Update Now</value>
+  </data>
+  <data name="Gui_Settings_Update_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Gui_Settings_Update_Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Gui_Settings_Update_Checking" xml:space="preserve">
+    <value>Checking...</value>
+  </data>
+  <data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
+    <value>Check failed</value>
+  </data>
+  <data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
+    <value>Up to date ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_Available" xml:space="preserve">
+    <value>Update available ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
+    <value>No updates available.</value>
+  </data>
+  <data name="Gui_Settings_Update_Downloading" xml:space="preserve">
+    <value>Downloading update...</value>
+  </data>
+  <data name="Gui_Settings_Update_Installing" xml:space="preserve">
+    <value>Installing update (restarting)...</value>
+  </data>
+  <data name="Gui_Settings_Update_Failed" xml:space="preserve">
+    <value>Update failed: {0}</value>
+  </data>
+  <data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
+    <value>Update not supported: {0}</value>
+  </data>
+
 </root>

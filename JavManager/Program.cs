@@ -997,17 +997,19 @@ class Program
                 // 注册配置（IOptions 模式）
                 services.Configure<EverythingConfig>(configuration.GetSection("Everything"));
                 services.Configure<QBittorrentConfig>(configuration.GetSection("QBittorrent"));
-                services.Configure<JavDbConfig>(configuration.GetSection("JavDb"));
-                services.Configure<DownloadConfig>(configuration.GetSection("Download"));
-                services.Configure<TelemetryConfig>(configuration.GetSection("Telemetry"));
+	                services.Configure<JavDbConfig>(configuration.GetSection("JavDb"));
+	                services.Configure<DownloadConfig>(configuration.GetSection("Download"));
+	                services.Configure<TelemetryConfig>(configuration.GetSection("Telemetry"));
+	                services.Configure<UpdateConfig>(configuration.GetSection("Update"));
 
                 // 注册配置对象（直接注入）
                 var everythingConfig = configuration.GetSection("Everything").Get<EverythingConfig>() ?? new EverythingConfig();
                 var qbittorrentConfig = configuration.GetSection("QBittorrent").Get<QBittorrentConfig>() ?? new QBittorrentConfig();
                 var javDbConfig = configuration.GetSection("JavDb").Get<JavDbConfig>() ?? new JavDbConfig();
-                var downloadConfig = configuration.GetSection("Download").Get<DownloadConfig>() ?? new DownloadConfig();
-                var localCacheConfig = configuration.GetSection("LocalCache").Get<LocalCacheConfig>() ?? new LocalCacheConfig();
-                var telemetryConfig = configuration.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
+	                var downloadConfig = configuration.GetSection("Download").Get<DownloadConfig>() ?? new DownloadConfig();
+	                var localCacheConfig = configuration.GetSection("LocalCache").Get<LocalCacheConfig>() ?? new LocalCacheConfig();
+	                var telemetryConfig = configuration.GetSection("Telemetry").Get<TelemetryConfig>() ?? new TelemetryConfig();
+	                var updateConfig = configuration.GetSection("Update").Get<UpdateConfig>() ?? new UpdateConfig();
 
                 // Backward compatibility: allow legacy "JavInfoSync" section (pre-telemetry refactor).
                 // New config uses a single Telemetry.Endpoint (base endpoint) + Telemetry.Enabled.
@@ -1030,9 +1032,10 @@ class Program
                 services.AddSingleton(everythingConfig);
                 services.AddSingleton(qbittorrentConfig);
                 services.AddSingleton(javDbConfig);
-                services.AddSingleton(downloadConfig);
-                services.AddSingleton(localCacheConfig);
-                services.AddSingleton(telemetryConfig);
+	                services.AddSingleton(downloadConfig);
+	                services.AddSingleton(localCacheConfig);
+	                services.AddSingleton(telemetryConfig);
+	                services.AddSingleton(updateConfig);
 
                 // 注册本地化服务（使用 Main 中初始化的实例，确保语言一致）
                 services.AddSingleton(localizationService);
@@ -1061,24 +1064,27 @@ class Program
                 services.AddSingleton<HealthCheckService>();
                 services.AddSingleton<TorrentSelectionService>();
                 services.AddSingleton<LocalFileCheckService>();
-                services.AddSingleton<DownloadService>();
-                services.AddSingleton<IJavInfoTelemetryClient, JavInfoTelemetryClient>();
-                services.AddSingleton<JavSearchService>();
+	                services.AddSingleton<DownloadService>();
+	                services.AddSingleton<IJavInfoTelemetryClient, JavInfoTelemetryClient>();
+	                services.AddSingleton<JavSearchService>();
+	                services.AddSingleton<AppUpdateService>();
 
                 // 注册 UI (Console)
                 services.AddScoped<UserInputHandler>();
                 services.AddScoped<DisplayService>();
 
                 // 注册 GUI ViewModels
-                if (includeGuiServices)
-                {
-                    services.AddSingleton<GuiLocalization>();
-                    services.AddSingleton<GuiConfigFileService>();
-                    services.AddSingleton<SearchViewModel>();
-                    services.AddSingleton<DownloadsViewModel>();
-                    services.AddSingleton<SettingsViewModel>();
-                    services.AddSingleton<MainViewModel>();
-                }
+	                if (includeGuiServices)
+	                {
+	                    services.AddSingleton<GuiLocalization>();
+	                    services.AddSingleton<GuiConfigFileService>();
+	                    services.AddSingleton<IAppShutdownService, AvaloniaAppShutdownService>();
+	                    services.AddSingleton<WindowsSelfUpdateApplier>();
+	                    services.AddSingleton<SearchViewModel>();
+	                    services.AddSingleton<DownloadsViewModel>();
+	                    services.AddSingleton<SettingsViewModel>();
+	                    services.AddSingleton<MainViewModel>();
+	                }
             });
     }
 

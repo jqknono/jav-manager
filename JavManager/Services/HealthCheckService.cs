@@ -23,11 +23,12 @@ public class HealthCheckService
     public async Task<List<HealthCheckResult>> CheckAllAsync()
     {
         var tasks = _healthCheckers
-            .Select(async checker =>
+            // Run each health check on the thread pool so GUI callers don't pay parsing/network continuation costs on the UI thread.
+            .Select(checker => Task.Run(async () =>
             {
                 try
                 {
-                    return await checker.CheckHealthAsync();
+                    return await checker.CheckHealthAsync().ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -38,10 +39,10 @@ public class HealthCheckService
                         Message = _loc.GetFormat(L.HealthCheckException, ex.Message)
                     };
                 }
-            })
+            }))
             .ToArray();
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         return results.ToList();
     }
 
@@ -50,7 +51,7 @@ public class HealthCheckService
     /// </summary>
     public async Task<List<HealthCheckResult>> GetUnhealthyServicesAsync()
     {
-        var allResults = await CheckAllAsync();
+        var allResults = await CheckAllAsync().ConfigureAwait(false);
         return allResults.Where(r => !r.IsHealthy).ToList();
     }
 }

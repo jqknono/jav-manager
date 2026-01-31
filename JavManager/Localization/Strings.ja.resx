@@ -1,6 +1,3 @@
-
-
-<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -42,186 +39,185 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
-  <!-- 一般 -->
+  <!-- General -->
   <data name="AppTitle" xml:space="preserve">
-    <value>JAVダウンロードマネージャー</value>
+    <value>JAV Download Manager</value>
   </data>
   <data name="AppSubtitle" xml:space="preserve">
-    <value>JAVダウンロードマネージャー</value>
+    <value>JAV Download Manager</value>
   </data>
   <data name="Version" xml:space="preserve">
-    <value>バージョン</value>
+    <value>Version</value>
   </data>
   <data name="Error" xml:space="preserve">
-    <value>エラー</value>
+    <value>Error</value>
   </data>
- 极
   <data name="Warning" xml:space="preserve">
-    <value>警告</value>
+    <value>Warning</value>
   </data>
   <data name="Info" xml:space="preserve">
-    <value>情報</value>
+    <value>Info</value>
   </data>
   <data name="Success" xml:space="preserve">
-    <value>成功</value>
+    <value>Success</value>
   </data>
   <data name="Cancelled" xml:space="preserve">
-    <value>キャンセルされました。</value>
+    <value>Cancelled.</value>
   </data>
   <data name="Goodbye" xml:space="preserve">
-    <value>さようなら！</value>
+    <value>Goodbye!</value>
   </data>
   <data name="PressAnyKey" xml:space="preserve">
-    <value>続行するには任意のキーを押してください...</value>
+    <value>Press any key to continue...</value>
   </data>
 
-  <!-- 機能 -->
+  <!-- Features -->
   <data name="Features" xml:space="preserve">
-    <value>機能:</value>
+    <value>Features:</value>
   </data>
   <data name="FeatureSearchJavDb" xml:space="preserve">
-    <value>JavDBからJAV IDを検索</value>
+    <value>Search JAV ID from JavDB</value>
   </data>
   <data name="FeatureSmartSelection" xml:space="preserve">
-    <value>スマートソース選択（無修正/字幕/サイズ）</value>
+    <value>Smart source selection (uncensored/subtitle/size)</value>
   </data>
   <data name="FeatureLocalCheck" xml:space="preserve">
-    <value>ローカルファイルチェック（Everything使用）</value>
+    <value>Local file check (using Everything)</value>
   </data>
   <data name="FeatureAutoDownload" xml:space="preserve">
-    <value>qBittorrentへの自動追加</value>
+    <value>Auto add to qBittorrent</value>
   </data>
 
-  <!-- コマンド -->
+  <!-- Commands -->
   <data name="Commands" xml:space="preserve">
-    <value>コマンド:</value>
+    <value>Commands:</value>
   </data>
   <data name="CmdSearchDownload" xml:space="preserve">
-    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        検索してダウンロード (例: IPZZ-408)</value>
+    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        Search and download (e.g. IPZZ-408)</value>
   </data>
   <data name="CmdLocalSearch" xml:space="preserve">
-    <value>l &lt;JAV-ID&gt; [-m 100MB]       ローカル検索（Everything、デフォルト &gt;=100MB）</value>
+    <value>l &lt;JAV-ID&gt; [-m 100MB]       Local search (Everything, default &gt;=100MB)</value>
   </data>
   <data name="CmdRemoteSearch" xml:space="preserve">
-    <value>r &lt;JAV-ID&gt;                 リモート検索（JavDB）</value>
+    <value>r &lt;JAV-ID&gt;                  Remote search (JavDB)</value>
   </data>
   <data name="CmdDownloading" xml:space="preserve">
-    <value>d                         ダウンロード中のリスト（qBittorrent）</value>
+    <value>d                         Downloading list (qBittorrent)</value>
   </data>
   <data name="CmdDownloads" xml:space="preserve">
-    <value>t                         ダウンロードタスク（qBittorrent）</value>
+    <value>t                         Download tasks (qBittorrent)</value>
   </data>
   <data name="CmdHealthCheck" xml:space="preserve">
-    <value>hc                        サービスステータスを確認</value>
+    <value>hc                        Check service status</value>
   </data>
   <data name="CmdVersion" xml:space="preserve">
-    <value>v                         バージョンを表示</value>
+    <value>v                         Show version</value>
   </data>
   <data name="CmdHelp" xml:space="preserve">
-    <value>h                         ヘルプを表示</value>
+    <value>h                         Show help</value>
   </data>
   <data name="CmdLang" xml:space="preserve">
-    <value>lang &lt;auto|en|zh&gt;          UI言語を変更</value>
+    <value>lang &lt;auto|en|zh&gt;          Change UI language</value>
   </data>
   <data name="CmdConfig" xml:space="preserve">
-    <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  サービス接続を設定</value>
+    <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  Configure service connection</value>
   </data>
   <data name="CmdQuit" xml:space="preserve">
-    <value>q                         終了</value>
+    <value>q                         Quit</value>
   </data>
   <data name="CmdCacheStats" xml:space="preserve">
-    <value>c             ローカルキャッシュ統計を表示</value>
+    <value>c             Show local cache statistics</value>
   </data>
   <data name="CmdTestCurl" xml:space="preserve">
-    <value>--test-curl    curlテストを実行</value>
+    <value>--test-curl    Run curl test</value>
   </data>
   <data name="HelpTitle" xml:space="preserve">
-    <value>{0} {1} - コマンド:</value>
+    <value>{0} {1} - Commands:</value>
   </data>
   <data name="HelpOptionsTitle" xml:space="preserve">
-    <value>オプション:</value>
+    <value>Options:</value>
   </data>
   <data name="OptLanguage" xml:space="preserve">
-    <value>--lang &lt;auto|en|zh&gt;         UI言語を設定</value>
+    <value>--lang &lt;auto|en|zh&gt;         Set UI language</value>
   </data>
   <data name="OptJavDbUrl" xml:space="preserve">
-    <value>--javdb-url &lt;url&gt;            JavDBベースURL</value>
+    <value>--javdb-url &lt;url&gt;            JavDB base URL</value>
   </data>
   <data name="OptEverythingUrl" xml:space="preserve">
-    <value>--everything-url &lt;url&gt;       EverythingベースURL</value>
+    <value>--everything-url &lt;url&gt;       Everything base URL</value>
   </data>
   <data name="OptEverythingUser" xml:space="preserve">
-    <value>--everything-user &lt;username&gt; Everythingユーザー名</value>
+    <value>--everything-user &lt;username&gt; Everything username</value>
   </data>
   <data name="OptEverythingPass" xml:space="preserve">
-    <value>--everything-pass &lt;password&gt; Everythingパスワード</value>
+    <value>--everything-pass &lt;password&gt; Everything password</value>
   </data>
   <data name="OptQBittorrentUrl" xml:space="preserve">
-    <value>--qb-url &lt;url&gt;               qBittorrentベースURL</value>
+    <value>--qb-url &lt;url&gt;               qBittorrent base URL</value>
   </data>
   <data name="OptQBittorrentUser" xml:space="preserve">
-    <value>--qb-user &lt;username&gt;         qBittorrentユーザー名</value>
+    <value>--qb-user &lt;username&gt;         qBittorrent username</value>
   </data>
   <data name="OptQBittorrentPass" xml:space="preserve">
-    <value>--qb-pass &lt;password&gt;         qBittorrentパスワード</value>
+    <value>--qb-pass &lt;password&gt;         qBittorrent password</value>
   </data>
   <data name="UsageLang" xml:space="preserve">
-    <value>使用方法: lang &lt;auto|en|zh&gt;</value>
+    <value>Usage: lang &lt;auto|en|zh&gt;</value>
   </data>
   <data name="LangSwitched" xml:space="preserve">
-    <value>言語が切り替えられました: {0}</value>
+    <value>Language switched to: {0}</value>
   </data>
   <data name="UsageConfig" xml:space="preserve">
-    <value>使用方法: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
+    <value>Usage: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
   </data>
   <data name="ConfigUpdated" xml:space="preserve">
-    <value>設定が更新されました。</value>
+    <value>Configuration updated.</value>
   </data>
 
-  <!-- プロンプト -->
+  <!-- Prompts -->
   <data name="PromptInput" xml:space="preserve">
-    <value>コマンドまたはJAV-IDを入力（h:ヘルプ、q:終了）: </value>
+    <value>Enter command or JAV-ID (h for help, q to quit): </value>
   </data>
   <data name="PromptTorrentSelection" xml:space="preserve">
-    <value>ダウンロードするトレントを選択（1-{0}、Enterで最初を選択、0でキャンセル）: </value>
+    <value>Select torrent to download (1-{0}, Enter for first, 0 to cancel): </value>
   </data>
   <data name="PromptSearchResultSelection" xml:space="preserve">
-    <value>検索結果を選択（1-{0}、Enterで最初を選択、0でキャンセル）: </value>
+    <value>Select search result (1-{0}, Enter for first, 0 to cancel): </value>
   </data>
   <data name="PromptLocalFileSelection" xml:space="preserve">
-    <value>オプションを入力（1-3）: </value>
+    <value>Enter option (1-3): </value>
   </data>
   <data name="PromptInvalidInput" xml:space="preserve">
-    <value>無効な入力です。</value>
+    <value>Invalid input.</value>
   </data>
   <data name="PromptInvalidInputRange" xml:space="preserve">
-    <value>無効な入力です。1-{0}を入力するか、Enterで最初の項目を選択してください。</value>
+    <value>Invalid input, please enter 1-{0}, or press Enter to select the first one.</value>
   </data>
 
-  <!-- ローカルファイル選択 -->
+  <!-- Local File Selection -->
   <data name="LocalFileExists" xml:space="preserve">
-    <value>ローカルファイルが存在します。オプションを選択してください:</value>
+    <value>Local file exists, please select an option:</value>
   </data>
   <data name="LocalFileOption1Skip" xml:space="preserve">
-    <value>1. ダウンロードをスキップ</value>
+    <value>1. Skip download</value>
   </data>
   <data name="LocalFileOption2Force" xml:space="preserve">
-    <value>2. 強制ダウンロード</value>
+    <value>2. Force download</value>
   </data>
   <data name="LocalFileOption3Details" xml:space="preserve">
-    <value>3. ファイル詳細を表示</value>
+    <value>3. Show file details</value>
   </data>
   <data name="LocalFileSkipped" xml:space="preserve">
-    <value>ダウンロードをスキップしました。</value>
+    <value>Download skipped.</value>
   </data>
   <data name="LocalFileForceDownload" xml:space="preserve">
-    <value>強制ダウンロード中...</value>
+    <value>Force downloading...</value>
   </data>
   <data name="LocalFileExistsSkip" xml:space="preserve">
-    <value>ローカルファイルが存在するため、ダウンロードをスキップします。</value>
+    <value>Local file exists, skipping download.</value>
   </data>
 
-  <!-- テーブルヘッダー -->
+  <!-- Table Headers -->
   <data name="TableIndex" xml:space="preserve">
     <value>#</value>
   </data>
@@ -274,7 +270,7 @@
     <value>値</value>
   </data>
 
-  <!-- 検索結果 -->
+  <!-- Search Results -->
   <data name="NoTorrentsFound" xml:space="preserve">
     <value>トレントが見つかりません</value>
   </data>
@@ -294,7 +290,7 @@
     <value>リモート検索に失敗しました（JavDB）: {0}</value>
   </data>
 
-  <!-- 処理結果 -->
+  <!-- Process Results -->
   <data name="LocalFilesExist" xml:space="preserve">
     <value>ローカルファイルが既に存在します</value>
   </data>
@@ -305,13 +301,13 @@
     <value>ダウンロードキューに追加されませんでした</value>
   </data>
   <data name="MagnetLinkManual" xml:space="preserve">
-    <value>マグネットリンク（手動ダウンロード用）:</value>
+    <value>マグネットリンク（手動ダウンロード）:</value>
   </data>
   <data name="ProcessFailed" xml:space="preserve">
     <value>処理に失敗しました</value>
   </data>
   <data name="LocalDedupSkipped" xml:space="preserve">
-    <value>注: ローカル重複排除はスキップされました（Everythingが利用できません）</value>
+    <value>注: ローカル重複排除がスキップされました（Everythingが利用不可）</value>
   </data>
   <data name="MarkerHD" xml:space="preserve">
     <value>HD</value>
@@ -328,14 +324,13 @@
   <data name="Markers" xml:space="preserve">
     <value>マーカー</value>
   </data>
-</root>
 
-<!-- Health Check -->
+  <!-- Health Check -->
   <data name="HealthCheckTitle" xml:space="preserve">
     <value>サービスステータスチェック</value>
   </data>
   <data name="HealthCheckNoCheckers" xml:space="preserve">
-    <value>ヘルスチェッカーが登録されていません。サービスステータスを表示できません。</value>
+    <value>登録されたヘルスチェッカーがありません。サービスステータスを表示できません。</value>
   </data>
   <data name="StatusHealthy" xml:space="preserve">
     <value>正常</value>
@@ -344,7 +339,7 @@
     <value>異常</value>
   </data>
   <data name="UnhealthyWarning" xml:space="preserve">
-    <value>警告: {0} サービスが利用不可です。設定ファイル appsettings.json を確認してください</value>
+    <value>警告: {0}個のサービスが利用不可です。appsettings.jsonの設定ファイルを確認してください。</value>
   </data>
   <data name="AllServicesHealthy" xml:space="preserve">
     <value>すべてのサービスが正常に動作しています</value>
@@ -353,83 +348,83 @@
     <value>ヘルスチェック例外: {0}</value>
   </data>
   <data name="HealthCheckStarted" xml:space="preserve">
-    <value>バックグラウンドでサービスステータスチェックを開始しました。'hc' と入力すると結果をいつでも確認できます。</value>
+    <value>サービスステータスチェックがバックグラウンドで開始されました。いつでも'hc'を入力して結果を表示できます。</value>
   </data>
 
   <!-- Service Setup Hints -->
   <data name="EverythingSetupHint" xml:space="preserve">
-    <value>Everything ローカル検索サービスが検出されませんでした。HTTP API をインストールして有効化してください:</value>
+    <value>Everythingローカル検索サービスが検出されませんでした。HTTP APIをインストールして有効にしてください:</value>
   </data>
   <data name="EverythingDownload" xml:space="preserve">
     <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
   </data>
   <data name="EverythingPlugin" xml:space="preserve">
-    <value>Everything HTTP プラグイン: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
+    <value>Everything HTTPプラグイン: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
   </data>
   <data name="EverythingConfig" xml:space="preserve">
-    <value>設定: appsettings.json の Everything.BaseUrl をHTTPサービスアドレスに設定（ポートを含む例: http://127.0.0.1:1234）</value>
+    <value>設定: appsettings.jsonのEverything.BaseUrlをHTTPサービスアドレスに設定してください（ポートを含めます。例: http://127.0.0.1:1234）</value>
   </data>
   <data name="QBittorrentSetupHint" xml:space="preserve">
-    <value>qBittorrent ダウンローダーのWebUIが検出されませんでした。インストールしてWebUIを有効化してください:</value>
+    <value>qBittorrentダウンローダーのWebUIが検出されませんでした。WebUIをインストールして有効にしてください:</value>
   </data>
   <data name="QBittorrentDownload" xml:space="preserve">
     <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
   </data>
   <data name="QBittorrentEnhanced" xml:space="preserve">
-    <value>拡張版: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
+    <value>Enhanced Edition: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
   </data>
   <data name="QBittorrentConfig" xml:space="preserve">
-    <value>設定: WebUIを有効化後、appsettings.json の QBittorrent.BaseUrl をWebUIアドレスに設定（ポートを含む例: http://127.0.0.1:8080）、正しいユーザー名/パスワードを設定してください</value>
+    <value>設定: WebUIを有効にした後、appsettings.jsonのQBittorrent.BaseUrlをWebUIアドレスに設定してください（ポートを含めます。例: http://127.0.0.1:8080）、正しいユーザー名/パスワードを設定してください</value>
   </data>
   <data name="ConfigHint" xml:space="preserve">
-    <value>ヒント: 'quit' と入力して終了し、設定を変更できます</value>
+    <value>ヒント: 'quit'を入力して終了し、設定を変更してください</value>
   </data>
 
   <!-- Service Errors -->
   <data name="JavDbUnavailable" xml:space="preserve">
-    <value>JavDBサービスエラー: リモート検索機能が利用できません。</value>
+    <value>JavDBサービスエラー: リモート検索機能が利用不可です。</value>
   </data>
   <data name="EverythingUnavailable" xml:space="preserve">
     <value>Everythingサービスエラー: ローカル検索がサポートされていません。</value>
   </data>
   <data name="QBittorrentUnavailable" xml:space="preserve">
-    <value>qBittorrentサービスエラー: ダウンロードキューの操作がサポートされていません。</value>
+    <value>qBittorrentサービスエラー: ダウンロードキュー操作がサポートされていません。</value>
   </data>
 
   <!-- Service Names -->
   <data name="ServiceNameEverything" xml:space="preserve">
-    <value>Everything (ローカル検索)</value>
+    <value>Everything（ローカル検索）</value>
   </data>
   <data name="ServiceNameQBittorrent" xml:space="preserve">
-    <value>qBittorrent (ダウンローダー)</value>
+    <value>qBittorrent（ダウンローダー）</value>
   </data>
   <data name="ServiceNameJavDb" xml:space="preserve">
-    <value>JavDB (リモートデータベース)</value>
+    <value>JavDB（リモートデータベース）</value>
   </data>
 
   <!-- Health Check Messages -->
   <data name="HealthServiceOk" xml:space="preserve">
-    <value>サービス正常</value>
+    <value>サービスOK</value>
   </data>
   <data name="HealthConnectionFailed" xml:space="preserve">
-    <value>接続失敗: {0}</value>
+    <value>接続に失敗しました: {0}</value>
   </data>
   <data name="HealthAllUrlsFailed" xml:space="preserve">
-    <value>すべてのURLに到達不可</value>
+    <value>すべてのURLに到達できません</value>
   </data>
 
   <!-- JavSearchService Messages -->
   <data name="LocalDedupUnavailableSkipped" xml:space="preserve">
-    <value>ローカル重複排除が利用不可（Everythingサービスエラー）のため、ローカルチェックをスキップしました。</value>
+    <value>ローカル重複排除が利用不可です（Everythingサービスエラー）。ローカルチェックをスキップしました。</value>
   </data>
   <data name="LocalDedupException" xml:space="preserve">
-    <value>ローカル重複排除が利用不可（Everythingエラー）: {0}</value>
+    <value>ローカル重複排除が利用不可です（Everythingエラー）: {0}</value>
   </data>
   <data name="DownloaderUnavailableSkipped" xml:space="preserve">
-    <value>ダウンローダーが利用不可（qBittorrentサービスエラー）のため、ダウンロードキューに追加しませんでした。</value>
+    <value>ダウンローダーが利用不可です（qBittorrentサービスエラー）。ダウンロードキューに追加されませんでした。</value>
   </data>
   <data name="DownloaderException" xml:space="preserve">
-    <value>ダウンローダーエラー、ダウンロードキューへの追加に失敗: {0}</value>
+    <value>ダウンローダーエラー。ダウンロードキューに追加できませんでした: {0}</value>
   </data>
 
   <!-- Cache -->
@@ -437,13 +432,13 @@
     <value>ローカルキャッシュ統計</value>
   </data>
   <data name="CacheDisabled" xml:space="preserve">
-    <value>ローカルキャッシュが有効化されていません。</value>
+    <value>ローカルキャッシュが有効になっていません。</value>
   </data>
   <data name="CacheJavCount" xml:space="preserve">
-    <value>キャッシュ済みJAV数</value>
+    <value>キャッシュされたJAV数</value>
   </data>
   <data name="CacheTorrentCount" xml:space="preserve">
-    <value>キャッシュ済みトレント数</value>
+    <value>キャッシュされたトレント数</value>
   </data>
   <data name="CacheDbSize" xml:space="preserve">
     <value>データベースサイズ</value>
@@ -451,7 +446,6 @@
   <data name="CacheLastUpdated" xml:space="preserve">
     <value>最終更新日時</value>
   </data>
-
   <!-- JAV Details -->
   <data name="DetailJavId" xml:space="preserve">
     <value>JAV-ID</value>
@@ -472,7 +466,7 @@
     <value>メーカー</value>
   </data>
   <data name="DetailPublisher" xml:space="preserve">
-    <value>発売元</value>
+    <value>レーベル</value>
   </data>
   <data name="DetailSeries" xml:space="preserve">
     <value>シリーズ</value>
@@ -481,7 +475,7 @@
     <value>出演者</value>
   </data>
   <data name="DetailCategories" xml:space="preserve">
-    <value>カテゴリ</value>
+    <value>カテゴリー</value>
   </data>
   <data name="DetailDataSource" xml:space="preserve">
     <value>データソース</value>
@@ -493,29 +487,29 @@
     <value>トレント数</value>
   </data>
   <data name="DurationMinutes" xml:space="preserve">
-    <value>{0} 分</value>
+    <value>{0}分</value>
   </data>
 
   <!-- Usage Hints -->
   <data name="UsageLocalSearch" xml:space="preserve">
-    <value>使用方法: l &lt;JAV-ID&gt; [-m 100MB]</value>
+    <value>Usage: l &lt;JAV-ID&gt; [-m 100MB]</value>
   </data>
   <data name="UsageRemoteSearch" xml:space="preserve">
-    <value>使用方法: r &lt;JAV-ID&gt;</value>
+    <value>Usage: r &lt;JAV-ID&gt;</value>
   </data>
   <data name="UsageSearch" xml:space="preserve">
-    <value>使用方法: s &lt;JAV-ID&gt;</value>
+    <value>Usage: s &lt;JAV-ID&gt;</value>
   </data>
   <data name="InvalidJavId" xml:space="preserve">
-    <value>"{0}" は有効なJAV-IDではありません。JAV-IDは &lt;文字/数字&gt;-&lt;数字&gt; の形式である必要があります。</value>
+    <value>"{0}" is not a valid JAV-ID. JAV-ID must be in format &lt;letters/numbers&gt;-&lt;numbers&gt;.</value>
   </data>
   <data name="NoFilesOverSize" xml:space="preserve">
-    <value>{0:0.##} MB を超えるローカルファイルは見つかりませんでした。</value>
+    <value>No local files found larger than {0:0.##} MB.</value>
   </data>
 
   <!-- Error Messages -->
   <data name="ErrorOccurred" xml:space="preserve">
-    <value>エラーが発生しました: {0}</value>
+    <value>Error occurred: {0}</value>
   </data>
 
   <!-- GUI -->
@@ -561,7 +555,7 @@
     <value>ローカルファイルを検索</value>
   </data>
   <data name="Gui_Search_OptionRemote" xml:space="preserve">
-    <value>リモート検索 (JavDB)</value>
+    <value>リモートを検索 (JavDB)</value>
   </data>
   <data name="Gui_Search_SectionRemoteResults" xml:space="preserve">
     <value>検索結果</value>
@@ -573,25 +567,25 @@
     <value>ローカルファイル</value>
   </data>
   <data name="Gui_Search_TorrentMarkersHint" xml:space="preserve">
-    <value>UC = 無修正, SUB = 字幕付き, HD = 高画質</value>
+    <value>UC = 無修正, SUB = 字幕, HD = 高画質</value>
   </data>
   <data name="Gui_Search_StatusSelectRemoteResult" xml:space="preserve">
-    <value>結果を選択してトレントを読み込み</value>
+    <value>トレントを読み込むには結果を選択してください</value>
   </data>
   <data name="Gui_Search_StatusLoadingTorrents" xml:space="preserve">
-    <value>トレントを読み込み中…</value>
+    <value>トレントを読み込んでいます…</value>
   </data>
   <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
-    <value>リモート結果 {0} 件</value>
+    <value>{0}件のリモート結果</value>
   </data>
   <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
-    <value>ローカルファイル {0} 件</value>
+    <value>{0}件のローカルファイル</value>
   </data>
   <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
-    <value>トレント {0} 件</value>
+    <value>{0}件のトレント</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
-    <value>マグネットリンクをコピー</value>
+    <value>マグネットをコピー</value>
   </data>
   <data name="Gui_Search_ButtonDownload" xml:space="preserve">
     <value>ダウンロード</value>
@@ -601,16 +595,16 @@
   </data>
 
   <data name="Gui_Downloads_OptionDownloadingOnly" xml:space="preserve">
-    <value>ダウンロード中のもののみ表示</value>
+    <value>ダウンロード中のみ表示</value>
   </data>
   <data name="Gui_Downloads_ButtonRefresh" xml:space="preserve">
     <value>更新</value>
   </data>
   <data name="Gui_Downloads_StatusCount" xml:space="preserve">
-    <value>ダウンロード {0} 件</value>
+    <value>{0}件のダウンロード</value>
   </data>
 
-<data name="Gui_Settings_Everything_Title" xml:space="preserve">
+  <data name="Gui_Settings_Everything_Title" xml:space="preserve">
     <value>Everything (ローカルファイル検索)</value>
   </data>
   <data name="Gui_Settings_QBittorrent_Title" xml:space="preserve">
@@ -623,10 +617,10 @@
     <value>ダウンロード設定</value>
   </data>
   <data name="Gui_Settings_Download_SavePath" xml:space="preserve">
-    <value>保存先パス</value>
+    <value>保存先</value>
   </data>
   <data name="Gui_Settings_Download_Category" xml:space="preserve">
-    <value>カテゴリ</value>
+    <value>カテゴリー</value>
   </data>
   <data name="Gui_Settings_Download_Tags" xml:space="preserve">
     <value>タグ</value>
@@ -638,40 +632,85 @@
     <value>言語</value>
   </data>
   <data name="Gui_Settings_Language_English" xml:space="preserve">
-    <value>English</value>
+    <value>英語</value>
   </data>
   <data name="Gui_Settings_Language_Chinese" xml:space="preserve">
-    <value>中文</value>
+    <value>中国語</value>
   </data>
   <data name="Gui_Settings_Language_Japanese" xml:space="preserve">
     <value>日本語</value>
   </data>
   <data name="Gui_Settings_Language_Korean" xml:space="preserve">
-    <value>한국어</value>
+    <value>韓国語</value>
   </data>
   <data name="Gui_Settings_ButtonTestConnections" xml:space="preserve">
     <value>接続をテスト</value>
   </data>
   <data name="Gui_Settings_TelemetryEndpoint" xml:space="preserve">
-    <value>テレメトリエンドポイント</value>
+    <value>テレメトリーエンドポイント</value>
   </data>
   <data name="Gui_Settings_ButtonUpdateJavDbDomain" xml:space="preserve">
     <value>JavDBドメインを更新</value>
   </data>
   <data name="Gui_Settings_UpdatingJavDbDomain" xml:space="preserve">
-    <value>JavDBミラーURLを更新中...</value>
+    <value>JavDBミラーURLを更新しています...</value>
   </data>
   <data name="Gui_Settings_JavDbMirrorUrlsUpdated" xml:space="preserve">
-    <value>ミラーURLが更新されました: {0}</value>
+    <value>ミラーURLを更新しました: {0}</value>
   </data>
   <data name="Gui_Settings_JavDbDomainUpdateFailed" xml:space="preserve">
-    <value>JavDBミラーURLの更新に失敗: {0}</value>
+    <value>JavDBミラーURLの更新に失敗しました: {0}</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls" xml:space="preserve">
     <value>ミラーURL</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls_Watermark" xml:space="preserve">
     <value>https://javdb565.com,https://javdb564.com</value>
+  </data>
+  <data name="Gui_Settings_Update_Title" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
+    <value>起動時に自動で更新を確認する</value>
+  </data>
+  <data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
+    <value>更新を確認</value>
+  </data>
+  <data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
+    <value>今すぐ更新</value>
+  </data>
+  <data name="Gui_Settings_Update_Unknown" xml:space="preserve">
+    <value>不明</value>
+  </data>
+  <data name="Gui_Settings_Update_Disabled" xml:space="preserve">
+    <value>無効</value>
+  </data>
+  <data name="Gui_Settings_Update_Checking" xml:space="preserve">
+    <value>確認中...</value>
+  </data>
+  <data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
+    <value>確認に失敗しました</value>
+  </data>
+  <data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
+    <value>最新です ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_Available" xml:space="preserve">
+    <value>更新があります ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
+    <value>更新はありません。</value>
+  </data>
+  <data name="Gui_Settings_Update_Downloading" xml:space="preserve">
+    <value>更新をダウンロードしています...</value>
+  </data>
+  <data name="Gui_Settings_Update_Installing" xml:space="preserve">
+    <value>更新をインストールしています（再起動中）...</value>
+  </data>
+  <data name="Gui_Settings_Update_Failed" xml:space="preserve">
+    <value>更新に失敗しました: {0}</value>
+  </data>
+  <data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
+    <value>更新がサポートされていません: {0}</value>
   </data>
 
 </root>

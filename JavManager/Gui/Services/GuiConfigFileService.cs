@@ -28,6 +28,7 @@ public sealed class GuiConfigFileService
         QBittorrentConfig qBittorrentConfig,
         JavDbConfig javDbConfig,
         DownloadConfig downloadConfig,
+        UpdateConfig updateConfig,
         string language,
         CancellationToken cancellationToken = default)
     {
@@ -73,6 +74,12 @@ public sealed class GuiConfigFileService
         var console = (JObject?)root["Console"] ?? new JObject();
         console["Language"] = string.IsNullOrWhiteSpace(language) ? "en" : language;
         root["Console"] = console;
+
+        var update = (JObject?)root["Update"] ?? new JObject();
+        update["Enabled"] = updateConfig.Enabled;
+        update["AutoCheckOnStartup"] = updateConfig.AutoCheckOnStartup;
+        update["GitHubRepo"] = string.IsNullOrWhiteSpace(updateConfig.GitHubRepo) ? "jqknono/jav-manager" : updateConfig.GitHubRepo.Trim();
+        root["Update"] = update;
 
         var output = root.ToString(Formatting.Indented);
         await File.WriteAllTextAsync(path, output, cancellationToken);

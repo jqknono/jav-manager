@@ -162,16 +162,16 @@
     <value>--qb-pass &lt;password&gt;        qBittorrent 비밀번호</value>
   </data>
   <data name="UsageLang" xml:space="preserve">
-    <value>Usage: lang &lt;auto|en|zh&gt;</value>
+    <value>사용법: lang &lt;auto|en|zh&gt;</value>
   </data>
   <data name="LangSwitched" xml:space="preserve">
-    <value>언어가 {0}(으)로 변경되었습니다</value>
+    <value>언어가 다음으로 변경됨: {0}</value>
   </data>
   <data name="UsageConfig" xml:space="preserve">
-    <value>Usage: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
+    <value>사용법: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
   </data>
   <data name="ConfigUpdated" xml:space="preserve">
-    <value>설정이 업데이트되었습니다.</value>
+    <value>설정이 업데이트됨.</value>
   </data>
 
   <!-- Prompts -->
@@ -179,19 +179,19 @@
     <value>명령어 또는 JAV-ID를 입력하세요 (h: 도움말, q: 종료): </value>
   </data>
   <data name="PromptTorrentSelection" xml:space="preserve">
-    <value>다운로드할 토렌트를 선택하세요 (1-{0}, Enter: 첫 번째, 0: 취소): </value>
+    <value>다운로드할 토렌트 선택 (1-{0}, Enter: 첫 번째, 0: 취소): </value>
   </data>
   <data name="PromptSearchResultSelection" xml:space="preserve">
-    <value>검색 결과를 선택하세요 (1-{0}, Enter: 첫 번째, 0: 취소): </value>
+    <value>검색 결과 선택 (1-{0}, Enter: 첫 번째, 0: 취소): </value>
   </data>
   <data name="PromptLocalFileSelection" xml:space="preserve">
     <value>옵션을 입력하세요 (1-3): </value>
   </data>
   <data name="PromptInvalidInput" xml:space="preserve">
-    <value>잘못된 입력입니다.</value>
+    <value>잘못된 입력.</value>
   </data>
   <data name="PromptInvalidInputRange" xml:space="preserve">
-    <value>잘못된 입력입니다. 1-{0}을 입력하거나 Enter를 눌러 첫 번째를 선택하세요.</value>
+    <value>잘못된 입력입니다. 1-{0}을 입력하거나 첫 번째를 선택하려면 Enter를 누르세요.</value>
   </data>
 
   <!-- Local File Selection -->
@@ -208,7 +208,7 @@
     <value>3. 파일 세부정보 표시</value>
   </data>
   <data name="LocalFileSkipped" xml:space="preserve">
-    <value>다운로드 건너뛰기.</value>
+    <value>다운로드 건너뜀.</value>
   </data>
   <data name="LocalFileForceDownload" xml:space="preserve">
     <value>강제 다운로드 중...</value>
@@ -216,238 +216,237 @@
   <data name="LocalFileExistsSkip" xml:space="preserve">
     <value>로컬 파일이 존재하여 다운로드를 건너뜁니다.</value>
   </data>
-</root>
-  <!-- Table Headers -->
-  <data name="TableIndex" xml:space="preserve">
-    <value>#</value>
-  </data>
-  <data name="TableTitle" xml:space="preserve">
-    <value>제목</value>
-  </data>
-  <data name="TableUncensored" xml:space="preserve">
-    <value>무삭제</value>
-  </data>
-  <data name="TableSubtitle" xml:space="preserve">
-    <value>자막</value>
-  </data>
-  <data name="TableHD" xml:space="preserve">
-    <value>HD</value>
-  </data>
-  <data name="TableSize" xml:space="preserve">
-    <value>크기</value>
-  </data>
-  <data name="TableFileName" xml:space="preserve">
-    <value>파일명</value>
-  </data>
-  <data name="TablePath" xml:space="preserve">
-    <value>경로</value>
-  </data>
-  <data name="TableProgress" xml:space="preserve">
-    <value>진행률</value>
-  </data>
-  <data name="TableState" xml:space="preserve">
-    <value>상태</value>
-  </data>
-  <data name="TableJavId" xml:space="preserve">
-    <value>JAV-ID</value>
-  </data>
-  <data name="TableService" xml:space="preserve">
-    <value>서비스</value>
-  </data>
-  <data name="TableStatus" xml:space="preserve">
-    <value>상태</value>
-  </data>
-  <data name="TableMessage" xml:space="preserve">
-    <value>메시지</value>
-  </data>
-  <data name="TableUrl" xml:space="preserve">
-    <value>URL</value>
-  </data>
-  <data name="TableItem" xml:space="preserve">
-    <value>항목</value>
-  </data>
-  <data name="TableValue" xml:space="preserve">
-    <value>값</value>
-  </data>
 
-  <!-- Search Results -->
-  <data name="NoTorrentsFound" xml:space="preserve">
-    <value>토렌트를 찾을 수 없음</value>
-  </data>
-  <data name="NoSearchResults" xml:space="preserve">
-    <value>검색 결과를 찾을 수 없음</value>
-  </data>
-  <data name="NoDownloads" xml:space="preserve">
-    <value>다운로드 작업 없음</value>
-  </data>
-  <data name="NoLocalFiles" xml:space="preserve">
-    <value>로컬 파일을 찾을 수 없음.</value>
-  </data>
-  <data name="Searching" xml:space="preserve">
-    <value>{0} 검색 중...</value>
-  </data>
-  <data name="SearchFailed" xml:space="preserve">
-    <value>원격 검색 실패 (JavDB): {0}</value>
-  </data>
+<!-- Table Headers -->
+<data name="TableIndex" xml:space="preserve">
+  <value>#</value>
+</data>
+<data name="TableTitle" xml:space="preserve">
+  <value>제목</value>
+</data>
+<data name="TableUncensored" xml:space="preserve">
+  <value>무삭제</value>
+</data>
+<data name="TableSubtitle" xml:space="preserve">
+  <value>자막</value>
+</data>
+<data name="TableHD" xml:space="preserve">
+  <value>HD</value>
+</data>
+<data name="TableSize" xml:space="preserve">
+  <value>크기</value>
+</data>
+<data name="TableFileName" xml:space="preserve">
+  <value>파일명</value>
+</data>
+<data name="TablePath" xml:space="preserve">
+  <value>경로</value>
+</data>
+<data name="TableProgress" xml:space="preserve">
+  <value>진행률</value>
+</data>
+<data name="TableState" xml:space="preserve">
+  <value>상태</value>
+</data>
+<data name="TableJavId" xml:space="preserve">
+  <value>JAV-ID</value>
+</data>
+<data name="TableService" xml:space="preserve">
+  <value>서비스</value>
+</data>
+<data name="TableStatus" xml:space="preserve">
+  <value>상태</value>
+</data>
+<data name="TableMessage" xml:space="preserve">
+  <value>메시지</value>
+</data>
+<data name="TableUrl" xml:space="preserve">
+  <value>URL</value>
+</data>
+<data name="TableItem" xml:space="preserve">
+  <value>항목</value>
+</data>
+<data name="TableValue" xml:space="preserve">
+  <value>값</value>
+</data>
 
-  <!-- Process Results -->
-  <data name="LocalFilesExist" xml:space="preserve">
-    <value>로컬 파일이 이미 존재함</value>
-  </data>
-  <data name="DownloadAdded" xml:space="preserve">
-    <value>다운로드 작업 추가됨</value>
-  </data>
-  <data name="DownloadSkipped" xml:space="preserve">
-    <value>다운로드 대기열에 추가되지 않음</value>
-  </data>
-  <data name="MagnetLinkManual" xml:space="preserve">
-    <value>마그넷 링크 (수동 다운로드):</value>
-  </data>
-  <data name="ProcessFailed" xml:space="preserve">
-    <value>프로세스 실패</value>
-  </data>
-  <data name="LocalDedupSkipped" xml:space="preserve">
-    <value>참고: 로컬 중복 제거 건너뛰기 (Everything 사용 불가)</value>
-  </data>
-  <data name="MarkerHD" xml:space="preserve">
-    <value>HD</value>
-  </data>
-  <data name="MarkerUncensored" xml:space="preserve">
-    <value>무삭제</value>
-  </data>
-  <data name="MarkerSubtitle" xml:space="preserve">
-    <value>자막</value>
-  </data>
-  <data name="MarkerNone" xml:space="preserve">
-    <value>없음</value>
-  </data>
-  <data name="Markers" xml:space="preserve">
-    <value>마커</value>
-  </data>
+<!-- Search Results -->
+<data name="NoTorrentsFound" xml:space="preserve">
+  <value>토렌트를 찾을 수 없음</value>
+</data>
+<data name="NoSearchResults" xml:space="preserve">
+  <value>검색 결과를 찾을 수 없음</value>
+</data>
+<data name="NoDownloads" xml:space="preserve">
+  <value>다운로드 작업 없음</value>
+</data>
+<data name="NoLocalFiles" xml:space="preserve">
+  <value>로컬 파일을 찾을 수 없음.</value>
+</data>
+<data name="Searching" xml:space="preserve">
+  <value>{0} 검색 중...</value>
+</data>
+<data name="SearchFailed" xml:space="preserve">
+  <value>원격 검색 실패 (JavDB): {0}</value>
+</data>
 
-  <!-- Health Check -->
-  <data name="HealthCheckTitle" xml:space="preserve">
-    <value>서비스 상태 확인</value>
-  </data>
-  <data name="HealthCheckNoCheckers" xml:space="preserve">
-    <value>등록된 상태 확인기 없음, 서비스 상태를 표시할 수 없음.</value>
-  </data>
-  <data name="StatusHealthy" xml:space="preserve">
-    <value>정상</value>
-  </data>
-  <data name="StatusUnhealthy" xml:space="preserve">
-    <value>비정상</value>
-  </data>
-  <data name="UnhealthyWarning" xml:space="preserve">
-    <value>경고: {0}개 서비스 사용 불가, appsettings.json 설정 파일 확인 바람</value>
-  </data>
-  <data name="AllServicesHealthy" xml:space="preserve">
-    <value>모든 서비스가 정상적으로 실행 중</value>
-  </data>
-  <data name="HealthCheckException" xml:space="preserve">
-    <value>상태 확인 예외: {0}</value>
-  </data>
-  <data name="HealthCheckStarted" xml:space="preserve">
-    <value>서비스 상태 확인이 백그라운드에서 시작됨. 언제든지 'hc'를 입력하여 결과 확인.</value>
-  </data>
+<!-- Process Results -->
+<data name="LocalFilesExist" xml:space="preserve">
+  <value>로컬 파일이 이미 존재함</value>
+</data>
+<data name="DownloadAdded" xml:space="preserve">
+  <value>다운로드 작업 추가됨</value>
+</data>
+<data name="DownloadSkipped" xml:space="preserve">
+  <value>다운로드 대기열에 추가되지 않음</value>
+</data>
+<data name="MagnetLinkManual" xml:space="preserve">
+  <value>마그넷 링크 (수동 다운로드):</value>
+</data>
+<data name="ProcessFailed" xml:space="preserve">
+  <value>프로세스 실패</value>
+</data>
+<data name="LocalDedupSkipped" xml:space="preserve">
+  <value>참고: 로컬 중복 제거 건너뜀 (Everything 사용 불가)</value>
+</data>
+<data name="MarkerHD" xml:space="preserve">
+  <value>HD</value>
+</data>
+<data name="MarkerUncensored" xml:space="preserve">
+  <value>무삭제</value>
+</data>
+<data name="MarkerSubtitle" xml:space="preserve">
+  <value>자막</value>
+</data>
+<data name="MarkerNone" xml:space="preserve">
+  <value>없음</value>
+</data>
+<data name="Markers" xml:space="preserve">
+  <value>마커</value>
+</data>
 
-  <!-- Service Setup Hints -->
-  <data name="EverythingSetupHint" xml:space="preserve">
-    <value>Everything 로컬 검색 서비스가 감지되지 않음, HTTP API를 설치하고 활성화 바람:</value>
-  </data>
-  <data name="EverythingDownload" xml:space="preserve">
-    <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
-  </data>
-  <data name="EverythingPlugin" xml:space="preserve">
-    <value>Everything HTTP 플러그인: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
-  </data>
-  <data name="EverythingConfig" xml:space="preserve">
-    <value>설정: appsettings.json에서 Everything.BaseUrl을 HTTP 서비스 주소로 설정 (포트 포함, 예: http://127.0.0.1:1234)</value>
-  </data>
-  <data name="QBittorrentSetupHint" xml:space="preserve">
-    <value>qBittorrent 다운로더 WebUI가 감지되지 않음, WebUI를 설치하고 활성화 바람:</value>
-  </data>
-  <data name="QBittorrentDownload" xml:space="preserve">
-    <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
-  </data>
-  <data name="QBittorrentEnhanced" xml:space="preserve">
-    <value>Enhanced Edition: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
-  </data>
-  <data name="QBittorrentConfig" xml:space="preserve">
-    <value>설정: WebUI를 활성화한 후, appsettings.json에서 QBittorrent.BaseUrl을 WebUI 주소로 설정 (포트 포함, 예: http://127.0.0.1:8080), 올바른 사용자이름/비밀번호 설정</value>
-  </data>
-  <data name="ConfigHint" xml:space="preserve">
-    <value>힌트: 'quit'를 입력하여 종료하고 설정 수정</value>
-  </data>
+<!-- Health Check -->
+<data name="HealthCheckTitle" xml:space="preserve">
+  <value>서비스 상태 확인</value>
+</data>
+<data name="HealthCheckNoCheckers" xml:space="preserve">
+  <value>등록된 상태 확인기 없음, 서비스 상태를 표시할 수 없음.</value>
+</data>
+<data name="StatusHealthy" xml:space="preserve">
+  <value>정상</value>
+</data>
+<data name="StatusUnhealthy" xml:space="preserve">
+  <value>비정상</value>
+</data>
+<data name="UnhealthyWarning" xml:space="preserve">
+  <value>경고: {0}개 서비스 사용 불가, appsettings.json 설정 파일 확인 바람</value>
+</data>
+<data name="AllServicesHealthy" xml:space="preserve">
+  <value>모든 서비스가 정상적으로 실행 중</value>
+</data>
+<data name="HealthCheckException" xml:space="preserve">
+  <value>상태 확인 예외: {0}</value>
+</data>
+<data name="HealthCheckStarted" xml:space="preserve">
+  <value>서비스 상태 확인이 백그라운드에서 시작됨. 'hc'를 입력하여 언제든지 결과 확인 가능.</value>
+</data>
 
-  <!-- Service Errors -->
-  <data name="JavDbUnavailable" xml:space="preserve">
-    <value>JavDB 서비스 오류: 원격 검색 기능 사용 불가.</value>
-  </data>
-  <data name="EverythingUnavailable" xml:space="preserve">
-    <value>Everything 서비스 오류: 로컬 검색 지원 안 함.</value>
-  </data>
-  <data name="QBittorrentUnavailable" xml:space="preserve">
-    <value>qBittorrent 서비스 오류: 다운로드 대기열 작업 지원 안 함.</value>
-  </data>
+<!-- Service Setup Hints -->
+<data name="EverythingSetupHint" xml:space="preserve">
+  <value>Everything 로컬 검색 서비스가 감지되지 않음, HTTP API를 설치하고 활성화 바람:</value>
+</data>
+<data name="EverythingDownload" xml:space="preserve">
+  <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
+</data>
+<data name="EverythingPlugin" xml:space="preserve">
+  <value>Everything HTTP 플러그인: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
+</data>
+<data name="EverythingConfig" xml:space="preserve">
+  <value>설정: appsettings.json에서 Everything.BaseUrl을 HTTP 서비스 주소로 설정 (포트 포함, 예: http://127.0.0.1:1234)</value>
+</data>
+<data name="QBittorrentSetupHint" xml:space="preserve">
+  <value>qBittorrent 다운로더 WebUI가 감지되지 않음, WebUI를 설치하고 활성화 바람:</value>
+</data>
+<data name="QBittorrentDownload" xml:space="preserve">
+  <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
+</data>
+<data name="QBittorrentEnhanced" xml:space="preserve">
+  <value>Enhanced Edition: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
+</data>
+<data name="QBittorrentConfig" xml:space="preserve">
+  <value>설정: WebUI를 활성화한 후, appsettings.json에서 QBittorrent.BaseUrl을 WebUI 주소로 설정 (포트 포함, 예: http://127.0.0.1:8080), 올바른 사용자이름/비밀번호 설정</value>
+</data>
+<data name="ConfigHint" xml:space="preserve">
+  <value>힌트: 'quit'를 입력하여 종료하고 설정 수정</value>
+</data>
 
-  <!-- Service Names -->
-  <data name="ServiceNameEverything" xml:space="preserve">
-    <value>Everything (로컬 검색)</value>
-  </data>
-  <data name="ServiceNameQBittorrent" xml:space="preserve">
-    <value>qBittorrent (다운로더)</value>
-  </data>
-  <data name="ServiceNameJavDb" xml:space="preserve">
-    <value>JavDB (원격 데이터베이스)</value>
-  </data>
+<!-- Service Errors -->
+<data name="JavDbUnavailable" xml:space="preserve">
+  <value>JavDB 서비스 오류: 원격 검색 기능 사용 불가.</value>
+</data>
+<data name="EverythingUnavailable" xml:space="preserve">
+  <value>Everything 서비스 오류: 로컬 검색 지원 안 함.</value>
+</data>
+<data name="QBittorrentUnavailable" xml:space="preserve">
+  <value>qBittorrent 서비스 오류: 다운로드 대기열 작업 지원 안 함.</value>
+</data>
 
-  <!-- Health Check Messages -->
-  <data name="HealthServiceOk" xml:space="preserve">
-    <value>서비스 정상</value>
-  </data>
-  <data name="HealthConnectionFailed" xml:space="preserve">
-    <value>연결 실패: {0}</value>
-  </data>
-  <data name="HealthAllUrlsFailed" xml:space="preserve">
-    <value>모든 URL에 연결할 수 없음</value>
-  </data>
+<!-- Service Names -->
+<data name="ServiceNameEverything" xml:space="preserve">
+  <value>Everything (로컬 검색)</value>
+</data>
+<data name="ServiceNameQBittorrent" xml:space="preserve">
+  <value>qBittorrent (다운로더)</value>
+</data>
+<data name="ServiceNameJavDb" xml:space="preserve">
+  <value>JavDB (원격 데이터베이스)</value>
+</data>
 
-  <!-- JavSearchService Messages -->
-  <data name="LocalDedupUnavailableSkipped" xml:space="preserve">
-    <value>로컬 중복 제거 사용 불가 (Everything 서비스 오류), 로컬 확인 건너뜀.</value>
-  </data>
-  <data name="LocalDedupException" xml:space="preserve">
-    <value>로컬 중복 제거 사용 불가 (Everything 오류): {0}</value>
-  </data>
-  <data name="DownloaderUnavailableSkipped" xml:space="preserve">
-    <value>다운로더 사용 불가 (qBittorrent 서비스 오류), 다운로드 대기열에 추가되지 않음.</value>
-  </data>
-  <data name="DownloaderException" xml:space="preserve">
-    <value>다운로더 오류, 다운로드 대기열에 추가 실패: {0}</value>
-  </data>
+<!-- Health Check Messages -->
+<data name="HealthServiceOk" xml:space="preserve">
+  <value>서비스 정상</value>
+</data>
+<data name="HealthConnectionFailed" xml:space="preserve">
+  <value>연결 실패: {0}</value>
+</data>
+<data name="HealthAllUrlsFailed" xml:space="preserve">
+  <value>모든 URL에 연결할 수 없음</value>
+</data>
 
-  <!-- Cache -->
-  <data name="CacheStatsTitle" xml:space="preserve">
-    <value>로컬 캐시 통계</value>
-  </data>
-  <data name="CacheDisabled" xml:space="preserve">
-    <value>로컬 캐시 활성화되지 않음.</value>
-  </data>
-  <data name="CacheJavCount" xml:space="preserve">
-    <value>캐시된 JAV 수</value>
-  </data>
-  <data name="CacheTorrentCount" xml:space="preserve">
-    <value>캐시된 토렌트 수</value>
-  </data>
-  <data name="CacheDbSize" xml:space="preserve">
-    <value>데이터베이스 크기</value>
-  </data>
-  <data name="CacheLastUpdated" xml:space="preserve">
-    <value>마지막 업데이트</value>
-  </data>
-</start xml>
-<root>
+<!-- JavSearchService Messages -->
+<data name="LocalDedupUnavailableSkipped" xml:space="preserve">
+  <value>로컬 중복 제거 사용 불가 (Everything 서비스 오류), 로컬 확인 건너뜀.</value>
+</data>
+<data name="LocalDedupException" xml:space="preserve">
+  <value>로컬 중복 제거 사용 불가 (Everything 오류): {0}</value>
+</data>
+<data name="DownloaderUnavailableSkipped" xml:space="preserve">
+  <value>다운로더 사용 불가 (qBittorrent 서비스 오류), 다운로드 대기열에 추가되지 않음.</value>
+</data>
+<data name="DownloaderException" xml:space="preserve">
+  <value>다운로더 오류, 다운로드 대기열에 추가 실패: {0}</value>
+</data>
+
+<!-- Cache -->
+<data name="CacheStatsTitle" xml:space="preserve">
+  <value>로컬 캐시 통계</value>
+</data>
+<data name="CacheDisabled" xml:space="preserve">
+  <value>로컬 캐시 활성화되지 않음.</value>
+</data>
+<data name="CacheJavCount" xml:space="preserve">
+  <value>캐시된 JAV 수</value>
+</data>
+<data name="CacheTorrentCount" xml:space="preserve">
+  <value>캐시된 토렌트 수</value>
+</data>
+<data name="CacheDbSize" xml:space="preserve">
+  <value>데이터베이스 크기</value>
+</data>
+<data name="CacheLastUpdated" xml:space="preserve">
+  <value>마지막 업데이트</value>
+</data>
+
   <!-- JAV Details -->
   <data name="DetailJavId" xml:space="preserve">
     <value>JAV-ID</value>
@@ -483,7 +482,7 @@
     <value>데이터 소스</value>
   </data>
   <data name="DetailCachedAt" xml:space="preserve">
-    <value>캐시된 시간</value>
+    <value>캐시 시간</value>
   </data>
   <data name="DetailTorrentCount" xml:space="preserve">
     <value>토렌트 수</value>
@@ -506,7 +505,7 @@
     <value>"{0}"은(는) 유효한 JAV-ID가 아닙니다. JAV-ID는 &lt;문자/숫자&gt;-&lt;숫자&gt; 형식이어야 합니다.</value>
   </data>
   <data name="NoFilesOverSize" xml:space="preserve">
-    <value>{0:0.##}MB보다 큰 로컬 파일을 찾을 수 없습니다.</value>
+    <value>{0:0.##}MB보다 큰 로컬 파일이 없습니다.</value>
   </data>
 
   <!-- Error Messages -->
@@ -548,7 +547,7 @@
   </data>
 
   <data name="Gui_Search_Watermark" xml:space="preserve">
-    <value>JAV ID를 입력하세요 (예: STARS-001)</value>
+    <value>JAV ID 입력 (예: STARS-001)</value>
   </data>
   <data name="Gui_Search_ButtonSearch" xml:space="preserve">
     <value>검색</value>
@@ -578,13 +577,13 @@
     <value>토렌트 로딩 중...</value>
   </data>
   <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
-    <value>{0}개의 원격 결과</value>
+    <value>원격 결과 {0}개</value>
   </data>
   <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
-    <value>{0}개의 로컬 파일</value>
+    <value>로컬 파일 {0}개</value>
   </data>
   <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
-    <value>{0}개의 토렌트</value>
+    <value>토렌트 {0}개</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
     <value>마그넷 복사</value>
@@ -603,7 +602,7 @@
     <value>새로고침</value>
   </data>
   <data name="Gui_Downloads_StatusCount" xml:space="preserve">
-    <value>{0}개의 다운로드</value>
+    <value>다운로드 {0}개</value>
   </data>
 
   <data name="Gui_Settings_Everything_Title" xml:space="preserve">
@@ -634,13 +633,13 @@
     <value>언어</value>
   </data>
   <data name="Gui_Settings_Language_English" xml:space="preserve">
-    <value>영어</value>
+    <value>English</value>
   </data>
   <data name="Gui_Settings_Language_Chinese" xml:space="preserve">
-    <value>중국어</value>
+    <value>中文</value>
   </data>
   <data name="Gui_Settings_Language_Japanese" xml:space="preserve">
-    <value>일본어</value>
+    <value>日本語</value>
   </data>
   <data name="Gui_Settings_Language_Korean" xml:space="preserve">
     <value>한국어</value>
@@ -669,5 +668,51 @@
   <data name="Gui_Settings_JavDb_MirrorUrls_Watermark" xml:space="preserve">
     <value>https://javdb565.com,https://javdb564.com</value>
   </data>
+
+<data name="Gui_Settings_Update_Title" xml:space="preserve">
+  <value>업데이트</value>
+</data>
+<data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
+  <value>시작 시 자동 업데이트 확인</value>
+</data>
+<data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
+  <value>업데이트 확인</value>
+</data>
+<data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
+  <value>지금 업데이트</value>
+</data>
+<data name="Gui_Settings_Update_Unknown" xml:space="preserve">
+  <value>알 수 없음</value>
+</data>
+<data name="Gui_Settings_Update_Disabled" xml:space="preserve">
+  <value>비활성화됨</value>
+</data>
+<data name="Gui_Settings_Update_Checking" xml:space="preserve">
+  <value>확인 중...</value>
+</data>
+<data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
+  <value>확인 실패</value>
+</data>
+<data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
+  <value>최신 버전입니다 ({0})</value>
+</data>
+<data name="Gui_Settings_Update_Available" xml:space="preserve">
+  <value>업데이트 가능 ({0})</value>
+</data>
+<data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
+  <value>업데이트가 없습니다.</value>
+</data>
+<data name="Gui_Settings_Update_Downloading" xml:space="preserve">
+  <value>업데이트 다운로드 중...</value>
+</data>
+<data name="Gui_Settings_Update_Installing" xml:space="preserve">
+  <value>업데이트 설치 중 (재시작 중)...</value>
+</data>
+<data name="Gui_Settings_Update_Failed" xml:space="preserve">
+  <value>업데이트 실패: {0}</value>
+</data>
+<data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
+  <value>업데이트가 지원되지 않음: {0}</value>
+</data>
 
 </root>

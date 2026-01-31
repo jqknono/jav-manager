@@ -1,14 +1,14 @@
 {
   "README.md": {
-    "translate_datetime": "2026-01-31:20:57",
-    "src_hash": "c9c24137540342214b67fc5566512c8a",
-    "src_size": 8152,
-    "src_mtime_ms": 1769864150890.1277
+    "translate_datetime": "2026-02-01:04:23",
+    "src_hash": "9a35f54772c98514bb8a7ce4d9e3f84a",
+    "src_size": 8441,
+    "src_mtime_ms": 1769886875765.286
   },
   "JavManager/Localization/Strings.resx": {
-    "translate_datetime": "2026-01-31:11:08",
-    "src_hash": "1406807f228be121de8af07a5cb8ec53",
-    "src_size": 24473,
-    "src_mtime_ms": 1769824469037.8826
+    "translate_datetime": "2026-02-01:04:29",
+    "src_hash": "5fe0f6a65b03617dbf9dc58410f77772",
+    "src_size": 26182,
+    "src_mtime_ms": 1769886766986.5203
   }
 }
