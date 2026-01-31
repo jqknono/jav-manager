@@ -12,7 +12,7 @@ public sealed class AvaloniaAppShutdownService : IAppShutdownService
 {
     public void Shutdown()
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.Shutdown();
             return;
@@ -21,4 +21,3 @@ public sealed class AvaloniaAppShutdownService : IAppShutdownService
         Environment.Exit(0);
     }
 }
-

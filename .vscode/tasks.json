@@ -63,6 +63,19 @@
                 "cwd": "${workspaceFolder}/telemetry-worker"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "publish:android-apk",
+            "type": "process",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "$ErrorActionPreference='Stop'; $repo='${workspaceFolder}'; $project=Join-Path $repo 'JavManager/JavManager.csproj'; $tfm='net10.0-android'; $dest=Join-Path $repo 'artifacts/android/apk'; if(Test-Path $dest){Remove-Item -Recurse -Force $dest}; New-Item -ItemType Directory -Force -Path $dest | Out-Null; dotnet publish $project -c Debug -f $tfm -p:EnableAndroid=true -p:AndroidPackageFormat=apk; $publishDir=Join-Path (Join-Path $repo 'JavManager') (\"bin/Debug/$tfm/publish\"); $apk=Get-ChildItem $publishDir -Recurse -Filter *.apk | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if(-not $apk){ throw (\"No .apk found under: \"+$publishDir) }; Copy-Item $apk.FullName -Destination (Join-Path $dest $apk.Name) -Force; Write-Host (\"OK: \"+(Join-Path $dest $apk.Name));"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ]
 }

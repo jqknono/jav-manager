@@ -85,6 +85,7 @@ jobs:
           # Self-contained single-file (portable, no runtime required)
           dotnet publish "JavManager/JavManager.csproj" \
             -c Release \
+            -f net10.0 \
             -r "${{ matrix.rid }}" \
             --output "${out_dir_sc}" \
             --self-contained true \
@@ -100,6 +101,7 @@ jobs:
           # Framework-dependent (requires .NET runtime; multi-file output)
           dotnet publish "JavManager/JavManager.csproj" \
             -c Release \
+            -f net10.0 \
             -r "${{ matrix.rid }}" \
             --output "${out_dir_fdd}" \
             --self-contained false \
