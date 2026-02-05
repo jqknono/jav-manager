@@ -1,0 +1,604 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.JavDbWebScraper = void 0;
+const cheerio = __importStar(require("cheerio"));
+const models_1 = require("../models");
+const torrentNameParser_1 = require("../utils/torrentNameParser");
+const curlImpersonateFetcher_1 = require("./curlImpersonateFetcher");
+const MaxAttemptsPerUrl = 4;
+const MaxUrlCycles = 2;
+const RetryBaseDelayMs = 1000;
+class JavDbWebScraper {
+    config;
+    userAgents;
+    cookieJar = new Map();
+    curlFetcher;
+    constructor(config) {
+        this.config = config;
+        this.userAgents = buildUserAgentCandidates(config);
+        this.curlFetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(config.curlImpersonate);
+    }
+    get serviceName() {
+        return "JavDB";
+    }
+    async search(javId) {
+        const candidates = await this.searchCandidates(javId);
+        if (candidates.length === 0) {
+            return emptySearchResult(javId);
+        }
+        const selected = chooseBestCandidate(candidates, javId);
+        const detail = await this.getDetail(selected.detailUrl);
+        if (!detail.javId) {
+            detail.javId = javId;
+        }
+        return detail;
+    }
+    async searchCandidates(javId) {
+        const urls = buildBaseUrls(this.config);
+        let lastError = "";
+        for (let cycle = 0; cycle < MaxUrlCycles; cycle += 1) {
+            for (const baseUrl of urls) {
+                const trimmed = baseUrl.replace(/\/+$/, "");
+                this.seedCookiesForUrl(trimmed);
+                const home = await this.getWithRetry(trimmed, null, MaxAttemptsPerUrl);
+                if (!isSuccessStatus(home.status)) {
+                    lastError = home.error ?? `HTTP ${home.status}`;
+                    continue;
+                }
+                const searchUrl = `${trimmed}/search?q=${encodeURIComponent(javId)}&f=all`;
+                const search = await this.getWithRetry(searchUrl, trimmed, MaxAttemptsPerUrl);
+                if (!isSuccessStatus(search.status)) {
+                    lastError = search.error ?? `HTTP ${search.status}`;
+                    continue;
+                }
+                const results = parseSearchResults(search.body);
+                for (const result of results) {
+                    if (result.detailUrl && !/^https?:\/\//i.test(result.detailUrl)) {
+                        result.detailUrl = `${trimmed}${result.detailUrl}`;
+                    }
+                }
+                const deduped = dedupeResults(results);
+                if (deduped.length === 0) {
+                    return [];
+                }
+                return deduped;
+            }
+        }
+        throw new Error(`JavDB request failed: ${lastError}`);
+    }
+    async getDetail(detailUrl) {
+        const baseUrl = this.config.baseUrl.replace(/\/+$/, "");
+        let url = detailUrl;
+        if (!/^https?:\/\//i.test(url)) {
+            url = `${baseUrl}${detailUrl}`;
+        }
+        const referer = url.startsWith(baseUrl) ? baseUrl : new URL(url).origin;
+        this.seedCookiesForUrl(referer);
+        const response = await this.getWithRetry(url, referer, MaxAttemptsPerUrl);
+        if (!isSuccessStatus(response.status)) {
+            throw new Error(response.error ?? `HTTP ${response.status}`);
+        }
+        const detail = parseDetailPage(response.body);
+        detail.detailUrl = url;
+        detail.torrents = parseTorrentLinks(response.body);
+        return detail;
+    }
+    async checkHealth() {
+        const urls = buildBaseUrls(this.config);
+        if (urls.length === 0) {
+            return { serviceName: this.serviceName, isHealthy: false, message: "No JavDB base URL configured" };
+        }
+        for (const url of urls) {
+            const trimmed = url.replace(/\/+$/, "");
+            this.seedCookiesForUrl(trimmed);
+            const response = await this.getWithRetry(trimmed, null, 2, 3000);
+            if (isSuccessStatus(response.status)) {
+                return { serviceName: this.serviceName, isHealthy: true, message: "OK", url: trimmed };
+            }
+        }
+        return { serviceName: this.serviceName, isHealthy: false, message: "JavDB unreachable", url: this.config.baseUrl };
+    }
+    async getWithRetry(url, referer, maxAttempts, timeoutMs) {
+        let lastError = "";
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            if (attempt > 0) {
+                await delay(getRetryDelay(attempt));
+            }
+            else {
+                await delay(100 + Math.floor(Math.random() * 300));
+            }
+            try {
+                const result = await this.sendRequest(url, referer, attempt, timeoutMs);
+                if (isSuccessStatus(result.status)) {
+                    return result;
+                }
+                lastError = result.error ?? `HTTP ${result.status}`;
+                if (!isRetryableStatus(result.status)) {
+                    return { ...result, error: lastError };
+                }
+            }
+            catch (error) {
+                lastError = error instanceof Error ? error.message : "Unknown error";
+            }
+        }
+        return { status: 0, body: "", error: lastError };
+    }
+    async sendRequest(url, referer, attemptIndex, timeoutMs) {
+        const cookieHeader = this.getCookieHeader(url);
+        const timeout = timeoutMs ?? this.config.requestTimeout;
+        // Try curl-impersonate first if enabled and available
+        if (this.curlFetcher.isAvailable()) {
+            try {
+                const result = await this.curlFetcher.get(url, referer, cookieHeader, timeout);
+                if (isSuccessStatus(result.status)) {
+                    return { status: result.status, body: result.body };
+                }
+                // If curl-impersonate fails, fall back to standard fetch
+                console.warn(`curl-impersonate failed: ${result.error}, falling back to standard fetch`);
+            }
+            catch (error) {
+                console.warn(`curl-impersonate error: ${error instanceof Error ? error.message : "Unknown error"}, falling back to standard fetch`);
+            }
+        }
+        // Fallback to standard fetch
+        const userAgent = this.userAgents[attemptIndex % this.userAgents.length] ?? defaultUserAgent;
+        const headers = buildChromeHeaders(userAgent, referer);
+        if (cookieHeader) {
+            headers.Cookie = cookieHeader;
+        }
+        const controller = new AbortController();
+        const timeoutTimer = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers,
+                signal: controller.signal,
+            });
+            const body = await response.text();
+            this.captureCookies(url, response.headers);
+            return { status: response.status, body };
+        }
+        finally {
+            clearTimeout(timeoutTimer);
+        }
+    }
+    seedCookiesForUrl(baseUrl) {
+        if (!baseUrl) {
+            return;
+        }
+        const host = new URL(baseUrl).host;
+        const jar = this.cookieJar.get(host) ?? new Map();
+        jar.set("over18", "1");
+        jar.set("locale", "zh");
+        this.cookieJar.set(host, jar);
+    }
+    getCookieHeader(url) {
+        const host = new URL(url).host;
+        const jar = this.cookieJar.get(host);
+        if (!jar || jar.size === 0) {
+            return null;
+        }
+        return Array.from(jar.entries())
+            .map(([key, value]) => `${key}=${value}`)
+            .join("; ");
+    }
+    captureCookies(url, headers) {
+        const host = new URL(url).host;
+        const jar = this.cookieJar.get(host) ?? new Map();
+        const setCookies = typeof headers.getSetCookie === "function"
+            ? headers.getSetCookie()
+            : (headers.get("set-cookie") ? [headers.get("set-cookie")] : []);
+        for (const raw of setCookies) {
+            const [pair] = raw.split(";", 1);
+            const [name, value] = pair.split("=", 2);
+            if (name && value) {
+                jar.set(name.trim(), value.trim());
+            }
+        }
+        this.cookieJar.set(host, jar);
+    }
+}
+exports.JavDbWebScraper = JavDbWebScraper;
+function buildBaseUrls(config) {
+    const urls = [config.baseUrl, ...config.mirrorUrls]
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0);
+    return Array.from(new Set(urls));
+}
+function buildUserAgentCandidates(config) {
+    const candidates = [];
+    if (config.userAgent?.trim()) {
+        candidates.push(config.userAgent.trim());
+    }
+    candidates.push(defaultUserAgent);
+    candidates.push("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+    candidates.push("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+    return Array.from(new Set(candidates));
+}
+function buildChromeHeaders(userAgent, referer) {
+    const chromeMajor = parseChromeMajorVersion(userAgent);
+    const platform = getPlatformFromUserAgent(userAgent);
+    const mobile = userAgent.toLowerCase().includes("mobile") ? "?1" : "?0";
+    const headers = {
+        Connection: "keep-alive",
+        "Cache-Control": "max-age=0",
+        "sec-ch-ua": `"Google Chrome";v="${chromeMajor}", "Chromium";v="${chromeMajor}", "Not_A Brand";v="24"`,
+        "sec-ch-ua-mobile": mobile,
+        "sec-ch-ua-platform": `"${platform}"`,
+        DNT: "1",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": userAgent,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Sec-Fetch-Site": referer ? "same-origin" : "none",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7",
+    };
+    if (referer) {
+        headers.Referer = referer;
+    }
+    return headers;
+}
+function parseChromeMajorVersion(userAgent) {
+    const match = userAgent.match(/Chrome\/(\d+)/);
+    return match?.[1] ?? "131";
+}
+function getPlatformFromUserAgent(userAgent) {
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("windows"))
+        return "Windows";
+    if (ua.includes("mac os x") || ua.includes("macintosh"))
+        return "macOS";
+    if (ua.includes("linux"))
+        return "Linux";
+    return "Windows";
+}
+function isSuccessStatus(status) {
+    return status >= 200 && status < 300;
+}
+function isRetryableStatus(status) {
+    return [0, 403, 408, 425, 429, 500, 502, 503, 520, 522, 524].includes(status);
+}
+function getRetryDelay(attemptIndex) {
+    const base = RetryBaseDelayMs * Math.pow(1.5, attemptIndex);
+    const jitter = Math.floor(Math.random() * 800) - 300;
+    return Math.max(500, base + jitter);
+}
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function parseSearchResults(html) {
+    const results = [];
+    const $ = cheerio.load(html);
+    const items = $("div.item").has("a.box");
+    items.each((_, element) => {
+        const link = $(element).find("a.box").first();
+        if (!link.length) {
+            return;
+        }
+        const detailUrl = link.attr("href") ?? "";
+        const titleAttr = link.attr("title") ?? "";
+        const titleText = normalizeInlineText(link.text());
+        const title = titleAttr || titleText;
+        const coverNode = $(element).find("img.video-cover").first();
+        const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
+        const idNode = $(element).find(".uid, .video-id, .video-uid, .video_id").first();
+        const idFromNode = extractJavIdFromText(normalizeInlineText(idNode.text()));
+        const idFromText = extractJavIdFromText(normalizeInlineText($(element).text()));
+        const idFromTitle = extractJavIdFromText(title);
+        const javId = idFromNode ?? idFromText ?? idFromTitle ?? "";
+        results.push({
+            javId,
+            title,
+            coverUrl,
+            detailUrl,
+            releaseDate: undefined,
+            duration: 0,
+            director: "",
+            maker: "",
+            publisher: "",
+            series: "",
+            actors: [],
+            categories: [],
+            torrents: [],
+            dataSource: "Remote",
+            cachedAt: undefined,
+        });
+    });
+    return results;
+}
+function parseDetailPage(html) {
+    const $ = cheerio.load(html);
+    const title = normalizeInlineText($("h2.title").first().text());
+    let javId = normalizeInlineText($("span.current-title").first().text());
+    if (!javId) {
+        javId = extractJavIdFromText(title) ?? "";
+    }
+    const coverUrl = $("img.video-cover").first().attr("src") ?? "";
+    const releaseDate = parseMetaField($, ["發行日期", "日期"]);
+    const duration = parseDuration(parseMetaField($, ["時長", "片長"]));
+    const director = parseMetaField($, ["導演"]);
+    const maker = parseMetaField($, ["片商"]);
+    const publisher = parseMetaField($, ["發行"]);
+    const series = parseMetaField($, ["系列"]);
+    const actors = parseList($, [
+        "div.video-meta-panel strong:contains('演員') ~ span a",
+        "div.panel-block strong:contains('演員') ~ span a",
+        "div.panel-block strong:contains('演員') ~ a",
+    ]);
+    const categories = parseList($, [
+        "div.video-meta-panel strong:contains('類別') ~ span a",
+        "div.panel-block strong:contains('類別') ~ span a",
+        "div.panel-block strong:contains('類別') ~ a",
+    ]);
+    return {
+        javId,
+        title,
+        coverUrl,
+        releaseDate: releaseDate || undefined,
+        duration,
+        director,
+        maker,
+        publisher,
+        series,
+        actors,
+        categories,
+        torrents: [],
+        detailUrl: "",
+        dataSource: "Remote",
+        cachedAt: undefined,
+    };
+}
+function parseMetaField($, keywords) {
+    for (const keyword of keywords) {
+        const selectors = [
+            `div.video-meta-panel strong:contains('${keyword}') ~ span`,
+            `div.video-meta-panel span:contains('${keyword}') ~ span`,
+            `div.video-meta-panel span:contains('${keyword}') ~ a`,
+            `div.panel-block strong:contains('${keyword}') ~ span`,
+            `div.panel-block strong:contains('${keyword}') ~ a`,
+        ];
+        for (const selector of selectors) {
+            const node = $(selector).first();
+            const text = normalizeInlineText(node.text());
+            if (text && text !== "N/A" && text !== "-") {
+                return text;
+            }
+        }
+    }
+    return "";
+}
+function parseDuration(text) {
+    if (!text) {
+        return 0;
+    }
+    const match = text.match(/(\d+)\s*(?:分鐘|分钟|min)/i);
+    if (match) {
+        return Number(match[1]);
+    }
+    const asNumber = Number(text.trim());
+    return Number.isNaN(asNumber) ? 0 : asNumber;
+}
+function parseList($, selectors) {
+    for (const selector of selectors) {
+        const nodes = $(selector);
+        if (nodes.length) {
+            const items = [];
+            nodes.each((_, element) => {
+                const text = normalizeInlineText($(element).text());
+                if (text && !items.includes(text)) {
+                    items.push(text);
+                }
+            });
+            return items;
+        }
+    }
+    return [];
+}
+function parseTorrentLinks(html) {
+    const $ = cheerio.load(html);
+    const torrents = [];
+    const seenMagnets = new Set();
+    $("div.magnet-name").each((_, element) => {
+        const magnetNode = $(element).find("a[href^='magnet:']").first();
+        const magnetLink = magnetNode.attr("href") ?? "";
+        if (!magnetLink.startsWith("magnet:")) {
+            return;
+        }
+        const hash = extractMagnetHash(magnetLink);
+        if (hash && seenMagnets.has(hash)) {
+            return;
+        }
+        if (hash) {
+            seenMagnets.add(hash);
+        }
+        const title = normalizeInlineText($(element).find("span.name").first().text());
+        const meta = normalizeInlineText($(element).find("span.meta").first().text());
+        let size = extractSizeFromMagnet(magnetLink);
+        if (!size) {
+            size = parseSizeBytes(meta) ?? 0;
+        }
+        const tags = $(element).find("span.tag");
+        let hasSubtitle = false;
+        let hasUncensored = false;
+        let hasHd = false;
+        tags.each((_, tag) => {
+            const tagText = normalizeInlineText($(tag).text());
+            if (!tagText) {
+                return;
+            }
+            if (tagText.includes("字幕") || tagText.includes("中文") || tagText.includes("中文字幕")) {
+                hasSubtitle = true;
+            }
+            if (tagText.includes("無碼") || tagText.includes("无码") || tagText.includes("破解")) {
+                hasUncensored = true;
+            }
+            if (tagText.includes("高清") || /HD|1080|720|4K/i.test(tagText)) {
+                hasHd = true;
+            }
+        });
+        if (!hasHd && /HD|1080|720|4K/i.test(title)) {
+            hasHd = true;
+        }
+        const { uncensoredType } = (0, torrentNameParser_1.parseTorrentName)(title);
+        hasUncensored = hasUncensored || uncensoredType !== models_1.UncensoredMarkerType.None;
+        const uncensoredMarkerType = hasUncensored
+            ? hasSubtitle
+                ? models_1.UncensoredMarkerType.UC
+                : models_1.UncensoredMarkerType.U
+            : models_1.UncensoredMarkerType.None;
+        torrents.push({
+            title,
+            magnetLink,
+            size,
+            hasSubtitle,
+            hasUncensoredMarker: hasUncensored,
+            uncensoredMarkerType,
+            hasHd,
+            seeders: 0,
+            leechers: 0,
+            sourceSite: "JavDB",
+            progress: undefined,
+            state: undefined,
+            dlSpeed: 0,
+            eta: 0,
+            weightScore: 0,
+        });
+    });
+    return torrents;
+}
+function normalizeInlineText(text) {
+    return text.replace(/\s+/g, " ").trim();
+}
+function extractMagnetHash(magnetLink) {
+    const match = magnetLink.match(/btih:([a-fA-F0-9]+)/);
+    return match?.[1]?.toLowerCase() ?? "";
+}
+function extractSizeFromMagnet(magnetLink) {
+    const match = magnetLink.match(/[?&]xl=(\d+)/i);
+    if (!match) {
+        return null;
+    }
+    const value = Number(match[1]);
+    return Number.isNaN(value) ? null : value;
+}
+function parseSizeBytes(text) {
+    if (!text) {
+        return null;
+    }
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB|KB|MB|GB|TB|B)\b/i);
+    if (!match) {
+        return null;
+    }
+    const value = Number(match[1]);
+    if (Number.isNaN(value)) {
+        return null;
+    }
+    const unit = match[2].toUpperCase();
+    const multiplier = {
+        B: 1,
+        KB: 1024,
+        KIB: 1024,
+        MB: 1024 * 1024,
+        MIB: 1024 * 1024,
+        GB: 1024 * 1024 * 1024,
+        GIB: 1024 * 1024 * 1024,
+        TB: 1024 * 1024 * 1024 * 1024,
+        TIB: 1024 * 1024 * 1024 * 1024,
+    };
+    const factor = multiplier[unit];
+    return factor ? Math.floor(value * factor) : null;
+}
+function extractJavIdFromText(text) {
+    if (!text) {
+        return null;
+    }
+    const match = text.match(/([A-Z0-9]+-\d+)/i);
+    return match ? match[1].toUpperCase() : null;
+}
+function dedupeResults(results) {
+    const seen = new Set();
+    const deduped = [];
+    for (const result of results) {
+        const key = result.detailUrl || `${result.title}|${result.javId}`;
+        if (seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        deduped.push(result);
+    }
+    return deduped;
+}
+function chooseBestCandidate(candidates, query) {
+    if (candidates.length === 1) {
+        return candidates[0];
+    }
+    const normalizedQuery = (0, torrentNameParser_1.normalizeJavId)(query);
+    for (const candidate of candidates) {
+        const id = (0, torrentNameParser_1.normalizeJavId)(candidate.javId || candidate.title);
+        if ((0, torrentNameParser_1.isValidJavId)(id) && id.toLowerCase() === normalizedQuery.toLowerCase()) {
+            return candidate;
+        }
+        const idFromTitle = (0, torrentNameParser_1.normalizeJavId)(candidate.title);
+        if ((0, torrentNameParser_1.isValidJavId)(idFromTitle) && idFromTitle.toLowerCase() === normalizedQuery.toLowerCase()) {
+            return candidate;
+        }
+    }
+    const match = candidates.find((candidate) => candidate.title.toLowerCase().includes(normalizedQuery.toLowerCase()));
+    return match ?? candidates[0];
+}
+function emptySearchResult(javId) {
+    return {
+        javId,
+        title: "",
+        coverUrl: "",
+        releaseDate: undefined,
+        duration: 0,
+        director: "",
+        maker: "",
+        publisher: "",
+        series: "",
+        actors: [],
+        categories: [],
+        torrents: [],
+        detailUrl: "",
+        dataSource: "Remote",
+        cachedAt: undefined,
+    };
+}
+const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";

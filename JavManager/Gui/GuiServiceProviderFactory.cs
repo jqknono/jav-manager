@@ -24,6 +24,9 @@ internal static class GuiServiceProviderFactory
 
         var services = new ServiceCollection();
 
+        // Register IConfiguration for services that depend on it
+        services.AddSingleton<IConfiguration>(config);
+
         // IOptions registrations (optional, but harmless)
         services.Configure<EverythingConfig>(config.GetSection("Everything"));
         services.Configure<QBittorrentConfig>(config.GetSection("QBittorrent"));
@@ -124,15 +127,32 @@ internal static class GuiServiceProviderFactory
         }
 
         // Preferred writable config (Android, etc.)
-        builder.AddJsonFile(AppPaths.GetAppSettingsPath(), optional: true, reloadOnChange: true);
+        AddJsonFileSafe(builder, AppPaths.GetAppSettingsPath(), optional: true, reloadOnChange: true);
 
         // Also allow standard relative config in dev/test scenarios
-        builder
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables(prefix: "JAVMANAGER_");
+        AddJsonFileSafe(builder, "appsettings.json", optional: true, reloadOnChange: true);
+        AddJsonFileSafe(builder, "appsettings.Development.json", optional: true, reloadOnChange: true);
+        builder.AddEnvironmentVariables(prefix: "JAVMANAGER_");
 
         return builder.Build();
+    }
+
+    private static void AddJsonFileSafe(
+        IConfigurationBuilder builder,
+        string path,
+        bool optional,
+        bool reloadOnChange)
+    {
+        try
+        {
+            builder.AddJsonFile(path, optional: optional, reloadOnChange: reloadOnChange);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // Some platforms (Android/iOS) do not support file change notifications (FileSystemWatcher).
+            // Config reload is non-essential; fall back to a non-watching provider.
+            builder.AddJsonFile(path, optional: optional, reloadOnChange: false);
+        }
     }
 
     private static void TryWriteAppSettingsJsonIfMissing(string path, byte[] templateBytes)

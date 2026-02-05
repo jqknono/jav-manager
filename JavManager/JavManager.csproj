@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <TargetFrameworks>net10.0</TargetFrameworks>
-    <!-- Opt-in Android build: set /p:EnableAndroid=true (requires Android workload) -->
-    <TargetFrameworks Condition="'$(EnableAndroid)' == 'true'">net10.0;net10.0-android</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <StrictSingleFileReleasePublish Condition="'$(StrictSingleFileReleasePublish)' == ''">true</StrictSingleFileReleasePublish>
@@ -19,10 +17,6 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
-    <OutputType>Exe</OutputType>
-    <SupportedOSPlatformVersion>34</SupportedOSPlatformVersion>
-  </PropertyGroup>
 
   <!--
     Developer UX:
@@ -82,21 +76,6 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
-    <PackageReference Include="Avalonia.Android" Version="11.3.11" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
-    <!-- Android uses MainActivity/MainApplication as entry point -->
-    <Compile Remove="Program.cs" />
-    <!-- Desktop-only lifetime startup -->
-    <Compile Remove="Gui\GuiStartup.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <!-- Avoid compiling Android platform heads into desktop build -->
-    <Compile Remove="Platforms\Android\**\*.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">

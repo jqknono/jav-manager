@@ -9,7 +9,20 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TabControl SelectedIndex="{Binding SelectedTabIndex}" Padding="8">
+    <TabControl SelectedIndex="{Binding SelectedTabIndex}" 
+                TabStripPlacement="Bottom"
+                Padding="0">
+        <TabControl.Styles>
+            <!-- Mobile-friendly tab styling -->
+            <Style Selector="TabItem">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Padding" Value="16,12"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="TabItem:selected">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+        </TabControl.Styles>
         <TabItem Header="{Binding Loc[Gui_Tab_Search]}">
             <views:SearchView DataContext="{Binding SearchViewModel}" />
         </TabItem>

@@ -4,57 +4,106 @@
              x:Class="JavManager.Gui.Views.DownloadsView"
              x:DataType="vm:DownloadsViewModel">
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
-        <!-- Header -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12,8">
+        <!-- Header - mobile optimized -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
             <CheckBox Grid.Column="0" 
                       Content="{Binding Loc[Gui_Downloads_OptionDownloadingOnly]}" 
                       IsChecked="{Binding ShowDownloadingOnly}"/>
-            <Button Grid.Column="2" 
+            <Button Grid.Column="1" 
                     Content="{Binding Loc[Gui_Downloads_ButtonRefresh]}" 
                     Command="{Binding RefreshCommand}"
-                    IsEnabled="{Binding !IsLoading}"/>
+                    IsEnabled="{Binding !IsLoading}"
+                    Padding="12,6"/>
         </Grid>
 
-        <!-- Downloads List -->
+        <!-- Downloads List - mobile card layout -->
         <Border Grid.Row="1" 
                 BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                 BorderThickness="1" 
-                CornerRadius="4">
-            <ListBox ItemsSource="{Binding Downloads}" SelectionMode="Single">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="*,80,70,70,80,60" Margin="4">
-                            <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Grid.Column="1" Text="{Binding State}" 
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <TextBlock Grid.Column="2" Text="{Binding ProgressText}" TextAlignment="Right"/>
-                            <TextBlock Grid.Column="3" Text="{Binding Size}" TextAlignment="Right"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <TextBlock Grid.Column="4" Text="{Binding DownloadSpeed}" TextAlignment="Right"
-                                       Foreground="Green"/>
-                            <TextBlock Grid.Column="5" Text="{Binding Eta}" TextAlignment="Right"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                CornerRadius="6">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Downloads}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="12,10"
+                                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                    BorderThickness="0,0,0,1">
+                                <Grid RowDefinitions="Auto,Auto,Auto">
+                                    <!-- Name row -->
+                                    <TextBlock Grid.Row="0" 
+                                               Text="{Binding Name}" 
+                                               TextTrimming="CharacterEllipsis"
+                                               FontSize="14"
+                                               FontWeight="Medium"/>
+                                    
+                                    <!-- Progress bar -->
+                                    <ProgressBar Grid.Row="1" 
+                                                 Value="{Binding Progress}"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Height="4"
+                                                 Margin="0,8,0,6"
+                                                 CornerRadius="2"/>
+                                    
+                                    <!-- Stats row - wrapped for mobile -->
+                                    <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                                        <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" 
+                                                CornerRadius="3" 
+                                                Padding="6,2" 
+                                                Margin="0,0,6,4">
+                                            <TextBlock Text="{Binding State}" FontSize="11"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding ProgressText}" 
+                                                   FontSize="12" 
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,4"/>
+                                        <TextBlock Text="{Binding Size}" 
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   Margin="0,0,8,4"/>
+                                        <TextBlock Text="{Binding DownloadSpeed}" 
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="Green"
+                                                   Margin="0,0,8,4"/>
+                                        <TextBlock Text="{Binding Eta}" 
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   Margin="0,0,0,4"/>
+                                    </WrapPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
         </Border>
 
         <!-- Status Bar -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
-            <TextBlock Grid.Column="0"
-                       Text="{Binding StatusMessage}"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="{Binding StatusMessage}"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <ProgressBar Grid.Column="1"
-                         IsVisible="{Binding IsLoading}"
-                         IsIndeterminate="True"
-                         HorizontalAlignment="Right"
-                         Width="100"/>
-        </Grid>
+        <Border Grid.Row="2" 
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0"
+                Margin="-12,8,-12,0"
+                Padding="12,10">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusMessage}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                <ProgressBar Grid.Column="1"
+                             IsVisible="{Binding IsLoading}"
+                             IsIndeterminate="True"
+                             HorizontalAlignment="Right"
+                             Width="80"
+                             Height="3"/>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

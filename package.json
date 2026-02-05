@@ -1,0 +1,32 @@
+{
+  "name": "jav-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript rewrite of JavManager",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "cli": "node dist/index.js --no-gui",
+    "gui": "node dist/index.js",
+    "dev:cli": "ts-node src/index.ts --no-gui",
+    "dev:gui": "ts-node src/index.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "express": "^5.2.1",
+    "open": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

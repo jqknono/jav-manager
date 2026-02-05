@@ -5,219 +5,221 @@
              x:DataType="vm:SettingsViewModel">
 
     <Grid RowDefinitions="*,Auto">
-        <ScrollViewer Grid.Row="0">
-            <StackPanel Margin="16" Spacing="20">
+        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="12,8" Spacing="12">
                 <!-- Everything Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                         BorderThickness="1" 
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Everything_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Grid.Column="1" Text="{Binding EverythingStatus}" 
-                                       ToolTip.Tip="{Binding EverythingStatusDetails}"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="340"
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
+                        <Grid RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Settings_Everything_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Row="1" Text="{Binding EverythingStatus}" 
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding EverythingBaseUrl}" 
-                                     Watermark="http://localhost:8080"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding EverythingUserName}" 
-                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding EverythingPassword}" 
-                                     PasswordChar="*"
-                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
-                        </Grid>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding EverythingBaseUrl}" Watermark="http://localhost:8080"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding EverythingUserName}" Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding EverythingPassword}" PasswordChar="*" Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- qBittorrent Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                         BorderThickness="1" 
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_QBittorrent_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Grid.Column="1" Text="{Binding QbStatus}" 
-                                       ToolTip.Tip="{Binding QbStatusDetails}"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="340"
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
+                        <Grid RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Settings_QBittorrent_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Row="1" Text="{Binding QbStatus}" 
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding QbBaseUrl}" 
-                                     Watermark="http://localhost:8080"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding QbUserName}" 
-                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding QbPassword}" 
-                                     PasswordChar="*"
-                                     Watermark="{Binding Loc[Gui_Common_Optional]}"/>
-                        </Grid>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding QbBaseUrl}" Watermark="http://localhost:8080"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Username]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding QbUserName}" Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_Password]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding QbPassword}" PasswordChar="*" Watermark="{Binding Loc[Gui_Common_Optional]}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- JavDB Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                         BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Grid.Column="1" Text="{Binding JavDbStatus}"
-                                       ToolTip.Tip="{Binding JavDbStatusDetails}"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="340"
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
+                        <Grid RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Settings_JavDb_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Row="1" Text="{Binding JavDbStatus}"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding JavDbBaseUrl}"
-                                     Watermark="https://javdb.com"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_MirrorUrls]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding JavDbMirrorUrls}"
-                                     Watermark="{Binding Loc[Gui_Settings_JavDb_MirrorUrls_Watermark]}"/>
-                        </Grid>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Common_BaseUrl]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding JavDbBaseUrl}" Watermark="https://javdb.com"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_JavDb_MirrorUrls]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding JavDbMirrorUrls}" Watermark="{Binding Loc[Gui_Settings_JavDb_MirrorUrls_Watermark]}"/>
+                        </StackPanel>
                         <Button Content="{Binding Loc[Gui_Settings_ButtonUpdateJavDbDomain]}"
                                 Command="{Binding UpdateJavDbDomainCommand}"
                                 IsEnabled="{Binding !IsUpdatingJavDbDomain}"
-                                MinWidth="120"
-                                HorizontalAlignment="Left"
-                                Margin="0,8,0,0"/>
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,10"
+                                Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Download Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                         BorderThickness="1" 
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
                         <TextBlock Text="{Binding Loc[Gui_Settings_Download_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_SavePath]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding DefaultSavePath}" 
-                                     Watermark="/downloads/jav"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Category]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding DefaultCategory}" 
-                                     Watermark="jav"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Tags]}" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" Text="{Binding DefaultTags}" 
-                                     Watermark="jav-manager"/>
-                        </Grid>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_SavePath]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding DefaultSavePath}" Watermark="/downloads/jav"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Category]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding DefaultCategory}" Watermark="jav"/>
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Download_Tags]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBox Text="{Binding DefaultTags}" Watermark="jav-manager"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- Updates -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                         BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Update_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                            <TextBlock Grid.Column="1"
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
+                        <Grid RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Settings_Update_Title]}" FontWeight="SemiBold" FontSize="14"/>
+                            <TextBlock Grid.Row="1"
                                        Text="{Binding UpdateStatus}"
-                                       ToolTip.Tip="{Binding UpdateStatusDetails}"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="340"
+                                       TextWrapping="Wrap"
+                                       FontSize="12"
+                                       Margin="0,4,0,0"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                         </Grid>
                         <CheckBox Content="{Binding Loc[Gui_Settings_Update_AutoCheck]}"
                                   IsChecked="{Binding AutoUpdateEnabled}"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="{Binding Loc[Gui_Settings_ButtonCheckUpdates]}"
+                        <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+                            <Button Grid.Column="0"
+                                    Content="{Binding Loc[Gui_Settings_ButtonCheckUpdates]}"
                                     Command="{Binding CheckUpdatesCommand}"
                                     IsEnabled="{Binding CanCheckUpdates}"
-                                    MinWidth="120"/>
-                            <Button Content="{Binding Loc[Gui_Settings_ButtonUpdateNow]}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Padding="8,10"
+                                    Margin="0,0,4,0"/>
+                            <Button Grid.Column="1"
+                                    Content="{Binding Loc[Gui_Settings_ButtonUpdateNow]}"
                                     Command="{Binding UpdateNowCommand}"
                                     IsEnabled="{Binding CanUpdateNow}"
                                     Classes="accent"
-                                    MinWidth="120"/>
-                        </StackPanel>
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Padding="8,10"
+                                    Margin="4,0,0,0"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Language Settings -->
                 <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
                         BorderThickness="1" 
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel Spacing="12">
+                        CornerRadius="6"
+                        Padding="12">
+                    <StackPanel Spacing="10">
                         <TextBlock Text="{Binding Loc[Gui_Settings_Language_Title]}" FontWeight="SemiBold" FontSize="14"/>
-                        <Grid ColumnDefinitions="120,*">
-                            <TextBlock Text="{Binding Loc[Gui_Settings_Language_Label]}" VerticalAlignment="Center"/>
-                            <ComboBox Grid.Column="1" 
-                                      ItemsSource="{Binding AvailableLanguages}"
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{Binding Loc[Gui_Settings_Language_Label]}" FontSize="12" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <ComboBox ItemsSource="{Binding AvailableLanguages}"
                                       SelectedItem="{Binding SelectedLanguageOption}"
-                                      MinWidth="200">
+                                      HorizontalAlignment="Stretch">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DisplayName}"/>
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                        </Grid>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
+
+                <!-- Bottom spacing for footer -->
+                <Border Height="8"/>
             </StackPanel>
         </ScrollViewer>
 
+        <!-- Footer action bar -->
         <Border Grid.Row="1"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                 BorderThickness="0,1,0,0"
                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                Padding="16">
-            <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
-                <TextBlock Grid.Column="0"
-                           Grid.RowSpan="2"
+                Padding="12,10">
+            <Grid RowDefinitions="Auto,Auto">
+                <!-- Status message -->
+                <TextBlock Grid.Row="0"
                            Text="{Binding StatusMessage}"
                            TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis"
-                           ToolTip.Tip="{Binding StatusMessage}"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                <Button Grid.Column="1"
-                        Grid.Row="0"
-                        Content="{Binding Loc[Gui_Settings_ButtonTestConnections]}"
-                        Command="{Binding TestConnectionsCommand}"
-                        IsEnabled="{Binding !IsTesting}"
-                        Margin="0,0,8,0"
-                        VerticalAlignment="Top"/>
-                <Button Grid.Column="2"
-                        Grid.Row="0"
-                        Content="{Binding Loc[Gui_Common_Apply]}"
-                        Command="{Binding ApplySettingsCommand}"
-                        Classes="accent"
-                        VerticalAlignment="Top"/>
+                           FontSize="12"
+                           Margin="0,0,0,8"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <!-- Action buttons -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                    <Button Grid.Column="0"
+                            Content="{Binding Loc[Gui_Settings_ButtonTestConnections]}"
+                            Command="{Binding TestConnectionsCommand}"
+                            IsEnabled="{Binding !IsTesting}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="8,10"
+                            Margin="0,0,4,0"/>
+                    <Button Grid.Column="1"
+                            Content="{Binding Loc[Gui_Common_Apply]}"
+                            Command="{Binding ApplySettingsCommand}"
+                            Classes="accent"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="8,10"
+                            Margin="4,0,0,0"/>
+                </Grid>
             </Grid>
         </Border>
     </Grid>

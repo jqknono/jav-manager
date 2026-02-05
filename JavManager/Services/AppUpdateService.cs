@@ -19,7 +19,7 @@ public sealed class AppUpdateService : IDisposable
         _config = config;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(AppInfo.Name, AppInfo.Version));
+        AddUserAgentSafe(_httpClient, AppInfo.Name, AppInfo.Version);
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
     }
@@ -298,6 +298,31 @@ public sealed class AppUpdateService : IDisposable
     {
         PropertyNameCaseInsensitive = true
     };
+
+    private static void AddUserAgentSafe(HttpClient httpClient, string appName, string? appVersion)
+    {
+        var name = string.IsNullOrWhiteSpace(appName) ? "JavManager" : appName.Trim();
+        var version = string.IsNullOrWhiteSpace(appVersion) ? "0.0.0" : appVersion.Trim();
+
+        // Ensure the version is a valid token for ProductInfoHeaderValue (be conservative).
+        // Keep only the SemVer core part (drop +metadata), and remove whitespace.
+        var plus = version.IndexOf('+', StringComparison.Ordinal);
+        if (plus >= 0)
+            version = version[..plus];
+        version = version.Replace(" ", string.Empty);
+        if (string.IsNullOrWhiteSpace(version))
+            version = "0.0.0";
+
+        try
+        {
+            httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(name, version));
+        }
+        catch
+        {
+            // Fallback without strict validation.
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", $"{name}/{version}");
+        }
+    }
 
     public sealed record AppUpdateAsset(string Name, Uri DownloadUrl, long Size, bool IsZip);
 

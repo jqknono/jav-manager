@@ -204,6 +204,20 @@ public partial class SearchViewModel : ViewModelBase
             StatusMessage = _loc.Get("Gui_Search_StatusSelectRemoteResult");
     }
 
+    [RelayCommand]
+    private void SelectCandidate(JavSearchResult? candidate)
+    {
+        if (candidate != null)
+            SelectedCandidate = candidate;
+    }
+
+    [RelayCommand]
+    private void SelectTorrent(TorrentInfo? torrent)
+    {
+        if (torrent != null)
+            SelectedTorrent = torrent;
+    }
+
     private async Task LoadRemoteDetailAsync(JavSearchResult candidate)
     {
         var version = ++_remoteDetailLoadVersion;

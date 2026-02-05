@@ -25,6 +25,17 @@ class Program
     private static LocalizationService? _loc;
     private static TelemetryService? _telemetry;
 
+    static bool IsVsCodeConsoleHost()
+    {
+        var termProgram = Environment.GetEnvironmentVariable("TERM_PROGRAM");
+        if (termProgram != null && termProgram.Equals("vscode", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Additional common VS Code env vars (tasks/debug).
+        return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSCODE_PID")) ||
+               !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSCODE_CWD"));
+    }
+
     static bool IsValidJavId(string javId)
         => System.Text.RegularExpressions.Regex.IsMatch(
             javId,
@@ -42,6 +53,25 @@ class Program
         catch
         {
             // ignore: some hosts may not allow changing console encodings
+        }
+    }
+
+    static void ConfigureGuiCtrlCHandling()
+    {
+        // When running the Avalonia GUI via `dotnet run`, the process is hosted by a console app.
+        // Pressing Ctrl+C in that console sends a cancel signal that terminates the process unless handled,
+        // which looks like the GUI "unexpectedly" exiting. In GUI mode, prefer letting users close the
+        // window normally instead of treating Ctrl+C as app termination.
+        try
+        {
+            Console.CancelKeyPress += (_, e) =>
+            {
+                e.Cancel = true;
+            };
+        }
+        catch
+        {
+            // ignore: may not have a console / host may not support CancelKeyPress
         }
     }
 
@@ -152,6 +182,20 @@ class Program
             // GUI mode
             if (runGui)
             {
+                // When the GUI is launched from a console host (e.g., `dotnet run` / VS Code tasks),
+                // Ctrl+C can be interpreted as a termination request by the host/framework.
+                // Swallow it so it doesn't unexpectedly close the GUI.
+                ConfigureGuiCtrlCHandling();
+
+                // VS Code tasks/debug can tear down the process tree on Ctrl+C. Detach to keep the GUI alive.
+                if (IsVsCodeConsoleHost() &&
+                    OperatingSystem.IsWindows() &&
+                    !(Console.IsInputRedirected || Console.IsOutputRedirected || Console.IsErrorRedirected))
+                {
+                    ConsoleHost.IgnoreCtrlC();
+                    ConsoleHost.DetachConsoleIfAttached();
+                }
+
                 var guiHost = CreateHostBuilder(config, _loc, includeGuiServices: true).Build();
                 var guiServices = guiHost.Services;
 
@@ -159,7 +203,7 @@ class Program
                 var guiCacheProvider = guiServices.GetService<IJavLocalCacheProvider>();
                 if (guiCacheProvider != null)
                 {
-                    await guiCacheProvider.InitializeAsync();
+                    guiCacheProvider.InitializeAsync().GetAwaiter().GetResult();
                 }
 
                 // Run GUI

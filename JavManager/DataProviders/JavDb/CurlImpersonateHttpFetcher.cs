@@ -1,5 +1,6 @@
 using JavManager.Core.Configuration.ConfigSections;
 using JavManager.Core.Interfaces;
+using JavManager.Utils;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -155,32 +156,40 @@ public sealed class CurlImpersonateHttpFetcher : IJavDbHttpFetcher
             if (_initialized)
                 return;
 
-            var libraryCandidates = BuildLibraryCandidates(_config.CurlImpersonate.LibraryPath);
-            foreach (var candidate in libraryCandidates)
+            try
             {
-                if (string.IsNullOrWhiteSpace(candidate))
-                    continue;
-
-                if (!NativeLibrary.TryLoad(candidate, out _libHandle))
-                    continue;
-
-                if (!TryBindExports(_libHandle))
+                var libraryCandidates = BuildLibraryCandidates(_config.CurlImpersonate.LibraryPath);
+                foreach (var candidate in libraryCandidates)
                 {
-                    NativeLibrary.Free(_libHandle);
-                    _libHandle = IntPtr.Zero;
-                    continue;
-                }
+                    if (string.IsNullOrWhiteSpace(candidate))
+                        continue;
 
-                var global = _curl_global_init!.Invoke((long)CurlGlobalFlags.All);
-                if (global != CurlCode.Ok)
-                {
-                    NativeLibrary.Free(_libHandle);
-                    _libHandle = IntPtr.Zero;
-                    continue;
-                }
+                    if (!NativeLibrary.TryLoad(candidate, out _libHandle))
+                        continue;
 
-                _initialized = true;
-                return;
+                    if (!TryBindExports(_libHandle))
+                    {
+                        NativeLibrary.Free(_libHandle);
+                        _libHandle = IntPtr.Zero;
+                        continue;
+                    }
+
+                    var global = _curl_global_init!.Invoke((long)CurlGlobalFlags.All);
+                    if (global != CurlCode.Ok)
+                    {
+                        NativeLibrary.Free(_libHandle);
+                        _libHandle = IntPtr.Zero;
+                        continue;
+                    }
+
+                    _initialized = true;
+                    return;
+                }
+            }
+            catch (PlatformNotSupportedException)
+            {
+                // NativeLibrary APIs are not supported on this platform (e.g., some Android configurations).
+                // Fall back to HttpClient by leaving _initialized = false.
             }
 
             _initialized = false;
@@ -274,11 +283,11 @@ public sealed class CurlImpersonateHttpFetcher : IJavDbHttpFetcher
         {
             var names = new[] { "libcurl-impersonate.so", "libcurl-impersonate-chrome.so" };
             return arch switch
-        {
-            Architecture.X64 => ("linux-x64", names),
-            Architecture.Arm64 => ("linux-arm64", names),
-            _ => ("", names)
-        };
+            {
+                Architecture.X64 => ("linux-x64", names),
+                Architecture.Arm64 => ("linux-arm64", names),
+                _ => ("", names)
+            };
         }
     }
 

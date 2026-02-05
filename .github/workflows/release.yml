@@ -55,7 +55,7 @@ jobs:
             rid: win-x64
           - os: ubuntu-latest
             rid: linux-x64
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             rid: linux-arm64
           - os: macos-15-intel
             rid: osx-x64
@@ -67,11 +67,55 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.meta.outputs.tag }}
+          submodules: recursive
+
+      - name: Install curl-impersonate build deps (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config cmake ninja-build \
+            autoconf automake libtool \
+            ca-certificates curl git \
+            golang-go unzip bzip2 xz-utils \
+            zstd libzstd-dev
+
+      - name: Install curl-impersonate build deps (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install pkg-config make cmake ninja autoconf automake libtool zstd go
+
+      - name: Build libcurl-impersonate (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/build-curl-impersonate.sh "${{ matrix.rid }}"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Run Cross-Platform Integration Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test JavManager.Tests/JavManager.Tests.csproj \
+            --filter "Category=CrossPlatform" \
+            --verbosity normal \
+            --logger "trx;LogFileName=test-results.xml"
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.rid }}
+          path: '**/test-results.xml'
 
       - name: Publish
         shell: bash
@@ -276,7 +320,7 @@ jobs:
             echo "## Assets"
             echo
             echo "- Self-contained single-file binaries: *_sc"
-            echo "- Framework-dependent multi-file bundles: *_fdd (requires .NET 8 runtime)"
+            echo "- Framework-dependent multi-file bundles: *_fdd (requires .NET 10 runtime)"
             echo "- `SHA256SUMS.txt` for verification."
           } > RELEASE_NOTES.md
 

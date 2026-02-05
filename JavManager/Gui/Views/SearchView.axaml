@@ -6,12 +6,13 @@
              x:DataType="vm:SearchViewModel"
              x:Name="Root">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12,8">
         <!-- Search Bar -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
             <TextBox Grid.Column="0" 
                      Text="{Binding SearchQuery}"
                      Watermark="{Binding Loc[Gui_Search_Watermark]}"
+                     FontSize="15"
                      Margin="0,0,8,0">
                 <TextBox.KeyBindings>
                     <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
@@ -22,171 +23,244 @@
                     Command="{Binding SearchCommand}"
                     IsEnabled="{Binding !IsSearching}"
                     Classes="accent"
-                    MinWidth="100"/>
+                    Padding="16,8"/>
         </Grid>
 
-        <!-- Search Options -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-            <CheckBox Grid.Column="0"
-                      Content="{Binding Loc[Gui_Search_OptionRemote]}"
-                      IsChecked="{Binding SearchRemote}"
-                      HorizontalAlignment="Left" />
-            <CheckBox Grid.Column="1"
-                      Content="{Binding Loc[Gui_Search_OptionLocal]}"
-                      IsChecked="{Binding SearchLocal}"
-                      HorizontalAlignment="Right" />
-        </Grid>
+        <!-- Search Options - compact horizontal layout -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="16" Margin="0,0,0,8">
+            <CheckBox Content="{Binding Loc[Gui_Search_OptionRemote]}"
+                      IsChecked="{Binding SearchRemote}"/>
+            <CheckBox Content="{Binding Loc[Gui_Search_OptionLocal]}"
+                      IsChecked="{Binding SearchLocal}"/>
+        </StackPanel>
 
-        <!-- Results Area -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*">
-            <!-- Remote Results / Torrents (two-step) -->
-            <Border Grid.Column="0" 
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="4"
-                    Margin="0,0,8,0">
-                <Grid RowDefinitions="Auto,*">
-                    <!-- Remote candidates header -->
-                    <TextBlock Grid.Row="0"
-                               Text="{Binding Loc[Gui_Search_SectionRemoteResults]}"
-                               FontWeight="SemiBold"
-                               Margin="12,8"
-                               IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}"/>
-
-                    <!-- Torrents header -->
-                    <Grid Grid.Row="0"
-                          RowDefinitions="Auto,Auto"
-                          ColumnDefinitions="*,Auto"
-                          Margin="12,8"
-                          IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <!-- Results Area - stacked on narrow, side-by-side on wide -->
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                <!-- Remote Results / Torrents Section -->
+                <Border x:Name="RemoteSection"
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="6"
+                        IsVisible="{Binding SearchRemote}">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <!-- Remote candidates header -->
                         <TextBlock Grid.Row="0"
-                                   Grid.Column="0"
-                                   Text="{Binding Loc[Gui_Search_SectionTorrents]}"
+                                   Text="{Binding Loc[Gui_Search_SectionRemoteResults]}"
                                    FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
-                        <Button Grid.Row="0"
-                                Grid.Column="1"
-                                Content="{Binding Loc[Gui_Common_Back]}"
-                                Command="{Binding BackToResultsCommand}"
-                                Margin="8,0,0,0"/>
-                        <TextBlock Grid.Row="1"
-                                   Grid.ColumnSpan="2"
-                                   Text="{Binding Loc[Gui_Search_TorrentMarkersHint]}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                   Margin="0,4,0,0"/>
+                                   FontSize="14"
+                                   Margin="12,10"
+                                   IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}"/>
+
+                        <!-- Torrents header with back button -->
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              Margin="12,8"
+                              IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding Loc[Gui_Search_SectionTorrents]}"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"/>
+                                <TextBlock Text="{Binding Loc[Gui_Search_TorrentMarkersHint]}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="{Binding Loc[Gui_Common_Back]}"
+                                    Command="{Binding BackToResultsCommand}"
+                                    Padding="12,6"
+                                    VerticalAlignment="Top"/>
+                        </Grid>
+
+                        <!-- Remote candidates list -->
+                        <ItemsControl Grid.Row="1"
+                                      ItemsSource="{Binding RemoteCandidates}"
+                                      IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="12,10"
+                                            Command="{Binding $parent[views:SearchView].((vm:SearchViewModel)DataContext).SelectCandidateCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding JavId}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource SystemAccentColor}"
+                                                       MinWidth="85"
+                                                       Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Title}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       TextWrapping="NoWrap"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Torrents list -->
+                        <ItemsControl Grid.Row="1" 
+                                      ItemsSource="{Binding SearchResults}"
+                                      IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="12,8"
+                                            Command="{Binding $parent[views:SearchView].((vm:SearchViewModel)DataContext).SelectTorrentCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="4">
+                                            <!-- Title row -->
+                                            <TextBlock Text="{Binding Title}" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       TextWrapping="NoWrap"
+                                                       FontSize="13"/>
+                                            <!-- Tags and size row -->
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Border IsVisible="{Binding HasUncensoredMarker}" 
+                                                        Background="#1E7A1E" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="UC" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                                <Border IsVisible="{Binding HasSubtitle}" 
+                                                        Background="#1E6BB8" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="SUB" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                                <Border IsVisible="{Binding HasHd}" 
+                                                        Background="#D97706" CornerRadius="3" Padding="6,2">
+                                                    <TextBlock Text="HD" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding SizeDisplay}" 
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Margin="4,0,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Grid>
+                </Border>
 
-                    <!-- Remote candidates list -->
-                    <ListBox Grid.Row="1"
-                             ItemsSource="{Binding RemoteCandidates}"
-                             SelectedItem="{Binding SelectedCandidate}"
-                             SelectionMode="Single"
-                             IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNull}}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,*" Margin="4">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding JavId}"
-                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                               Width="90"
-                                               TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Title}"
-                                               TextTrimming="CharacterEllipsis"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                <!-- Local Files Section -->
+                <Border x:Name="LocalSection"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="6"
+                        IsVisible="{Binding SearchLocal}">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" 
+                                   Text="{Binding Loc[Gui_Search_SectionLocalFiles]}" 
+                                   FontWeight="SemiBold" 
+                                   FontSize="14"
+                                   Margin="12,10"/>
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding LocalFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,8"
+                                            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                            BorderThickness="0,1,0,0">
+                                        <Grid RowDefinitions="Auto,Auto">
+                                            <TextBlock Grid.Row="0" 
+                                                       Text="{Binding FileName}" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       FontSize="13"/>
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding SizeDisplay}" 
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                           FontSize="12"/>
+                                                <Button Content="{Binding ViewModel.Loc[Gui_Common_OpenFolder], RelativeSource={RelativeSource AncestorType=views:SearchView}}"
+                                                        Command="{Binding ViewModel.OpenLocalFileFolderCommand, RelativeSource={RelativeSource AncestorType=views:SearchView}}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="8,4"
+                                                        FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+            </Grid>
+        </ScrollViewer>
 
-                    <!-- Torrents list -->
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding SearchResults}"
-                             SelectedItem="{Binding SelectedTorrent}"
-                             SelectionMode="Single"
-                             IsVisible="{Binding SelectedCandidate, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="4">
-                                    <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="1" Text="UC" IsVisible="{Binding HasUncensoredMarker}" 
-                                               Foreground="Green" FontWeight="Bold" Margin="8,0"/>
-                                    <TextBlock Grid.Column="2" Text="SUB" IsVisible="{Binding HasSubtitle}" 
-                                               Foreground="Blue" FontWeight="Bold" Margin="8,0"/>
-                                    <TextBlock Grid.Column="3" Text="HD" IsVisible="{Binding HasHd}" 
-                                               Foreground="Orange" FontWeight="Bold" Margin="8,0"/>
-                                    <TextBlock Grid.Column="4" Text="{Binding SizeDisplay}" 
-                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                               Width="70" TextAlignment="Right"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
-
-            <!-- Local Files -->
-            <Border Grid.Column="1" 
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" 
-                    BorderThickness="1" 
-                    CornerRadius="4"
-                    Margin="8,0,0,0">
-                <Grid RowDefinitions="Auto,*">
-                    <TextBlock Grid.Row="0" Text="{Binding Loc[Gui_Search_SectionLocalFiles]}" FontWeight="SemiBold" Margin="12,8"/>
-                    <ListBox Grid.Row="1" 
-                             ItemsSource="{Binding LocalFiles}"
-                             SelectionMode="Single">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="4">
-                                    <TextBlock Grid.Column="0" Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" 
-                                               Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                               Width="70" TextAlignment="Right"/>
-                                    <Button Grid.Column="2"
-                                            Content="{Binding ViewModel.Loc[Gui_Common_OpenFolder], RelativeSource={RelativeSource AncestorType=views:SearchView}}"
-                                            Command="{Binding ViewModel.OpenLocalFileFolderCommand, RelativeSource={RelativeSource AncestorType=views:SearchView}}"
-                                            CommandParameter="{Binding}"
-                                            Margin="8,0,0,0"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- Bottom Action Bar -->
-        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" Margin="0,12,0,0">
-            <TextBlock Grid.Column="0"
-                       Grid.RowSpan="2"
-                       Text="{Binding StatusMessage}"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="{Binding StatusMessage}"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <Button Grid.Column="1"
-                    Grid.Row="0"
-                    Content="{Binding Loc[Gui_Search_ButtonCopyMagnet]}"
-                    Command="{Binding CopyMagnetLinkCommand}"
-                    IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Top"/>
-            <Button Grid.Column="2"
-                    Grid.Row="0"
-                    Content="{Binding Loc[Gui_Search_ButtonDownload]}"
-                    Command="{Binding DownloadSelectedCommand}"
-                    IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Classes="accent"
-                    VerticalAlignment="Top"/>
-        </Grid>
+        <!-- Bottom Action Bar - mobile optimized -->
+        <Border Grid.Row="3" 
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0"
+                Margin="-12,8,-12,0"
+                Padding="12,10">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*">
+                <!-- Status message -->
+                <TextBlock Grid.Row="0"
+                           Grid.ColumnSpan="2"
+                           Text="{Binding StatusMessage}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           FontSize="12"
+                           Margin="0,0,0,8"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <!-- Action buttons - full width on mobile -->
+                <Button Grid.Row="1"
+                        Grid.Column="0"
+                        Content="{Binding Loc[Gui_Search_ButtonCopyMagnet]}"
+                        Command="{Binding CopyMagnetLinkCommand}"
+                        IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="8,10"
+                        Margin="0,0,4,0"/>
+                <Button Grid.Row="1"
+                        Grid.Column="1"
+                        Content="{Binding Loc[Gui_Search_ButtonDownload]}"
+                        Command="{Binding DownloadSelectedCommand}"
+                        IsEnabled="{Binding SelectedTorrent, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        Classes="accent"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="8,10"
+                        Margin="4,0,0,0"/>
+            </Grid>
+        </Border>
     </Grid>
 
     <UserControl.Styles>
         <Style Selector="Button.accent">
             <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
             <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Spacing between sections when stacked -->
+        <Style Selector="UserControl#Root.has-local Border#RemoteSection">
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- Two-pane layout on wide screens (remote + local side-by-side) -->
+        <Style Selector="UserControl#Root.two-pane Border#RemoteSection">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Grid.ColumnSpan" Value="1"/>
+        </Style>
+        <Style Selector="UserControl#Root.two-pane Border#LocalSection">
+            <Setter Property="Grid.Row" Value="0"/>
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Grid.ColumnSpan" Value="1"/>
         </Style>
     </UserControl.Styles>
 </UserControl>

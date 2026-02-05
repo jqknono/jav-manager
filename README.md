@@ -8,8 +8,8 @@ A lightweight GUI + CLI tool for automated JAV content management with fast repe
 
 ## Features
 
-- GUI (Avalonia) and console mode (Spectre.Console)
-- Multilingual GUI (English, Chinese, Japanese, Korean)
+- GUI (local web UI) and console mode (Node.js)
+- Multilingual UI (English, Chinese)
 - Search JAV metadata and torrents/magnets from JavDB
 - Check local files via Everything search engine
 - Download via qBittorrent WebUI API
@@ -126,7 +126,7 @@ Configuration reference:
 | LocalCache | `Enabled` | No (optional) | `true` | Enable or disable local cache storage. |
 | LocalCache | `DatabasePath` | No (optional) | _(empty)_ | JSON cache file path (leave empty for default `jav_cache.json` next to executable). |
 | LocalCache | `CacheExpirationDays` | No (optional) | `0` | Cache TTL in days (0 disables expiration). |
-| Console | `Language` | No (optional) | `en` | UI language (`en`, `zh`, or `auto`). |
+| Console | `Language` | No (optional) | `en` | UI language (`en` or `zh`). |
 | Console | `HideOtherTorrents` | No (optional) | `true` | Hide non-matching torrents in list. |
 | Telemetry | `Enabled` | No (optional) | `true` | Enable or disable anonymous telemetry. |
 | Telemetry | `Endpoint` | No (optional) | `https://jav-manager.techfetch.dev` | Base endpoint (the app posts to `/api/telemetry` and `/api/javinfo`). |
@@ -141,50 +141,33 @@ Notes:
 ## Usage
 
 ```bash
+# Install dependencies (once)
+cd JavManager
+npm install
+
 # GUI (default when no args)
-dotnet run --project JavManager/JavManager.csproj
+npm run gui
 
 # Console (interactive)
-dotnet run --project JavManager/JavManager.csproj -- --no-gui
+npm run cli
 
 # Console (non-interactive)
-dotnet run --project JavManager/JavManager.csproj -- STARS-001
+npm run cli -- STARS-001
 
 # Show help
-dotnet run --project JavManager/JavManager.csproj -- help
+npm run cli -- help
 
 # Show version
-dotnet run --project JavManager/JavManager.csproj -- version
+npm run cli -- version
 ```
-
-For console commands, run `dotnet run --project JavManager/JavManager.csproj -- help`.
 
 ## Build & Package
 
 ```bash
 # Build
-dotnet build JavManager/JavManager.csproj
+cd JavManager
+npm run build
 
-# Run tests
-dotnet test JavManager.Tests/JavManager.Tests.csproj
-
-# Publish (multi-RID, self-contained, outputs to artifacts/publish/<rid>/)
-pwsh scripts/publish.ps1
-# or
-bash scripts/publish.sh
-
-# Install to PATH (Windows)
-pwsh scripts/install-windows.ps1 -AddToPath
-```
-
-### Android (experimental)
-
-Android build is opt-in (so desktop builds don’t require the Android workload).
-
-```bash
-# Install workload (once)
-dotnet workload install android
-
-# Build Android target (requires Android SDK/JDK configured)
-dotnet build JavManager/JavManager.csproj -c Debug -f net10.0-android -p:EnableAndroid=true
+# Run (compiled)
+npm run start
 ```

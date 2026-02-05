@@ -13,7 +13,8 @@ public class JavDbConfig
 
     /// <summary>
     /// Use curl-impersonate to mimic real browser TLS/HTTP2 fingerprints (no browser automation).
-    /// Requires curl-impersonate to be installed on the machine.
+    /// Requires the native libcurl-impersonate library to be available at runtime
+    /// (bundled in official releases; otherwise provide/install it manually).
     /// </summary>
     public CurlImpersonateConfig CurlImpersonate { get; set; } = new();
 

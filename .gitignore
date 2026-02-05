@@ -1,6 +1,8 @@
 JavManager/obj/
 JavManager/bin/Debug/
 JavManager/bin/Release/
+JavManager/dist/
+JavManager/.tsbuildinfo
 JavManager.Tests/obj/
 JavManager.Tests/bin/Debug/
 JavManager.Tests/bin/Release/
@@ -24,3 +26,4 @@ Directory.Build.props.local
 *.db
 *.db-shm
 *.db-wal
+

@@ -7,7 +7,6 @@ using JavManager.Utils;
 using Spectre.Console;
 using System.Net;
 using System.Net.Http;
-using System.Security.Authentication;
 
 namespace JavManager.DataProviders.JavDb;
 
@@ -209,33 +208,93 @@ public class JavDbWebScraper : IJavDbDataProvider, IHealthChecker
 
     private static HttpClient CreateHttpClient(CookieContainer cookieContainer, int timeoutMs)
     {
-        var handler = new SocketsHttpHandler
+        HttpMessageHandler handler;
+        try
         {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-            AllowAutoRedirect = true,
-            MaxAutomaticRedirections = 10,
-            UseCookies = true,
-            CookieContainer = cookieContainer,
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            // 使用 HTTP/1.1：Cloudflare 对 HTTP/1.1 的指纹检测较宽松
-            // HTTP/2 的 SETTINGS 帧顺序等特征容易被检测
-            EnableMultipleHttp2Connections = false,
-            SslOptions = new System.Net.Security.SslClientAuthenticationOptions
-            {
-                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13
-            }
-        };
+            handler = CreateSocketsHttpHandler(cookieContainer);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            handler = CreatePortableHttpHandler(cookieContainer);
+        }
 
         var client = new HttpClient(handler)
         {
             Timeout = TimeSpan.FromMilliseconds(timeoutMs)
         };
-        // 强制 HTTP/1.1 以避免 HTTP/2 指纹检测
-        client.DefaultRequestVersion = HttpVersion.Version11;
-        client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
+
+        // Request HTTP/1.1 to avoid HTTP/2 fingerprinting.
+        // Note: DefaultVersionPolicy is not supported on all platforms (e.g., Android).
+        try
+        {
+            client.DefaultRequestVersion = HttpVersion.Version11;
+            client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // Ignore; proceed with default HTTP version settings.
+        }
+
         return client;
+    }
+
+    private static HttpMessageHandler CreateSocketsHttpHandler(CookieContainer cookieContainer)
+    {
+        SocketsHttpHandler handler;
+        try
+        {
+            handler = new SocketsHttpHandler();
+        }
+        catch (PlatformNotSupportedException)
+        {
+            throw;
+        }
+
+        try
+        {
+            handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        }
+
+        handler.AllowAutoRedirect = true;
+        handler.MaxAutomaticRedirections = 10;
+        handler.UseCookies = true;
+        handler.CookieContainer = cookieContainer;
+
+        try { handler.ConnectTimeout = TimeSpan.FromSeconds(15); } catch (PlatformNotSupportedException) { }
+        try { handler.PooledConnectionLifetime = TimeSpan.FromMinutes(5); } catch (PlatformNotSupportedException) { }
+        try { handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2); } catch (PlatformNotSupportedException) { }
+
+        // Prefer HTTP/1.1 behavior.
+        try { handler.EnableMultipleHttp2Connections = false; } catch (PlatformNotSupportedException) { }
+
+        // Do not force specific TLS versions here; some platforms do not support explicit protocol selection.
+        return handler;
+    }
+
+    private static HttpMessageHandler CreatePortableHttpHandler(CookieContainer cookieContainer)
+    {
+        var handler = new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 10,
+            UseCookies = true,
+            CookieContainer = cookieContainer
+        };
+
+        try
+        {
+            handler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // Ignore; proceed without decompression.
+        }
+
+        return handler;
     }
 
     private static List<string> BuildUserAgentCandidates(JavDbConfig config)

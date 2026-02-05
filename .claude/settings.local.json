@@ -3,7 +3,10 @@
     "allow": [
       "Bash(dotnet build:*)",
       "Bash(taskkill:*)",
-      "Bash(dotnet add:*)"
+      "Bash(dotnet add:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dir:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

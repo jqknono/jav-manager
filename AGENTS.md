@@ -22,7 +22,7 @@ Requires .NET SDK `10.0`.
 - Run (non-interactive): `dotnet run --project JavManager/JavManager.csproj -- STARS-001`
 - Help/version: `dotnet run --project JavManager/JavManager.csproj -- help` / `-- version`
 - Tests: `dotnet test JavManager.Tests/JavManager.Tests.csproj`
-- Publish (local): `pwsh scripts/publish.ps1` or `bash scripts/publish.sh` (outputs to `artifacts/publish/<rid>/`)
+- Publish (local): `pwsh scripts/publish.ps1` (outputs to `artifacts/publish/<rid>/`)
 
 ## Documentation Guidelines
 

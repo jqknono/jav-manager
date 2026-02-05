@@ -510,6 +510,18 @@ public partial class SettingsViewModel : ViewModelBase
         await CheckUpdatesInternalAsync(showToasts: false);
     }
 
+    public async Task PerformUpdateCheckIfEnabledSafeAsync()
+    {
+        try
+        {
+            await PerformUpdateCheckIfEnabledAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // Never crash the app due to background update checks (especially on mobile).
+        }
+    }
+
     private void InitializeUpdateStatus()
     {
         if (!_updateConfig.Enabled)

@@ -170,8 +170,6 @@ dotnet test JavManager.Tests/JavManager.Tests.csproj
 
 # 公開（マルチRID、自己完結型、出力先はartifacts/publish/<rid>/）
 pwsh scripts/publish.ps1
-# または
-bash scripts/publish.sh
 
 # PATHにインストール（Windows）
 pwsh scripts/install-windows.ps1 -AddToPath
