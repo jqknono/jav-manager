@@ -1,10 +1,19 @@
 import { TorrentInfo } from "../models";
 
+const UC_SCORE = 5;
+const SUB_SCORE = 3;
+const HD_SCORE = 1;
+const titleUncensoredRegex = /-(?:UC|U)(?=$|[^A-Za-z0-9])/i;
+
 export function calculateWeight(torrent: TorrentInfo): number {
+  const hasUncensored = torrent.hasUncensoredMarker || titleUncensoredRegex.test(torrent.title);
   let score = 0;
-  if (torrent.hasHd) score += 1;
-  if (torrent.hasUncensoredMarker) score += 1;
-  if (torrent.hasSubtitle) score += 1;
+  if (hasUncensored) score += UC_SCORE;
+  if (torrent.hasSubtitle) score += SUB_SCORE;
+  if (torrent.hasHd) score += HD_SCORE;
+
+  // Keep derived field consistent with marker fallback, so downstream logic uses the same view.
+  torrent.hasUncensoredMarker = hasUncensored;
   torrent.weightScore = score;
   return score;
 }
@@ -17,18 +26,12 @@ export function calculateAndSort(torrents: TorrentInfo[]): TorrentInfo[] {
   return torrents
     .slice()
     .sort((a, b) => {
-      if (a.hasUncensoredMarker !== b.hasUncensoredMarker) {
-        return a.hasUncensoredMarker ? -1 : 1;
-      }
-      if (a.hasSubtitle !== b.hasSubtitle) {
-        return a.hasSubtitle ? -1 : 1;
-      }
-      if (a.hasHd !== b.hasHd) {
-        return a.hasHd ? -1 : 1;
-      }
       if (a.weightScore !== b.weightScore) {
         return b.weightScore - a.weightScore;
       }
-      return b.size - a.size;
+      if (a.size !== b.size) {
+        return b.size - a.size;
+      }
+      return a.title.localeCompare(b.title);
     });
 }

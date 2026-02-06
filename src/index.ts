@@ -7,7 +7,7 @@ import { JavDbWebScraper } from "./data/javdb";
 import { QBittorrentApiClient } from "./data/qbittorrent";
 import { runCli } from "./cli";
 import { startGuiServer } from "./gui";
-import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, TorrentSelectionService } from "./services";
+import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, TelemetryService, TorrentSelectionService } from "./services";
 
 const rawArgs = process.argv.slice(2);
 const { overrides, remaining } = extractOverrides(rawArgs);
@@ -15,6 +15,7 @@ const config = loadConfig(overrides);
 const loc = new LocalizationService(config.console.language);
 const context = createAppContext(config, loc);
 const args = filterGuiArgs(remaining);
+context.services.telemetryService.trackStartup();
 
 if (shouldRunGui(remaining)) {
   startGuiServer(context);
@@ -32,6 +33,7 @@ function createAppContext(config: AppConfig, loc: LocalizationService): AppConte
   const localFileCheckService = new LocalFileCheckService(everythingProvider);
   const downloadService = new DownloadService(qbClient, config.download);
   const telemetryClient = new JavInfoTelemetryClient(config.telemetry);
+  const telemetryService = new TelemetryService(config.telemetry);
   const javSearchService = new JavSearchService(
     javDbProvider,
     torrentSelectionService,
@@ -59,6 +61,7 @@ function createAppContext(config: AppConfig, loc: LocalizationService): AppConte
       javSearchService,
       healthCheckService,
       telemetryClient,
+      telemetryService,
     },
   };
 }

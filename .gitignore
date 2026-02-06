@@ -27,3 +27,4 @@ Directory.Build.props.local
 *.db-shm
 *.db-wal
 
+src/jav_cache.json

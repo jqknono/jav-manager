@@ -349,22 +349,37 @@ function parseDetailPage(html) {
     if (!javId) {
         javId = extractJavIdFromText(title) ?? "";
     }
-    const coverUrl = $("img.video-cover").first().attr("src") ?? "";
-    const releaseDate = parseMetaField($, ["發行日期", "日期"]);
-    const duration = parseDuration(parseMetaField($, ["時長", "片長"]));
-    const director = parseMetaField($, ["導演"]);
-    const maker = parseMetaField($, ["片商"]);
-    const publisher = parseMetaField($, ["發行"]);
-    const series = parseMetaField($, ["系列"]);
+    const coverNode = $("img.video-cover").first();
+    const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
+    const releaseDate = parseMetaField($, ["發行日期", "发行日期", "發布日期", "発売日", "Release Date", "日期"]);
+    const duration = parseDuration(parseMetaField($, ["時長", "时长", "片長", "片长", "収録時間", "Duration"]));
+    const director = parseMetaField($, ["導演", "导演", "監督", "Director"]);
+    const maker = parseMetaField($, ["片商", "製作商", "制作商", "メーカー", "Maker", "Studio"]);
+    const publisher = parseMetaField($, ["發行", "发行", "レーベル", "Publisher", "Label"]);
+    const series = parseMetaField($, ["系列", "シリーズ", "Series"]);
     const actors = parseList($, [
         "div.video-meta-panel strong:contains('演員') ~ span a",
+        "div.video-meta-panel strong:contains('演员') ~ span a",
+        "div.video-meta-panel strong:contains('出演者') ~ span a",
         "div.panel-block strong:contains('演員') ~ span a",
+        "div.panel-block strong:contains('演员') ~ span a",
+        "div.panel-block strong:contains('出演者') ~ span a",
         "div.panel-block strong:contains('演員') ~ a",
+        "div.panel-block strong:contains('演员') ~ a",
+        "div.panel-block strong:contains('出演者') ~ a",
+        "div.panel-block a[href*='/actors/']",
     ]);
     const categories = parseList($, [
         "div.video-meta-panel strong:contains('類別') ~ span a",
+        "div.video-meta-panel strong:contains('类别') ~ span a",
+        "div.video-meta-panel strong:contains('ジャンル') ~ span a",
         "div.panel-block strong:contains('類別') ~ span a",
+        "div.panel-block strong:contains('类别') ~ span a",
+        "div.panel-block strong:contains('ジャンル') ~ span a",
         "div.panel-block strong:contains('類別') ~ a",
+        "div.panel-block strong:contains('类别') ~ a",
+        "div.panel-block strong:contains('ジャンル') ~ a",
+        "div.panel-block a[href*='/tags/']",
     ]);
     return {
         javId,
@@ -394,14 +409,23 @@ function parseMetaField($, keywords) {
             `div.panel-block strong:contains('${keyword}') ~ a`,
         ];
         for (const selector of selectors) {
-            const node = $(selector).first();
-            const text = normalizeInlineText(node.text());
-            if (text && text !== "N/A" && text !== "-") {
-                return text;
+            const nodes = $(selector);
+            for (const node of nodes.toArray()) {
+                const text = normalizeInlineText($(node).text());
+                if (isMeaningfulMetaText(text)) {
+                    return text;
+                }
             }
         }
     }
     return "";
+}
+function isMeaningfulMetaText(text) {
+    if (!text) {
+        return false;
+    }
+    const normalized = text.trim().toLowerCase();
+    return normalized !== "n/a" && normalized !== "-" && normalized !== "--";
 }
 function parseDuration(text) {
     if (!text) {

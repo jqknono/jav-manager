@@ -1,10 +1,13 @@
 import fs from "fs";
+import os from "os";
 import { DownloadConfig, TelemetryConfig } from "./config";
 import { IEverythingSearchProvider, IHealthChecker, IJavDbDataProvider, IJavLocalCacheProvider, IQBittorrentClient } from "./interfaces";
 import { CacheStatistics, FileType, HealthCheckResult, JavSearchResult, LocalFileInfo, TorrentInfo } from "./models";
 import { LocalizationService } from "./localization";
 import { calculateAndSort } from "./utils/weightCalculator";
 import { normalizeJavId } from "./utils/torrentNameParser";
+import { getVersion } from "./utils/appInfo";
+import { getJavInfoPostUrl, getTelemetryPostUrl } from "./utils/telemetryEndpoints";
 
 export class ServiceAvailability {
   private lock = new Object();
@@ -157,21 +160,210 @@ export interface JavSearchProcessResult {
 
 export class JavInfoTelemetryClient {
   private config: TelemetryConfig;
+  private endpoint: string;
 
   constructor(config: TelemetryConfig) {
     this.config = config;
+    this.endpoint = getJavInfoPostUrl(config.endpoint);
   }
 
   tryReport(result: JavSearchResult): void {
-    if (!this.config.enabled || !this.config.endpoint) {
+    if (!this.config.enabled) {
       return;
     }
-    void fetch(`${this.config.endpoint.replace(/\/+$/, "")}/api/javinfo`, {
+    const javId = normalizeTelemetryText(result.javId);
+    if (!javId) {
+      return;
+    }
+
+    const payload = {
+      jav_id: javId,
+      title: normalizeTelemetryText(result.title),
+      cover_url: normalizeTelemetryText(result.coverUrl),
+      release_date: normalizeTelemetryDate(result.releaseDate),
+      duration: result.duration > 0 ? result.duration : null,
+      director: normalizeTelemetryText(result.director),
+      maker: normalizeTelemetryText(result.maker),
+      publisher: normalizeTelemetryText(result.publisher),
+      series: normalizeTelemetryText(result.series),
+      actors: normalizeTelemetryList(result.actors),
+      categories: normalizeTelemetryList(result.categories),
+      torrents: normalizeTelemetryTorrents(result.torrents),
+      detail_url: normalizeTelemetryText(result.detailUrl),
+    };
+
+    void fetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(result),
+      body: JSON.stringify(payload),
     }).catch(() => undefined);
   }
+}
+
+export class TelemetryService {
+  private enabled: boolean;
+  private endpoint: string;
+  private info: {
+    machineName: string;
+    userName: string;
+    appVersion: string;
+    osInfo: string;
+  };
+
+  constructor(config: TelemetryConfig) {
+    this.enabled = config.enabled;
+    this.endpoint = getTelemetryPostUrl(config.endpoint);
+    this.info = {
+      machineName: getMachineNameSafe(),
+      userName: getUserNameSafe(),
+      appVersion: getVersion(),
+      osInfo: getOsInfo(),
+    };
+  }
+
+  trackStartup(): void {
+    this.sendEvent("startup", null);
+  }
+
+  trackSearch(searchTerm?: string): void {
+    this.sendEvent("search", searchTerm ? `term:${searchTerm}` : null);
+  }
+
+  trackDownload(javId?: string): void {
+    this.sendEvent("download", javId ? `jav:${javId}` : null);
+  }
+
+  trackEvent(eventType: string, eventData?: string | null): void {
+    this.sendEvent(eventType, eventData ?? null);
+  }
+
+  private sendEvent(eventType: string, eventData: string | null): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    const payload = {
+      machine_name: this.info.machineName,
+      user_name: this.info.userName,
+      app_version: this.info.appVersion,
+      os_info: this.info.osInfo,
+      event_type: eventType,
+      event_data: eventData,
+    };
+
+    // Fire-and-forget: telemetry should never block main workflow.
+    void fetch(this.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => undefined);
+  }
+}
+
+function getMachineNameSafe(): string {
+  const fromEnv = process.env.COMPUTERNAME || process.env.HOSTNAME;
+  if (fromEnv && fromEnv.trim()) {
+    return fromEnv.trim();
+  }
+  try {
+    const host = os.hostname();
+    if (host && host.trim()) {
+      return host.trim();
+    }
+  } catch {
+    // ignore
+  }
+  return `machine-${randomId()}`;
+}
+
+function getUserNameSafe(): string {
+  const fromEnv = process.env.USERNAME || process.env.USER;
+  if (fromEnv && fromEnv.trim()) {
+    return fromEnv.trim();
+  }
+  try {
+    const user = os.userInfo().username;
+    if (user && user.trim()) {
+      return user.trim();
+    }
+  } catch {
+    // ignore
+  }
+  return `user-${randomId()}`;
+}
+
+function getOsInfo(): string {
+  try {
+    return `${os.platform()} ${os.release()}`;
+  } catch {
+    return "unknown";
+  }
+}
+
+function randomId(): string {
+  return Math.random().toString(16).slice(2, 10);
+}
+
+function normalizeTelemetryText(value?: string | null): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeTelemetryDate(value?: string | null): string | null {
+  const text = normalizeTelemetryText(value);
+  if (!text) {
+    return null;
+  }
+
+  // Keep already-normalized YYYY-MM-DD.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) {
+    return text;
+  }
+  return parsed.toISOString().slice(0, 10);
+}
+
+function normalizeTelemetryList(values?: string[] | null): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const deduped = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeTelemetryText(value);
+    if (normalized) {
+      deduped.add(normalized);
+    }
+  }
+  return Array.from(deduped);
+}
+
+function normalizeTelemetryTorrents(torrents?: TorrentInfo[] | null): Array<Record<string, unknown>> {
+  if (!Array.isArray(torrents)) {
+    return [];
+  }
+
+  return torrents.map((torrent) => ({
+    title: normalizeTelemetryText(torrent.title),
+    magnet_link: normalizeTelemetryText(torrent.magnetLink),
+    torrent_url: normalizeTelemetryText(torrent.torrentUrl),
+    size: typeof torrent.size === "number" && Number.isFinite(torrent.size) ? torrent.size : 0,
+    has_uncensored_marker: !!torrent.hasUncensoredMarker,
+    uncensored_marker_type: normalizeTelemetryText(String(torrent.uncensoredMarkerType ?? "")),
+    has_subtitle: !!torrent.hasSubtitle,
+    has_hd: !!torrent.hasHd,
+    seeders: typeof torrent.seeders === "number" && Number.isFinite(torrent.seeders) ? torrent.seeders : 0,
+    leechers: typeof torrent.leechers === "number" && Number.isFinite(torrent.leechers) ? torrent.leechers : 0,
+    source_site: normalizeTelemetryText(torrent.sourceSite),
+    weight_score: typeof torrent.weightScore === "number" && Number.isFinite(torrent.weightScore) ? torrent.weightScore : 0,
+  }));
 }
 
 export class JavSearchService {
@@ -368,6 +560,7 @@ export class JavSearchService {
         result.messages.push(this.loc.get("no_torrents_found"));
         return result;
       }
+      this.telemetryClient.tryReport(searchResult);
       if (this.cacheProvider) {
         await this.cacheProvider.save(searchResult);
       }

@@ -43,5 +43,6 @@
     ],
     "terminal.integrated.env.windows": {
         "JAVA_HOME": "C:\\Program Files\\Microsoft\\jdk-21.0.10.7-hotspot\\bin"
-    }
+    },
+    "chatgpt.openOnStartup": true
 }

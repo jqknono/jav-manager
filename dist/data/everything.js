@@ -68,7 +68,7 @@ function parseSearchResponse(jsonResponse) {
     for (const item of parsed.results) {
         const name = typeof item.name === "string" ? item.name : "";
         const pathValue = typeof item.path === "string" ? item.path : "";
-        const size = typeof item.size === "number" ? item.size : 0;
+        const size = parseEverythingSize(item.size);
         const modifiedTicks = typeof item.date_modified === "number" ? item.date_modified : 0;
         const fileType = determineFileType(name);
         results.push({
@@ -80,6 +80,22 @@ function parseSearchResponse(jsonResponse) {
         });
     }
     return results;
+}
+function parseEverythingSize(value) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        return Math.floor(value);
+    }
+    if (typeof value === "string") {
+        const normalized = value.trim().replace(/[,_\s]/g, "");
+        if (!normalized) {
+            return 0;
+        }
+        const parsed = Number(normalized);
+        if (Number.isFinite(parsed) && parsed >= 0) {
+            return Math.floor(parsed);
+        }
+    }
+    return 0;
 }
 function parseEverythingDateModified(value) {
     if (!value || value <= 0) {

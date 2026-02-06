@@ -2,10 +2,33 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { AppContext } from "./context";
 import { LocalizationService } from "./localization";
+import { JavSearchResult } from "./models";
+import { saveConfig } from "./config";
 import { AppName, getVersion } from "./utils/appInfo";
 import { isValidJavId, normalizeJavId } from "./utils/torrentNameParser";
 import { tryParseToBytes } from "./utils/sizeParser";
 import { CurlImpersonateFetcher } from "./data/curlImpersonateFetcher";
+import {
+  printBanner,
+  printHelp,
+  printSearchResultList,
+  printTorrentList,
+  printHealthResults,
+  printConfig,
+  printCacheStats,
+  printDownloadList,
+  printLocalFiles,
+  printSearching,
+  printSuccess,
+  printError,
+  printWarning,
+  printInfo,
+  printMagnetLink,
+  getPrompt,
+  formatSize,
+} from "./utils/cliDisplay";
+
+const LOCAL_PAGE_SIZE = 10;
 
 export async function runCli(context: AppContext, args: string[]): Promise<void> {
   const { loc, services } = context;
@@ -25,12 +48,11 @@ export async function runCli(context: AppContext, args: string[]): Promise<void>
     return;
   }
 
-  console.log(`${AppName} v${getVersion()}`);
-  console.log(loc.get("prompt_input"));
+  printBanner(AppName, getVersion());
+  printInfo(loc.get("prompt_input"));
 
-  const rl = readline.createInterface({ input, output });
   while (true) {
-    const line = (await rl.question("> ")).trim();
+    const line = (await askLine(getPrompt())).trim();
     if (!line) {
       continue;
     }
@@ -40,7 +62,6 @@ export async function runCli(context: AppContext, args: string[]): Promise<void>
     const tokens = splitArgs(line);
     await runCommand(context, tokens, false);
   }
-  rl.close();
 }
 
 async function runCommand(context: AppContext, args: string[], autoConfirm: boolean): Promise<void> {
@@ -55,7 +76,7 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
     return;
   }
 
-  if (cmd === "--test-curl") {
+  if (cmd === "--test-curl" || cmd === "tc") {
     await runTestCurl(context);
     return;
   }
@@ -66,23 +87,28 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
   }
 
   if (["version", "v", "--version", "-v"].includes(cmd)) {
-    console.log(`${AppName} ${getVersion()}`);
+    printInfo(`${AppName} ${getVersion()}`);
     return;
   }
 
-  if (cmd === "lang" || cmd === "language") {
+  if (cmd === "lang" || cmd === "language" || cmd === "lg") {
     if (args.length < 2) {
-      console.log(loc.get("help_lang"));
+      printInfo(loc.get("help_lang"));
       return;
     }
 
     const language = args[1] === "zh" ? "zh" : "en";
     loc.setLanguage(language);
-    console.log(`Language: ${language}`);
+    printSuccess(`Language: ${language}`);
     return;
   }
 
-  if (cmd === "cfg" || cmd === "config") {
+  if (cmd === "cs") {
+    await handleConfigCommand(context, ["show"]);
+    return;
+  }
+
+  if (cmd === "cfg" || cmd === "config" || cmd === "cf") {
     await handleConfigCommand(context, args.slice(1));
     return;
   }
@@ -90,19 +116,23 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
   if (cmd === "health" || cmd === "hc") {
     const results = await services.healthCheckService.checkAll();
     services.serviceAvailability.updateFrom(results);
-    for (const result of results) {
-      console.log(`${result.serviceName}: ${result.isHealthy ? loc.get("health_ok") : loc.get("health_fail")} ${result.message}`);
-    }
+    printHealthResults(
+      results.map((r) => ({
+        name: r.serviceName,
+        healthy: r.isHealthy,
+        message: r.message,
+      }))
+    );
     return;
   }
 
   if (cmd === "cache" || cmd === "c") {
     const stats = await services.javSearchService.getCacheStatistics();
     if (!stats) {
-      console.log(loc.get("cache_disabled"));
+      printWarning(loc.get("cache_disabled"));
       return;
     }
-    console.log(loc.getFormat("cache_stats", stats.totalJavCount, stats.totalTorrentCount, stats.databaseSizeBytes));
+    printCacheStats(stats.totalJavCount, stats.totalTorrentCount, stats.databaseSizeBytes);
     return;
   }
 
@@ -112,7 +142,7 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
       torrents = await services.downloadService.getDownloads();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.log(message);
+      printError(message);
       return;
     }
     const downloadingOnly = cmd === "d" || cmd === "downloading";
@@ -120,20 +150,24 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
       ? torrents.filter((t) => t.state && /downloading|stalleddl|metadl/i.test(t.state))
       : torrents;
 
-    for (const torrent of filtered) {
-      console.log(`${torrent.name ?? torrent.title} - ${formatSize(torrent.size)} - ${torrent.state ?? "unknown"}`);
-    }
+    printDownloadList(
+      filtered.map((t) => ({
+        name: t.name ?? t.title,
+        size: formatSize(t.size),
+        state: t.state ?? "unknown",
+      }))
+    );
     return;
   }
 
   if (cmd === "local" || cmd === "l") {
     if (args.length < 2) {
-      console.log(loc.get("help_local"));
+      printInfo(loc.get("help_local"));
       return;
     }
     const { query, minBytes } = parseLocalArgs(args.slice(1));
     if (!query) {
-      console.log(loc.get("help_local"));
+      printInfo(loc.get("help_local"));
       return;
     }
 
@@ -143,18 +177,36 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
       results = await services.everythingProvider.search(normalized);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.log(message);
+      printError(message);
       return;
     }
     const filtered = results.filter((file) => (minBytes ? file.size >= minBytes : true));
     if (!filtered.length) {
-      console.log(loc.get("no_search_results"));
+      printWarning(loc.get("no_search_results"));
       return;
     }
 
-    for (const file of filtered) {
-      console.log(`${file.fileName} - ${formatSize(file.size)} - ${file.fullPath}`);
+    const localRows = filtered.map((f) => ({
+      name: f.fileName,
+      size: formatSize(f.size),
+      path: f.fullPath,
+    }));
+
+    if (autoConfirm) {
+      const totalPages = Math.max(1, Math.ceil(localRows.length / LOCAL_PAGE_SIZE));
+      printLocalFiles(localRows.slice(0, LOCAL_PAGE_SIZE), {
+        startIndex: 0,
+        totalCount: localRows.length,
+        page: 1,
+        totalPages,
+      });
+      if (localRows.length > LOCAL_PAGE_SIZE) {
+        printInfo(`Showing first ${LOCAL_PAGE_SIZE} of ${localRows.length}. Run interactive mode for pagination.`);
+      }
+      return;
     }
+
+    await showLocalFilesPaged(localRows);
     return;
   }
 
@@ -164,7 +216,7 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
     return;
   }
 
-  if (cmd === "search" || cmd === "s") {
+  if (cmd === "search" || cmd === "s" || cmd === "j") {
     const javId = normalizeJavId(args.slice(1).join(" "));
     await handleSearch(context, javId, autoConfirm, false);
     return;
@@ -179,76 +231,198 @@ async function handleSearch(context: AppContext, javId: string, autoConfirm: boo
   const { loc, services } = context;
 
   if (!isValidJavId(javId)) {
-    console.log(loc.getFormat("invalid_jav_id", javId));
+    printError(loc.getFormat("invalid_jav_id", javId));
     return;
   }
 
-  console.log(loc.getFormat("searching", javId));
-  const searchResult = await services.javSearchService.searchOnly(javId, forceRemote);
+  printSearching(javId);
+  services.telemetryService.trackSearch(javId);
+  let candidates: JavSearchResult[] = [];
 
-  if (!searchResult.success || searchResult.availableTorrents.length === 0) {
-    console.log(loc.get("no_torrents_found"));
+  if (!forceRemote && services.cacheProvider) {
+    const cached = await services.cacheProvider.get(javId);
+    if (cached && cached.torrents.length > 0) {
+      candidates = [cached];
+    }
+  }
+
+  if (candidates.length === 0) {
+    try {
+      candidates = await services.javDbProvider.searchCandidates(javId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      printError(message);
+      return;
+    }
+  }
+
+  if (candidates.length === 0) {
+    printWarning(loc.get("no_search_results"));
     return;
   }
 
-  searchResult.availableTorrents.forEach((torrent, index) => {
-    console.log(`${index + 1}. ${torrent.title} (${formatSize(torrent.size)})`);
-  });
+  printSearchResultList(
+    javId,
+    candidates.map((item) => ({
+      javId: item.javId || normalizeJavId(item.title),
+      title: item.title,
+      source: item.dataSource,
+    }))
+  );
 
-  const selected = autoConfirm ? 1 : await promptIndex(searchResult.availableTorrents.length);
+  const selectedCandidateIndex = autoConfirm ? 1 : await promptIndex(candidates.length);
+  if (!selectedCandidateIndex) {
+    return;
+  }
+
+  const selectedCandidate = candidates[selectedCandidateIndex - 1];
+  let detail = selectedCandidate;
+
+  if (!detail.torrents.length) {
+    if (!detail.detailUrl) {
+      printWarning(loc.get("no_torrents_found"));
+      return;
+    }
+
+    try {
+      detail = await services.javDbProvider.getDetail(detail.detailUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      printError(message);
+      return;
+    }
+  }
+
+  if (!detail.javId) {
+    detail.javId = javId;
+  }
+
+  services.telemetryClient.tryReport(detail);
+
+  if (services.cacheProvider && detail.torrents.length > 0) {
+    try {
+      await services.cacheProvider.save(detail);
+    } catch {
+      // Keep main flow running even when cache write fails.
+    }
+  }
+
+  const torrentsWithMarkerFallback = detail.torrents.map((torrent) => ({
+    ...torrent,
+    hasUncensoredMarker: torrent.hasUncensoredMarker || /-(?:UC|U)(?=$|[^A-Za-z0-9])/i.test(torrent.title),
+  }));
+
+  const sortedTorrents = services.torrentSelectionService.getSortedTorrents(torrentsWithMarkerFallback);
+  if (sortedTorrents.length === 0) {
+    printWarning(loc.get("no_torrents_found"));
+    return;
+  }
+
+  printTorrentList(
+    detail.javId,
+    sortedTorrents.map((t) => ({
+      title: t.title,
+      size: formatSize(t.size),
+      tags: buildTags(t, loc),
+    })),
+    buildTagLegend(loc),
+  );
+
+  const selected = autoConfirm ? 1 : await promptIndex(sortedTorrents.length);
   if (!selected) {
     return;
   }
 
-  const selectedTorrent = searchResult.availableTorrents[selected - 1];
-  const processResult = await services.javSearchService.processSelectedTorrent(javId, selectedTorrent, false);
+  const selectedTorrent = sortedTorrents[selected - 1];
+  const processResult = await services.javSearchService.processSelectedTorrent(detail.javId, selectedTorrent, false);
 
   if (processResult.localFilesFound) {
-    console.log(loc.get("local_files_found"));
-    processResult.localFiles.forEach((file) => {
-      console.log(`${file.fileName} - ${formatSize(file.size)} - ${file.fullPath}`);
-    });
+    printLocalFiles(
+      processResult.localFiles.map((f) => ({
+        name: f.fileName,
+        size: formatSize(f.size),
+        path: f.fullPath,
+      }))
+    );
     if (!autoConfirm) {
       const proceed = await promptYesNo("Download anyway? (y/N) ");
       if (!proceed) {
         return;
       }
-      await services.javSearchService.processSelectedTorrent(javId, selectedTorrent, true);
+      await services.javSearchService.processSelectedTorrent(detail.javId, selectedTorrent, true);
     }
     return;
   }
 
   if (processResult.downloaded) {
-    console.log(loc.get("download_added"));
+    services.telemetryService.trackDownload(detail.javId);
+    printSuccess(loc.get("download_added"));
     return;
   }
 
   if (processResult.magnetLink) {
-    console.log(`${loc.get("download_failed")} ${processResult.magnetLink}`);
+    printMagnetLink(loc.get("download_failed"), processResult.magnetLink);
   }
 }
 
+function buildTags(
+  t: { title: string; hasUncensoredMarker: boolean; hasSubtitle: boolean; hasHd: boolean },
+  _loc: LocalizationService,
+): string[] {
+  const hasUncensored = t.hasUncensoredMarker || /-(?:UC|U)(?=$|[^A-Za-z0-9])/i.test(t.title);
+  const tags: string[] = [];
+  if (t.hasSubtitle) {
+    tags.push("SUB");
+  }
+  if (hasUncensored) {
+    tags.push("UC");
+  }
+  if (t.hasHd) {
+    tags.push("HD");
+  }
+  return tags;
+}
+
+function buildTagLegend(loc: LocalizationService): string {
+  if (loc.currentLocale === "zh") {
+    return "说明: UC=无码, SUB=字幕, HD=高清";
+  }
+  return "Legend: UC=Uncensored, SUB=Subtitles, HD=High Definition";
+}
+
 function showHelp(loc: LocalizationService): void {
-  console.log(loc.get("help_title"));
-  console.log(`  ${loc.get("help_search")}`);
-  console.log(`  ${loc.get("help_local")}`);
-  console.log(`  ${loc.get("help_remote")}`);
-  console.log(`  ${loc.get("help_cache")}`);
-  console.log(`  ${loc.get("help_downloads")}`);
-  console.log(`  ${loc.get("help_downloading")}`);
-  console.log(`  ${loc.get("help_health")}`);
-  console.log(`  ${loc.get("help_lang")}`);
-  console.log(`  ${loc.get("help_config")}`);
-  console.log(`  ${loc.get("help_version")}`);
-  console.log(`  ${loc.get("help_help")}`);
-  console.log(`  ${loc.get("help_quit")}`);
-  console.log(`  ${loc.get("help_test_curl")}`);
+  const isZh = loc.currentLocale === "zh";
+
+  const commands = [
+    { cmd: "<JAV-ID> / j <id>", desc: isZh ? "搜索并下载" : "Search and download", category: isZh ? "搜索" : "Search" },
+    { cmd: "search <id> / s", desc: isZh ? "搜索并下载" : "Search and download", category: isZh ? "搜索" : "Search" },
+    { cmd: "remote <id> / r", desc: isZh ? "仅远端搜索 (跳过缓存)" : "Search JavDB only (skip cache)", category: isZh ? "搜索" : "Search" },
+    { cmd: "local <query> / l", desc: isZh ? "本地文件搜索" : "Search local files via Everything", category: isZh ? "搜索" : "Search" },
+
+    { cmd: "downloads / t", desc: isZh ? "下载列表" : "List all torrents", category: isZh ? "下载" : "Downloads" },
+    { cmd: "downloading / d", desc: isZh ? "下载中列表" : "List active downloads only", category: isZh ? "下载" : "Downloads" },
+
+    { cmd: "cache / c", desc: isZh ? "缓存统计" : "Show cache statistics", category: isZh ? "系统" : "System" },
+    { cmd: "health / hc", desc: isZh ? "健康检查" : "Check service health", category: isZh ? "系统" : "System" },
+    { cmd: "cfg show / cs", desc: isZh ? "查看配置" : "View current config", category: isZh ? "系统" : "System" },
+    { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "设置服务连接 (支持交互)" : "Set service connection (interactive supported)", category: isZh ? "系统" : "System" },
+    { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 诊断" : "curl-impersonate diagnostic", category: isZh ? "系统" : "System" },
+
+    { cmd: "lang <en|zh> / lg", desc: isZh ? "切换语言" : "Switch language", category: isZh ? "其他" : "Other" },
+    { cmd: "version / v", desc: isZh ? "版本信息" : "Show version", category: isZh ? "其他" : "Other" },
+    { cmd: "help / h", desc: isZh ? "帮助" : "Show this help", category: isZh ? "其他" : "Other" },
+    { cmd: "quit / q", desc: isZh ? "退出" : "Exit interactive mode", category: isZh ? "其他" : "Other" },
+  ];
+
+  printHelp(commands);
 }
 
 async function promptIndex(max: number): Promise<number | null> {
-  const rl = readline.createInterface({ input, output });
-  const answer = (await rl.question("Select # (empty to cancel): ")).trim();
-  rl.close();
+  return promptIndexWithLabel(max, "Select #");
+}
+
+async function promptIndexWithLabel(max: number, label: string): Promise<number | null> {
+  const answer = (await askLine(`  ${getPrompt()}${label} (empty to cancel): `)).trim();
   if (!answer) {
     return null;
   }
@@ -260,10 +434,17 @@ async function promptIndex(max: number): Promise<number | null> {
 }
 
 async function promptYesNo(message: string): Promise<boolean> {
-  const rl = readline.createInterface({ input, output });
-  const answer = (await rl.question(message)).trim().toLowerCase();
-  rl.close();
+  const answer = (await askLine(`  ${getPrompt()}${message}`)).trim().toLowerCase();
   return answer === "y" || answer === "yes";
+}
+
+async function askLine(prompt: string): Promise<string> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    return await rl.question(prompt);
+  } finally {
+    rl.close();
+  }
 }
 
 function splitArgs(inputLine: string): string[] {
@@ -312,17 +493,74 @@ function parseLocalArgs(args: string[]): { query: string; minBytes: number | nul
   return { query: parts.join(" "), minBytes };
 }
 
-function formatSize(bytes: number): string {
-  if (bytes <= 0) {
-    return "-";
+async function showLocalFilesPaged(files: Array<{ name: string; size: string; path: string }>): Promise<void> {
+  if (files.length === 0) return;
+
+  const totalPages = Math.max(1, Math.ceil(files.length / LOCAL_PAGE_SIZE));
+  let page = 0;
+
+  while (true) {
+    const start = page * LOCAL_PAGE_SIZE;
+    const current = files.slice(start, start + LOCAL_PAGE_SIZE);
+    printLocalFiles(current, {
+      startIndex: start,
+      totalCount: files.length,
+      page: page + 1,
+      totalPages,
+    });
+
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const answer = (await askLine(
+      `  ${getPrompt()}Page ${page + 1}/${totalPages} | n-next, p-prev, f-first, l-last, # jump, q-quit: `,
+    )).trim().toLowerCase();
+
+    if (!answer || answer === "q" || answer === "quit" || answer === "c") {
+      return;
+    }
+
+    if (/^\d+$/.test(answer)) {
+      const target = Number(answer);
+      if (target >= 1 && target <= totalPages) {
+        page = target - 1;
+      } else {
+        printWarning(`Page out of range: 1-${totalPages}`);
+      }
+      continue;
+    }
+
+    if (answer === "n" || answer === "j" || answer === "next") {
+      if (page < totalPages - 1) {
+        page += 1;
+      } else {
+        printWarning("Already at last page");
+      }
+      continue;
+    }
+
+    if (answer === "p" || answer === "k" || answer === "prev" || answer === "previous") {
+      if (page > 0) {
+        page -= 1;
+      } else {
+        printWarning("Already at first page");
+      }
+      continue;
+    }
+
+    if (answer === "f" || answer === "first") {
+      page = 0;
+      continue;
+    }
+
+    if (answer === "l" || answer === "last") {
+      page = totalPages - 1;
+      continue;
+    }
+
+    printWarning("Unknown key. Use n/p/f/l/#/q");
   }
-  if (bytes >= 1024 * 1024 * 1024) {
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-  }
-  if (bytes >= 1024 * 1024) {
-    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-  }
-  return `${(bytes / 1024).toFixed(2)} KB`;
 }
 
 function maskSecret(value: string | null): string {
@@ -338,70 +576,211 @@ function maskSecret(value: string | null): string {
 async function handleConfigCommand(context: AppContext, args: string[]): Promise<void> {
   const { loc, config } = context;
   if (args.length === 0) {
-    console.log(loc.get("usage_config"));
+    printInfo(loc.get("usage_config"));
     return;
   }
 
   const action = (args[0] ?? "").toLowerCase();
   if (action === "show") {
-    console.log(`Everything.BaseUrl: ${config.everything.baseUrl || "-"}`);
-    console.log(`Everything.UserName: ${config.everything.userName ?? "-"}`);
-    console.log(`Everything.Password: ${maskSecret(config.everything.password)}`);
-    console.log(`qBittorrent.BaseUrl: ${config.qBittorrent.baseUrl || "-"}`);
-    console.log(`qBittorrent.UserName: ${config.qBittorrent.userName ?? "-"}`);
-    console.log(`qBittorrent.Password: ${maskSecret(config.qBittorrent.password)}`);
-    console.log(`JavDb.BaseUrl: ${config.javDb.baseUrl || "-"}`);
+    printConfig([
+      { section: "Everything", key: "BaseUrl", value: config.everything.baseUrl || "-" },
+      { section: "Everything", key: "UserName", value: config.everything.userName ?? "-" },
+      { section: "Everything", key: "Password", value: maskSecret(config.everything.password), masked: true },
+      { section: "qBittorrent", key: "BaseUrl", value: config.qBittorrent.baseUrl || "-" },
+      { section: "qBittorrent", key: "UserName", value: config.qBittorrent.userName ?? "-" },
+      { section: "qBittorrent", key: "Password", value: maskSecret(config.qBittorrent.password), masked: true },
+      { section: "JavDb", key: "BaseUrl", value: config.javDb.baseUrl || "-" },
+    ]);
     return;
   }
 
-  if (args.length < 3) {
-    console.log(loc.get("usage_config"));
+  const setMode = action === "set";
+  if (setMode && args.length < 4) {
+    await runInteractiveConfigSet(context, args[1], args[2]);
+    return;
+  }
+  if (!setMode && args.length < 3) {
+    printInfo(loc.get("usage_config"));
     return;
   }
 
-  const service = action;
-  const key = (args[1] ?? "").toLowerCase();
-  const value = args.slice(2).join(" ").trim();
+  const service = normalizeConfigService(setMode ? args[1] : args[0]);
+  if (!service) {
+    printInfo(loc.get("usage_config"));
+    return;
+  }
+  const key = normalizeConfigKey(service, setMode ? args[2] : args[1]);
+  if (!key) {
+    printInfo(loc.get("usage_config"));
+    return;
+  }
+  const value = (setMode ? args.slice(3) : args.slice(2)).join(" ").trim();
   if (!value) {
-    console.log(loc.get("usage_config"));
+    printInfo(loc.get("usage_config"));
     return;
   }
 
-  if (service === "everything" || service === "ev") {
-    if (key === "url" || key === "baseurl") config.everything.baseUrl = value;
-    else if (key === "user" || key === "username") config.everything.userName = value;
-    else if (key === "pass" || key === "password") config.everything.password = value;
-    else {
-      console.log(loc.get("usage_config"));
-      return;
-    }
-    console.log(loc.get("config_updated"));
+  if (!applyConfigUpdate(config, service, key, value)) {
+    printInfo(loc.get("usage_config"));
     return;
   }
 
-  if (service === "qb" || service === "qbittorrent") {
-    if (key === "url" || key === "baseurl") config.qBittorrent.baseUrl = value;
-    else if (key === "user" || key === "username") config.qBittorrent.userName = value;
-    else if (key === "pass" || key === "password") config.qBittorrent.password = value;
-    else {
-      console.log(loc.get("usage_config"));
-      return;
-    }
-    console.log(loc.get("config_updated"));
-    return;
+  saveConfig(config);
+  printSuccess(loc.get("config_updated"));
+}
+
+type ConfigService = "everything" | "qbittorrent" | "javdb";
+type ConfigKey = "baseurl" | "username" | "password";
+
+function normalizeConfigService(raw?: string): ConfigService | null {
+  const value = (raw ?? "").toLowerCase();
+  if (value === "everything" || value === "ev") return "everything";
+  if (value === "qb" || value === "qbittorrent") return "qbittorrent";
+  if (value === "javdb") return "javdb";
+  return null;
+}
+
+function normalizeConfigKey(service: ConfigService, raw?: string): ConfigKey | null {
+  const value = (raw ?? "").toLowerCase();
+  if (value === "url" || value === "baseurl") return "baseurl";
+  if (service !== "javdb" && (value === "user" || value === "username")) return "username";
+  if (service !== "javdb" && (value === "pass" || value === "password")) return "password";
+  return null;
+}
+
+function applyConfigUpdate(
+  config: AppContext["config"],
+  service: ConfigService,
+  key: ConfigKey,
+  value: string,
+): boolean {
+  if (service === "everything") {
+    if (key === "baseurl") config.everything.baseUrl = value;
+    else if (key === "username") config.everything.userName = value;
+    else if (key === "password") config.everything.password = value;
+    else return false;
+    return true;
+  }
+
+  if (service === "qbittorrent") {
+    if (key === "baseurl") config.qBittorrent.baseUrl = value;
+    else if (key === "username") config.qBittorrent.userName = value;
+    else if (key === "password") config.qBittorrent.password = value;
+    else return false;
+    return true;
   }
 
   if (service === "javdb") {
-    if (key === "url" || key === "baseurl") config.javDb.baseUrl = value;
-    else {
-      console.log(loc.get("usage_config"));
+    if (key !== "baseurl") return false;
+    config.javDb.baseUrl = value;
+    return true;
+  }
+
+  return false;
+}
+
+function getConfigValue(config: AppContext["config"], service: ConfigService, key: ConfigKey): string | null {
+  if (service === "everything") {
+    if (key === "baseurl") return config.everything.baseUrl;
+    if (key === "username") return config.everything.userName;
+    if (key === "password") return config.everything.password;
+    return null;
+  }
+  if (service === "qbittorrent") {
+    if (key === "baseurl") return config.qBittorrent.baseUrl;
+    if (key === "username") return config.qBittorrent.userName;
+    if (key === "password") return config.qBittorrent.password;
+    return null;
+  }
+  if (service === "javdb") {
+    return key === "baseurl" ? config.javDb.baseUrl : null;
+  }
+  return null;
+}
+
+async function runInteractiveConfigSet(context: AppContext, serviceArg?: string, keyArg?: string): Promise<void> {
+  const { loc, config } = context;
+  const isZh = loc.currentLocale === "zh";
+
+  const services: Array<{ id: ConfigService; label: string }> = [
+    { id: "everything", label: "Everything" },
+    { id: "qbittorrent", label: "qBittorrent" },
+    { id: "javdb", label: "JavDb" },
+  ];
+
+  let service = normalizeConfigService(serviceArg);
+  if (!service) {
+    printInfo(isZh ? "请选择要配置的服务:" : "Select service to configure:");
+    services.forEach((item, i) => {
+      console.log(`  ${i + 1}. ${item.label}`);
+    });
+    const serviceIdx = await promptIndexWithLabel(
+      services.length,
+      isZh ? "服务序号" : "Service #",
+    );
+    if (!serviceIdx) {
       return;
     }
-    console.log(loc.get("config_updated"));
+    service = services[serviceIdx - 1].id;
+  }
+
+  const keys = getConfigKeysForService(service);
+  let key = normalizeConfigKey(service, keyArg);
+  if (!key) {
+    printInfo(isZh ? "请选择要修改的配置项:" : "Select key to update:");
+    const currentLabel = isZh ? "当前值" : "current";
+    keys.forEach((item, i) => {
+      const current = getConfigValue(config, service, item.key);
+      const display = item.key === "password" ? maskSecret(current) : (current || "-");
+      console.log(`  ${i + 1}. ${item.label} (${currentLabel}: ${display})`);
+    });
+    const keyIdx = await promptIndexWithLabel(
+      keys.length,
+      isZh ? "配置项序号" : "Key #",
+    );
+    if (!keyIdx) {
+      return;
+    }
+    key = keys[keyIdx - 1].key;
+  }
+
+  const currentValue = getConfigValue(config, service, key);
+  const currentDisplay = key === "password" ? maskSecret(currentValue) : (currentValue || "-");
+  const valuePrompt = isZh
+    ? `输入新值 (当前: ${currentDisplay}, 留空取消): `
+    : `Enter new value (current: ${currentDisplay}, empty to cancel): `;
+  const newValue = (await askLine(`  ${getPrompt()}${valuePrompt}`)).trim();
+  if (!newValue) {
     return;
   }
 
-  console.log(loc.get("usage_config"));
+  const confirm = await promptYesNo(
+    isZh
+      ? `确认更新 ${service}.${key} ? (y/N) `
+      : `Apply update to ${service}.${key}? (y/N) `,
+  );
+  if (!confirm) {
+    return;
+  }
+
+  if (!applyConfigUpdate(config, service, key, newValue)) {
+    printInfo(loc.get("usage_config"));
+    return;
+  }
+
+  saveConfig(config);
+  printSuccess(loc.get("config_updated"));
+}
+
+function getConfigKeysForService(service: ConfigService): Array<{ key: ConfigKey; label: string }> {
+  if (service === "javdb") {
+    return [{ key: "baseurl", label: "BaseUrl" }];
+  }
+  return [
+    { key: "baseurl", label: "BaseUrl" },
+    { key: "username", label: "UserName" },
+    { key: "password", label: "Password" },
+  ];
 }
 
 async function runTestCurl(context: AppContext): Promise<void> {
@@ -411,33 +790,39 @@ async function runTestCurl(context: AppContext): Promise<void> {
     .map((u) => (u ?? "").trim().replace(/\/+$/, ""))
     .filter((u) => u.length > 0)));
 
-  console.log("=========================================");
-  console.log("JavDB curl-impersonate Diagnostic");
-  console.log("=========================================");
+  printHealthResults([]);  // header-like
+
+  console.log("");
+  printInfo("JavDB curl-impersonate Diagnostic");
+  console.log("");
 
   if (!javDbCfg.curlImpersonate.enabled) {
-    console.log("Warning: JavDb.CurlImpersonate.Enabled is false in config.");
-    console.log("This diagnostic still tries to call curl-impersonate directly.");
+    printWarning("JavDb.CurlImpersonate.Enabled is false in config.");
+    printInfo("This diagnostic still tries to call curl-impersonate directly.");
   }
 
   const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate);
   let anySuccess = false;
   const cookieHeader = "over18=1; locale=zh";
 
+  const results: Array<{ name: string; healthy: boolean; message: string }> = [];
+
   for (const url of urls) {
     const result = await fetcher.get(url, null, cookieHeader, 15000);
     if (result.status >= 200 && result.status < 300) {
       anySuccess = true;
-      console.log(`  ${url} ... OK (HTTP ${result.status})`);
+      results.push({ name: url, healthy: true, message: `HTTP ${result.status}` });
     } else {
       const error = result.error ? ` error=${result.error}` : "";
-      console.log(`  ${url} ... FAILED (HTTP ${result.status})${error}`);
+      results.push({ name: url, healthy: false, message: `HTTP ${result.status}${error}` });
     }
   }
 
+  printHealthResults(results);
+
   if (anySuccess) {
-    console.log("At least one JavDB URL is accessible via curl-impersonate.");
+    printSuccess("At least one JavDB URL is accessible via curl-impersonate.");
   } else {
-    console.log("All JavDB URLs failed via curl-impersonate.");
+    printError("All JavDB URLs failed via curl-impersonate.");
   }
 }

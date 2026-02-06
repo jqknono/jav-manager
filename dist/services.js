@@ -3,11 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.JavSearchService = exports.JavInfoTelemetryClient = exports.DownloadService = exports.LocalFileCheckService = exports.TorrentSelectionService = exports.HealthCheckService = exports.ServiceAvailability = void 0;
+exports.JavSearchService = exports.TelemetryService = exports.JavInfoTelemetryClient = exports.DownloadService = exports.LocalFileCheckService = exports.TorrentSelectionService = exports.HealthCheckService = exports.ServiceAvailability = void 0;
 const fs_1 = __importDefault(require("fs"));
+const os_1 = __importDefault(require("os"));
 const models_1 = require("./models");
 const weightCalculator_1 = require("./utils/weightCalculator");
 const torrentNameParser_1 = require("./utils/torrentNameParser");
+const appInfo_1 = require("./utils/appInfo");
+const telemetryEndpoints_1 = require("./utils/telemetryEndpoints");
 class ServiceAvailability {
     lock = new Object();
     everythingKnown = false;
@@ -127,21 +130,186 @@ class DownloadService {
 exports.DownloadService = DownloadService;
 class JavInfoTelemetryClient {
     config;
+    endpoint;
     constructor(config) {
         this.config = config;
+        this.endpoint = (0, telemetryEndpoints_1.getJavInfoPostUrl)(config.endpoint);
     }
     tryReport(result) {
-        if (!this.config.enabled || !this.config.endpoint) {
+        if (!this.config.enabled) {
             return;
         }
-        void fetch(`${this.config.endpoint.replace(/\/+$/, "")}/api/javinfo`, {
+        const javId = normalizeTelemetryText(result.javId);
+        if (!javId) {
+            return;
+        }
+        const payload = {
+            jav_id: javId,
+            title: normalizeTelemetryText(result.title),
+            cover_url: normalizeTelemetryText(result.coverUrl),
+            release_date: normalizeTelemetryDate(result.releaseDate),
+            duration: result.duration > 0 ? result.duration : null,
+            director: normalizeTelemetryText(result.director),
+            maker: normalizeTelemetryText(result.maker),
+            publisher: normalizeTelemetryText(result.publisher),
+            series: normalizeTelemetryText(result.series),
+            actors: normalizeTelemetryList(result.actors),
+            categories: normalizeTelemetryList(result.categories),
+            torrents: normalizeTelemetryTorrents(result.torrents),
+            detail_url: normalizeTelemetryText(result.detailUrl),
+        };
+        void fetch(this.endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(result),
+            body: JSON.stringify(payload),
         }).catch(() => undefined);
     }
 }
 exports.JavInfoTelemetryClient = JavInfoTelemetryClient;
+class TelemetryService {
+    enabled;
+    endpoint;
+    info;
+    constructor(config) {
+        this.enabled = config.enabled;
+        this.endpoint = (0, telemetryEndpoints_1.getTelemetryPostUrl)(config.endpoint);
+        this.info = {
+            machineName: getMachineNameSafe(),
+            userName: getUserNameSafe(),
+            appVersion: (0, appInfo_1.getVersion)(),
+            osInfo: getOsInfo(),
+        };
+    }
+    trackStartup() {
+        this.sendEvent("startup", null);
+    }
+    trackSearch(searchTerm) {
+        this.sendEvent("search", searchTerm ? `term:${searchTerm}` : null);
+    }
+    trackDownload(javId) {
+        this.sendEvent("download", javId ? `jav:${javId}` : null);
+    }
+    trackEvent(eventType, eventData) {
+        this.sendEvent(eventType, eventData ?? null);
+    }
+    sendEvent(eventType, eventData) {
+        if (!this.enabled) {
+            return;
+        }
+        const payload = {
+            machine_name: this.info.machineName,
+            user_name: this.info.userName,
+            app_version: this.info.appVersion,
+            os_info: this.info.osInfo,
+            event_type: eventType,
+            event_data: eventData,
+        };
+        // Fire-and-forget: telemetry should never block main workflow.
+        void fetch(this.endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        }).catch(() => undefined);
+    }
+}
+exports.TelemetryService = TelemetryService;
+function getMachineNameSafe() {
+    const fromEnv = process.env.COMPUTERNAME || process.env.HOSTNAME;
+    if (fromEnv && fromEnv.trim()) {
+        return fromEnv.trim();
+    }
+    try {
+        const host = os_1.default.hostname();
+        if (host && host.trim()) {
+            return host.trim();
+        }
+    }
+    catch {
+        // ignore
+    }
+    return `machine-${randomId()}`;
+}
+function getUserNameSafe() {
+    const fromEnv = process.env.USERNAME || process.env.USER;
+    if (fromEnv && fromEnv.trim()) {
+        return fromEnv.trim();
+    }
+    try {
+        const user = os_1.default.userInfo().username;
+        if (user && user.trim()) {
+            return user.trim();
+        }
+    }
+    catch {
+        // ignore
+    }
+    return `user-${randomId()}`;
+}
+function getOsInfo() {
+    try {
+        return `${os_1.default.platform()} ${os_1.default.release()}`;
+    }
+    catch {
+        return "unknown";
+    }
+}
+function randomId() {
+    return Math.random().toString(16).slice(2, 10);
+}
+function normalizeTelemetryText(value) {
+    if (typeof value !== "string") {
+        return null;
+    }
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+}
+function normalizeTelemetryDate(value) {
+    const text = normalizeTelemetryText(value);
+    if (!text) {
+        return null;
+    }
+    // Keep already-normalized YYYY-MM-DD.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        return text;
+    }
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) {
+        return text;
+    }
+    return parsed.toISOString().slice(0, 10);
+}
+function normalizeTelemetryList(values) {
+    if (!Array.isArray(values)) {
+        return [];
+    }
+    const deduped = new Set();
+    for (const value of values) {
+        const normalized = normalizeTelemetryText(value);
+        if (normalized) {
+            deduped.add(normalized);
+        }
+    }
+    return Array.from(deduped);
+}
+function normalizeTelemetryTorrents(torrents) {
+    if (!Array.isArray(torrents)) {
+        return [];
+    }
+    return torrents.map((torrent) => ({
+        title: normalizeTelemetryText(torrent.title),
+        magnet_link: normalizeTelemetryText(torrent.magnetLink),
+        torrent_url: normalizeTelemetryText(torrent.torrentUrl),
+        size: typeof torrent.size === "number" && Number.isFinite(torrent.size) ? torrent.size : 0,
+        has_uncensored_marker: !!torrent.hasUncensoredMarker,
+        uncensored_marker_type: normalizeTelemetryText(String(torrent.uncensoredMarkerType ?? "")),
+        has_subtitle: !!torrent.hasSubtitle,
+        has_hd: !!torrent.hasHd,
+        seeders: typeof torrent.seeders === "number" && Number.isFinite(torrent.seeders) ? torrent.seeders : 0,
+        leechers: typeof torrent.leechers === "number" && Number.isFinite(torrent.leechers) ? torrent.leechers : 0,
+        source_site: normalizeTelemetryText(torrent.sourceSite),
+        weight_score: typeof torrent.weightScore === "number" && Number.isFinite(torrent.weightScore) ? torrent.weightScore : 0,
+    }));
+}
 class JavSearchService {
     javDbProvider;
     cacheProvider;
@@ -315,6 +483,7 @@ class JavSearchService {
                 result.messages.push(this.loc.get("no_torrents_found"));
                 return result;
             }
+            this.telemetryClient.tryReport(searchResult);
             if (this.cacheProvider) {
                 await this.cacheProvider.save(searchResult);
             }

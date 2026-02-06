@@ -31,6 +31,7 @@ export function startGuiServer(context: AppContext, port: number = defaultPort):
 
     if (normalized) {
       try {
+        context.services.telemetryService.trackSearch(normalized);
         if (searchLocal) {
           const files = await context.services.localFileCheckService.checkLocalFiles(normalized);
           localFiles = files.map((file) => `${file.fileName} - ${file.fullPath}`);
@@ -81,6 +82,7 @@ export function startGuiServer(context: AppContext, port: number = defaultPort):
         };
 
         await context.services.downloadService.addDownload(torrent);
+        context.services.telemetryService.trackDownload(javId || normalizeJavId(title));
         status = context.loc.get("gui_status_download_added");
       } catch (error) {
         status = error instanceof Error ? error.message : context.loc.get("gui_status_download_failed");

@@ -15,6 +15,7 @@ const config = (0, config_1.loadConfig)(overrides);
 const loc = new localization_1.LocalizationService(config.console.language);
 const context = createAppContext(config, loc);
 const args = filterGuiArgs(remaining);
+context.services.telemetryService.trackStartup();
 if (shouldRunGui(remaining)) {
     (0, gui_1.startGuiServer)(context);
 }
@@ -31,6 +32,7 @@ function createAppContext(config, loc) {
     const localFileCheckService = new services_1.LocalFileCheckService(everythingProvider);
     const downloadService = new services_1.DownloadService(qbClient, config.download);
     const telemetryClient = new services_1.JavInfoTelemetryClient(config.telemetry);
+    const telemetryService = new services_1.TelemetryService(config.telemetry);
     const javSearchService = new services_1.JavSearchService(javDbProvider, torrentSelectionService, localFileCheckService, downloadService, serviceAvailability, loc, telemetryClient, cacheProvider);
     const healthCheckService = new services_1.HealthCheckService([everythingProvider, qbClient, javDbProvider], loc);
     return {
@@ -48,6 +50,7 @@ function createAppContext(config, loc) {
             javSearchService,
             healthCheckService,
             telemetryClient,
+            telemetryService,
         },
     };
 }

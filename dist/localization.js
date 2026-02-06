@@ -46,7 +46,7 @@ const strings = {
         gui_settings_save: "Save Settings",
         gui_settings_saved: "Settings saved",
         config_updated: "Config updated",
-        usage_config: "Usage: cfg show | cfg <service> <key> <value>",
+        usage_config: "Usage: cfg show | cfg set [service] [key] [value] | cfg <service> <key> <value>",
     },
     zh: {
         app_name: "JavManager",
@@ -89,6 +89,7 @@ const strings = {
         gui_status_download_failed: "下载失败",
         gui_settings_save: "保存设置",
         gui_settings_saved: "设置已保存",
+        usage_config: "用法: cfg show | cfg set [service] [key] [value] | cfg <service> <key> <value>",
     },
 };
 class LocalizationService {

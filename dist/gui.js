@@ -29,6 +29,7 @@ function startGuiServer(context, port = defaultPort) {
         let torrents = [];
         if (normalized) {
             try {
+                context.services.telemetryService.trackSearch(normalized);
                 if (searchLocal) {
                     const files = await context.services.localFileCheckService.checkLocalFiles(normalized);
                     localFiles = files.map((file) => `${file.fileName} - ${file.fullPath}`);
@@ -76,6 +77,7 @@ function startGuiServer(context, port = defaultPort) {
                     weightScore: 0,
                 };
                 await context.services.downloadService.addDownload(torrent);
+                context.services.telemetryService.trackDownload(javId || (0, torrentNameParser_1.normalizeJavId)(title));
                 status = context.loc.get("gui_status_download_added");
             }
             catch (error) {
