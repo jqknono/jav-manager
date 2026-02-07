@@ -53,12 +53,23 @@ A Cloudflare Worker for collecting anonymous usage telemetry from JavManager cli
    npm run db:init-local
    ```
 
-5. **Deploy**
+5. **Configure admin credentials (required for `/admin`)**
+   ```bash
+   wrangler secret put ADMIN_USERNAME
+   wrangler secret put ADMIN_PASSWORD
+   ```
+   For local development, you can also set them in `.dev.vars`:
+   ```env
+   ADMIN_USERNAME=your-admin-user
+   ADMIN_PASSWORD=your-strong-password
+   ```
+
+6. **Deploy**
    ```bash
    npm run deploy
    ```
 
-6. **Update JavManager configuration**
+7. **Update JavManager configuration**
    
    In `appsettings.json`, set the telemetry endpoint:
    ```json

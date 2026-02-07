@@ -238,6 +238,7 @@ async function handleSearch(context, javId, autoConfirm, forceRemote) {
     if (!detail.javId) {
         detail.javId = javId;
     }
+    detail = await enrichJavInfoFieldsForTelemetry(services, detail, javId);
     services.telemetryClient.tryReport(detail);
     if (services.cacheProvider && detail.torrents.length > 0) {
         try {
@@ -519,6 +520,77 @@ async function handleConfigCommand(context, args) {
     }
     (0, config_1.saveConfig)(config);
     (0, cliDisplay_1.printSuccess)(loc.get("config_updated"));
+}
+async function enrichJavInfoFieldsForTelemetry(services, detail, fallbackJavId) {
+    if (!isJavInfoFieldMissing(detail)) {
+        return detail;
+    }
+    try {
+        let refreshed = null;
+        const detailUrl = normalizeText(detail.detailUrl);
+        if (detailUrl) {
+            refreshed = await services.javDbProvider.getDetail(detailUrl);
+        }
+        else {
+            const normalizedId = (0, torrentNameParser_1.normalizeJavId)(detail.javId || fallbackJavId);
+            if (normalizedId) {
+                refreshed = await services.javDbProvider.search(normalizedId);
+            }
+        }
+        if (!refreshed) {
+            return detail;
+        }
+        return mergeJavInfo(detail, refreshed, fallbackJavId);
+    }
+    catch {
+        return detail;
+    }
+}
+function isJavInfoFieldMissing(detail) {
+    return !normalizeText(detail.releaseDate)
+        || !normalizeText(detail.detailUrl)
+        || !normalizeStringList(detail.actors).length
+        || !normalizeStringList(detail.categories).length;
+}
+function mergeJavInfo(base, extra, fallbackJavId) {
+    return {
+        ...base,
+        javId: (0, torrentNameParser_1.normalizeJavId)(base.javId || extra.javId || fallbackJavId),
+        title: normalizeText(base.title) ?? normalizeText(extra.title) ?? "",
+        coverUrl: normalizeText(base.coverUrl) ?? normalizeText(extra.coverUrl) ?? "",
+        releaseDate: normalizeText(base.releaseDate) ?? normalizeText(extra.releaseDate) ?? undefined,
+        duration: base.duration > 0 ? base.duration : (extra.duration > 0 ? extra.duration : 0),
+        director: normalizeText(base.director) ?? normalizeText(extra.director) ?? "",
+        maker: normalizeText(base.maker) ?? normalizeText(extra.maker) ?? "",
+        publisher: normalizeText(base.publisher) ?? normalizeText(extra.publisher) ?? "",
+        series: normalizeText(base.series) ?? normalizeText(extra.series) ?? "",
+        actors: normalizeStringList(base.actors).length ? normalizeStringList(base.actors) : normalizeStringList(extra.actors),
+        categories: normalizeStringList(base.categories).length ? normalizeStringList(base.categories) : normalizeStringList(extra.categories),
+        torrents: base.torrents?.length ? base.torrents : extra.torrents,
+        detailUrl: normalizeText(base.detailUrl) ?? normalizeText(extra.detailUrl) ?? "",
+        dataSource: base.dataSource,
+        cachedAt: base.cachedAt ?? extra.cachedAt,
+    };
+}
+function normalizeText(value) {
+    if (typeof value !== "string") {
+        return null;
+    }
+    const trimmed = value.trim();
+    return trimmed || null;
+}
+function normalizeStringList(values) {
+    if (!Array.isArray(values)) {
+        return [];
+    }
+    const set = new Set();
+    for (const value of values) {
+        const normalized = normalizeText(value);
+        if (normalized) {
+            set.add(normalized);
+        }
+    }
+    return Array.from(set);
 }
 function normalizeConfigService(raw) {
     const value = (raw ?? "").toLowerCase();

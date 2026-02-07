@@ -318,15 +318,13 @@ class JavSearchService {
     downloadService;
     serviceAvailability;
     loc;
-    telemetryClient;
-    constructor(javDbProvider, selectionService, localFileService, downloadService, serviceAvailability, loc, telemetryClient, cacheProvider) {
+    constructor(javDbProvider, selectionService, localFileService, downloadService, serviceAvailability, loc, cacheProvider) {
         this.javDbProvider = javDbProvider;
         this.selectionService = selectionService;
         this.localFileService = localFileService;
         this.downloadService = downloadService;
         this.serviceAvailability = serviceAvailability;
         this.loc = loc;
-        this.telemetryClient = telemetryClient;
         this.cacheProvider = cacheProvider ?? null;
     }
     async process(javId, forceDownload = false, forceRemote = false) {
@@ -335,7 +333,6 @@ class JavSearchService {
         if (!forceRemote && this.cacheProvider) {
             searchResult = await this.cacheProvider.get(javId);
             if (searchResult?.torrents?.length) {
-                this.telemetryClient.tryReport(searchResult);
             }
             else {
                 searchResult = null;
@@ -353,7 +350,6 @@ class JavSearchService {
                 result.messages.push(this.loc.get("no_torrents_found"));
                 return result;
             }
-            this.telemetryClient.tryReport(searchResult);
             if (this.cacheProvider) {
                 await this.cacheProvider.save(searchResult);
             }
@@ -483,7 +479,6 @@ class JavSearchService {
                 result.messages.push(this.loc.get("no_torrents_found"));
                 return result;
             }
-            this.telemetryClient.tryReport(searchResult);
             if (this.cacheProvider) {
                 await this.cacheProvider.save(searchResult);
             }

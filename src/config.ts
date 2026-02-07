@@ -69,6 +69,9 @@ export interface AppConfig {
   update: UpdateConfig;
 }
 
+const defaultJavDbBaseUrl = "https://javdb.com";
+const defaultTelemetryEndpoint = "https://jav-manager.techfetch.dev";
+
 const defaultConfig: AppConfig = {
   everything: {
     baseUrl: "",
@@ -81,7 +84,7 @@ const defaultConfig: AppConfig = {
     password: null,
   },
   javDb: {
-    baseUrl: "https://javdb.com",
+    baseUrl: defaultJavDbBaseUrl,
     mirrorUrls: [],
     requestTimeout: 30000,
     userAgent: "",
@@ -109,7 +112,7 @@ const defaultConfig: AppConfig = {
   },
   telemetry: {
     enabled: true,
-    endpoint: "https://jav-manager.techfetch.dev",
+    endpoint: defaultTelemetryEndpoint,
   },
   update: {
     enabled: true,
@@ -330,10 +333,25 @@ function applyOverrides(config: AppConfig, overrides: Record<string, string>): A
 }
 
 function sanitizeConfig(config: AppConfig): AppConfig {
+  config.javDb = {
+    ...config.javDb,
+    baseUrl: nonEmptyOrDefault(config.javDb.baseUrl, defaultJavDbBaseUrl),
+  };
+
+  config.telemetry = {
+    ...config.telemetry,
+    endpoint: nonEmptyOrDefault(config.telemetry.endpoint, defaultTelemetryEndpoint),
+  };
+
   if (config.console.language !== "en" && config.console.language !== "zh") {
     config.console.language = "en";
   }
   return config;
+}
+
+function nonEmptyOrDefault(value: string, fallback: string): string {
+  const trimmed = String(value ?? "").trim();
+  return trimmed || fallback;
 }
 
 function setConfigValue(config: AppConfig, key: string, value: string): void {

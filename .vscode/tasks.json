@@ -2,7 +2,8 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build (deprecated: legacy .NET)",
+            "detail": "DEPRECATED: legacy .NET task. Use npm run build for TypeScript.",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -14,7 +15,8 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish",
+            "label": "publish (deprecated: legacy .NET)",
+            "detail": "DEPRECATED: legacy .NET task.",
             "type": "process",
             "command": "powershell",
             "args": [
@@ -28,7 +30,8 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "release",
+            "label": "release (deprecated: legacy .NET)",
+            "detail": "DEPRECATED: legacy .NET task.",
             "type": "process",
             "command": "powershell",
             "args": [
@@ -41,7 +44,8 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "watch",
+            "label": "watch (deprecated: legacy .NET)",
+            "detail": "DEPRECATED: legacy .NET task. Use npm run dev:cli or npm run dev:gui.",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -53,7 +57,8 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "run:net10.0",
+            "label": "run:net10.0 (deprecated: legacy .NET)",
+            "detail": "DEPRECATED: legacy .NET task. Use npm run cli.",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -72,6 +77,24 @@
             "args": [
                 "run",
                 "deploy"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/telemetry-worker"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "dev:cloudflare",
+            "detail": "Run Cloudflare Worker dev server on 0.0.0.0:34044",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "run",
+                "dev",
+                "--",
+                "--local",
+                "--port=34044",
+                "--ip=0.0.0.0"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/telemetry-worker"

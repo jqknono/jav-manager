@@ -46,12 +46,7 @@ function createSearchResult(javId) {
   };
 }
 
-test("searchOnly reports javinfo telemetry for remote result", async () => {
-  const reports = [];
-  const telemetryClient = {
-    tryReport: (result) => reports.push(result.javId),
-  };
-
+test("searchOnly does not report javinfo telemetry during search", async () => {
   const svc = new JavSearchService(
     {
       search: async (javId) => createSearchResult(javId),
@@ -67,11 +62,64 @@ test("searchOnly reports javinfo telemetry for remote result", async () => {
     },
     new ServiceAvailability(),
     makeLoc(),
-    telemetryClient,
     null,
   );
 
   const result = await svc.searchOnly("MIAA-710", true);
   assert.equal(result.success, true);
-  assert.deepEqual(reports, ["MIAA-710"]);
+});
+
+test("process does not fetch detail just for telemetry reporting", async () => {
+  let detailCalls = 0;
+
+  const cached = createSearchResult("MIAA-711");
+  cached.dataSource = "Local";
+  cached.releaseDate = "";
+  cached.actors = [];
+  cached.categories = [];
+  cached.detailUrl = "https://javdb.com/v/abc";
+
+  const detail = {
+    ...cached,
+    releaseDate: "2026-02-06",
+    actors: ["Actor A"],
+    categories: ["Drama"],
+    detailUrl: "https://javdb.com/v/abc",
+  };
+
+  const svc = new JavSearchService(
+    {
+      search: async () => detail,
+      getDetail: async () => {
+        detailCalls += 1;
+        return detail;
+      },
+    },
+    {
+      selectBest: (torrents) => torrents[0] ?? null,
+      getSortedTorrents: (torrents) => torrents,
+    },
+    {
+      checkLocalFiles: async () => [],
+    },
+    {
+      addDownload: async () => true,
+    },
+    new ServiceAvailability(),
+    makeLoc(),
+    {
+      get: async () => cached,
+      save: async () => undefined,
+      updateTorrents: async () => undefined,
+      exists: async () => true,
+      delete: async () => undefined,
+      getStatistics: async () => ({ totalJavCount: 0, totalTorrentCount: 0, databaseSizeBytes: 0 }),
+      initialize: async () => undefined,
+    },
+  );
+
+  const result = await svc.process("MIAA-711", true, false);
+  assert.equal(result.success, true);
+  assert.equal(result.downloaded, true);
+  assert.equal(detailCalls, 0);
 });

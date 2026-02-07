@@ -297,6 +297,7 @@ async function handleSearch(context: AppContext, javId: string, autoConfirm: boo
     detail.javId = javId;
   }
 
+  detail = await enrichJavInfoFieldsForTelemetry(services, detail, javId);
   services.telemetryClient.tryReport(detail);
 
   if (services.cacheProvider && detail.torrents.length > 0) {
@@ -627,6 +628,87 @@ async function handleConfigCommand(context: AppContext, args: string[]): Promise
 
   saveConfig(config);
   printSuccess(loc.get("config_updated"));
+}
+
+async function enrichJavInfoFieldsForTelemetry(
+  services: AppContext["services"],
+  detail: JavSearchResult,
+  fallbackJavId: string,
+): Promise<JavSearchResult> {
+  if (!isJavInfoFieldMissing(detail)) {
+    return detail;
+  }
+
+  try {
+    let refreshed: JavSearchResult | null = null;
+    const detailUrl = normalizeText(detail.detailUrl);
+    if (detailUrl) {
+      refreshed = await services.javDbProvider.getDetail(detailUrl);
+    } else {
+      const normalizedId = normalizeJavId(detail.javId || fallbackJavId);
+      if (normalizedId) {
+        refreshed = await services.javDbProvider.search(normalizedId);
+      }
+    }
+
+    if (!refreshed) {
+      return detail;
+    }
+
+    return mergeJavInfo(detail, refreshed, fallbackJavId);
+  } catch {
+    return detail;
+  }
+}
+
+function isJavInfoFieldMissing(detail: JavSearchResult): boolean {
+  return !normalizeText(detail.releaseDate)
+    || !normalizeText(detail.detailUrl)
+    || !normalizeStringList(detail.actors).length
+    || !normalizeStringList(detail.categories).length;
+}
+
+function mergeJavInfo(base: JavSearchResult, extra: JavSearchResult, fallbackJavId: string): JavSearchResult {
+  return {
+    ...base,
+    javId: normalizeJavId(base.javId || extra.javId || fallbackJavId),
+    title: normalizeText(base.title) ?? normalizeText(extra.title) ?? "",
+    coverUrl: normalizeText(base.coverUrl) ?? normalizeText(extra.coverUrl) ?? "",
+    releaseDate: normalizeText(base.releaseDate) ?? normalizeText(extra.releaseDate) ?? undefined,
+    duration: base.duration > 0 ? base.duration : (extra.duration > 0 ? extra.duration : 0),
+    director: normalizeText(base.director) ?? normalizeText(extra.director) ?? "",
+    maker: normalizeText(base.maker) ?? normalizeText(extra.maker) ?? "",
+    publisher: normalizeText(base.publisher) ?? normalizeText(extra.publisher) ?? "",
+    series: normalizeText(base.series) ?? normalizeText(extra.series) ?? "",
+    actors: normalizeStringList(base.actors).length ? normalizeStringList(base.actors) : normalizeStringList(extra.actors),
+    categories: normalizeStringList(base.categories).length ? normalizeStringList(base.categories) : normalizeStringList(extra.categories),
+    torrents: base.torrents?.length ? base.torrents : extra.torrents,
+    detailUrl: normalizeText(base.detailUrl) ?? normalizeText(extra.detailUrl) ?? "",
+    dataSource: base.dataSource,
+    cachedAt: base.cachedAt ?? extra.cachedAt,
+  };
+}
+
+function normalizeText(value?: string | null): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function normalizeStringList(values?: string[] | null): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  const set = new Set<string>();
+  for (const value of values) {
+    const normalized = normalizeText(value);
+    if (normalized) {
+      set.add(normalized);
+    }
+  }
+  return Array.from(set);
 }
 
 type ConfigService = "everything" | "qbittorrent" | "javdb";

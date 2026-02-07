@@ -41,7 +41,6 @@ function createAppContext(config: AppConfig, loc: LocalizationService): AppConte
     downloadService,
     serviceAvailability,
     loc,
-    telemetryClient,
     cacheProvider
   );
   const healthCheckService = new HealthCheckService([everythingProvider, qbClient, javDbProvider], loc);

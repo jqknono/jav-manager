@@ -33,7 +33,7 @@ function createAppContext(config, loc) {
     const downloadService = new services_1.DownloadService(qbClient, config.download);
     const telemetryClient = new services_1.JavInfoTelemetryClient(config.telemetry);
     const telemetryService = new services_1.TelemetryService(config.telemetry);
-    const javSearchService = new services_1.JavSearchService(javDbProvider, torrentSelectionService, localFileCheckService, downloadService, serviceAvailability, loc, telemetryClient, cacheProvider);
+    const javSearchService = new services_1.JavSearchService(javDbProvider, torrentSelectionService, localFileCheckService, downloadService, serviceAvailability, loc, cacheProvider);
     const healthCheckService = new services_1.HealthCheckService([everythingProvider, qbClient, javDbProvider], loc);
     return {
         config,

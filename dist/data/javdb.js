@@ -41,6 +41,7 @@ const curlImpersonateFetcher_1 = require("./curlImpersonateFetcher");
 const MaxAttemptsPerUrl = 4;
 const MaxUrlCycles = 2;
 const RetryBaseDelayMs = 1000;
+const PreferredLocale = "zh";
 class JavDbWebScraper {
     config;
     userAgents;
@@ -73,13 +74,14 @@ class JavDbWebScraper {
             for (const baseUrl of urls) {
                 const trimmed = baseUrl.replace(/\/+$/, "");
                 this.seedCookiesForUrl(trimmed);
-                const home = await this.getWithRetry(trimmed, null, MaxAttemptsPerUrl);
+                const homeUrl = withLocale(trimmed, PreferredLocale);
+                const home = await this.getWithRetry(homeUrl, null, MaxAttemptsPerUrl);
                 if (!isSuccessStatus(home.status)) {
                     lastError = home.error ?? `HTTP ${home.status}`;
                     continue;
                 }
-                const searchUrl = `${trimmed}/search?q=${encodeURIComponent(javId)}&f=all`;
-                const search = await this.getWithRetry(searchUrl, trimmed, MaxAttemptsPerUrl);
+                const searchUrl = withLocale(`${trimmed}/search?q=${encodeURIComponent(javId)}&f=all`, PreferredLocale);
+                const search = await this.getWithRetry(searchUrl, homeUrl, MaxAttemptsPerUrl);
                 if (!isSuccessStatus(search.status)) {
                     lastError = search.error ?? `HTTP ${search.status}`;
                     continue;
@@ -105,7 +107,8 @@ class JavDbWebScraper {
         if (!/^https?:\/\//i.test(url)) {
             url = `${baseUrl}${detailUrl}`;
         }
-        const referer = url.startsWith(baseUrl) ? baseUrl : new URL(url).origin;
+        url = withLocale(url, PreferredLocale);
+        const referer = url.startsWith(baseUrl) ? withLocale(baseUrl, PreferredLocale) : withLocale(new URL(url).origin, PreferredLocale);
         this.seedCookiesForUrl(referer);
         const response = await this.getWithRetry(url, referer, MaxAttemptsPerUrl);
         if (!isSuccessStatus(response.status)) {
@@ -302,6 +305,18 @@ function getRetryDelay(attemptIndex) {
 function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
+function withLocale(url, locale) {
+    try {
+        const u = new URL(url);
+        if (!u.searchParams.has("locale")) {
+            u.searchParams.set("locale", locale);
+        }
+        return u.toString();
+    }
+    catch {
+        return url;
+    }
+}
 function parseSearchResults(html) {
     const results = [];
     const $ = cheerio.load(html);
@@ -351,7 +366,7 @@ function parseDetailPage(html) {
     }
     const coverNode = $("img.video-cover").first();
     const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
-    const releaseDate = parseMetaField($, ["發行日期", "发行日期", "發布日期", "発売日", "Release Date", "日期"]);
+    const releaseDate = parseMetaField($, ["發行日期", "发行日期", "發布日期", "発売日", "Released Date", "Release Date", "日期"]);
     const duration = parseDuration(parseMetaField($, ["時長", "时长", "片長", "片长", "収録時間", "Duration"]));
     const director = parseMetaField($, ["導演", "导演", "監督", "Director"]);
     const maker = parseMetaField($, ["片商", "製作商", "制作商", "メーカー", "Maker", "Studio"]);
@@ -370,6 +385,8 @@ function parseDetailPage(html) {
         "div.panel-block a[href*='/actors/']",
     ]);
     const categories = parseList($, [
+        "div.video-meta-panel strong:contains('Tags') ~ span a",
+        "div.panel-block strong:contains('Tags') ~ span a",
         "div.video-meta-panel strong:contains('類別') ~ span a",
         "div.video-meta-panel strong:contains('类别') ~ span a",
         "div.video-meta-panel strong:contains('ジャンル') ~ span a",
@@ -379,7 +396,8 @@ function parseDetailPage(html) {
         "div.panel-block strong:contains('類別') ~ a",
         "div.panel-block strong:contains('类别') ~ a",
         "div.panel-block strong:contains('ジャンル') ~ a",
-        "div.panel-block a[href*='/tags/']",
+        "div.video-meta-panel a[href^='/tags']",
+        "div.panel-block a[href^='/tags']",
     ]);
     return {
         javId,

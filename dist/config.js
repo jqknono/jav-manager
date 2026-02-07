@@ -10,6 +10,8 @@ exports.extractOverrides = extractOverrides;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const appPaths_1 = require("./utils/appPaths");
+const defaultJavDbBaseUrl = "https://javdb.com";
+const defaultTelemetryEndpoint = "https://jav-manager.techfetch.dev";
 const defaultConfig = {
     everything: {
         baseUrl: "",
@@ -22,7 +24,7 @@ const defaultConfig = {
         password: null,
     },
     javDb: {
-        baseUrl: "https://javdb.com",
+        baseUrl: defaultJavDbBaseUrl,
         mirrorUrls: [],
         requestTimeout: 30000,
         userAgent: "",
@@ -50,7 +52,7 @@ const defaultConfig = {
     },
     telemetry: {
         enabled: true,
-        endpoint: "https://jav-manager.techfetch.dev",
+        endpoint: defaultTelemetryEndpoint,
     },
     update: {
         enabled: true,
@@ -240,10 +242,22 @@ function applyOverrides(config, overrides) {
     return result;
 }
 function sanitizeConfig(config) {
+    config.javDb = {
+        ...config.javDb,
+        baseUrl: nonEmptyOrDefault(config.javDb.baseUrl, defaultJavDbBaseUrl),
+    };
+    config.telemetry = {
+        ...config.telemetry,
+        endpoint: nonEmptyOrDefault(config.telemetry.endpoint, defaultTelemetryEndpoint),
+    };
     if (config.console.language !== "en" && config.console.language !== "zh") {
         config.console.language = "en";
     }
     return config;
+}
+function nonEmptyOrDefault(value, fallback) {
+    const trimmed = String(value ?? "").trim();
+    return trimmed || fallback;
 }
 function setConfigValue(config, key, value) {
     const parts = key.split(".");

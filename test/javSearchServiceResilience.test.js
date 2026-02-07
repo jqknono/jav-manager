@@ -25,8 +25,6 @@ test("processSelectedTorrent skips local dedup when Everything throws", async ()
   const serviceAvailability = new ServiceAvailability();
   const javDbProvider = {};
   const selectionService = {};
-  const telemetryClient = { tryReport: () => undefined };
-
   const svc = new JavSearchService(
     javDbProvider,
     selectionService,
@@ -34,7 +32,6 @@ test("processSelectedTorrent skips local dedup when Everything throws", async ()
     downloadService,
     serviceAvailability,
     makeLoc(),
-    telemetryClient,
     null
   );
 
@@ -57,8 +54,6 @@ test("processSelectedTorrent returns magnet link when downloader throws", async 
   const serviceAvailability = new ServiceAvailability();
   const javDbProvider = {};
   const selectionService = {};
-  const telemetryClient = { tryReport: () => undefined };
-
   const svc = new JavSearchService(
     javDbProvider,
     selectionService,
@@ -66,7 +61,6 @@ test("processSelectedTorrent returns magnet link when downloader throws", async 
     downloadService,
     serviceAvailability,
     makeLoc(),
-    telemetryClient,
     null
   );
 
@@ -78,4 +72,3 @@ test("processSelectedTorrent returns magnet link when downloader throws", async 
   assert.equal(result.magnetLink, torrent.magnetLink);
   assert.ok(result.messages.includes("download_failed"));
 });
-

@@ -374,7 +374,6 @@ export class JavSearchService {
   private downloadService: DownloadService;
   private serviceAvailability: ServiceAvailability;
   private loc: LocalizationService;
-  private telemetryClient: JavInfoTelemetryClient;
 
   constructor(
     javDbProvider: IJavDbDataProvider,
@@ -383,7 +382,6 @@ export class JavSearchService {
     downloadService: DownloadService,
     serviceAvailability: ServiceAvailability,
     loc: LocalizationService,
-    telemetryClient: JavInfoTelemetryClient,
     cacheProvider?: IJavLocalCacheProvider | null
   ) {
     this.javDbProvider = javDbProvider;
@@ -392,7 +390,6 @@ export class JavSearchService {
     this.downloadService = downloadService;
     this.serviceAvailability = serviceAvailability;
     this.loc = loc;
-    this.telemetryClient = telemetryClient;
     this.cacheProvider = cacheProvider ?? null;
   }
 
@@ -403,7 +400,6 @@ export class JavSearchService {
     if (!forceRemote && this.cacheProvider) {
       searchResult = await this.cacheProvider.get(javId);
       if (searchResult?.torrents?.length) {
-        this.telemetryClient.tryReport(searchResult);
       } else {
         searchResult = null;
       }
@@ -423,7 +419,6 @@ export class JavSearchService {
         return result;
       }
 
-      this.telemetryClient.tryReport(searchResult);
       if (this.cacheProvider) {
         await this.cacheProvider.save(searchResult);
       }
@@ -560,7 +555,6 @@ export class JavSearchService {
         result.messages.push(this.loc.get("no_torrents_found"));
         return result;
       }
-      this.telemetryClient.tryReport(searchResult);
       if (this.cacheProvider) {
         await this.cacheProvider.save(searchResult);
       }
