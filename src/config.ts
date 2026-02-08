@@ -43,7 +43,7 @@ export interface LocalCacheConfig {
 }
 
 export interface ConsoleConfig {
-  language: "en" | "zh";
+  language: "en" | "zh" | "ja" | "ko";
   hideOtherTorrents: boolean;
 }
 
@@ -343,7 +343,7 @@ function sanitizeConfig(config: AppConfig): AppConfig {
     endpoint: nonEmptyOrDefault(config.telemetry.endpoint, defaultTelemetryEndpoint),
   };
 
-  if (config.console.language !== "en" && config.console.language !== "zh") {
+  if (!["en", "zh", "ja", "ko"].includes(config.console.language)) {
     config.console.language = "en";
   }
   return config;

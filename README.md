@@ -4,12 +4,32 @@ A lightweight GUI + CLI tool for automated JAV content management with fast repe
 
 [中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-> **Note:** Everything (local search) and qBittorrent (download) are optional integrations. JavManager works without them (it can still search JavDB and output magnet links). If you need support for other tools with HTTP API (e.g., other search engines or download clients), please [create an issue](../../issues/new).
+## Usage
+
+```bash
+# GUI
+npx jav-manager --gui
+
+# CLI (interactive)
+npx jav-manager
+
+# CLI (non-interactive)
+npx jav-manager STARS-001
+
+# Help / version
+npx jav-manager help
+npx jav-manager version
+```
+
+Notes:
+- Everything (local search) and qBittorrent (download) are optional integrations. JavManager works without them (it can still search JavDB and output magnet links).
+- Replace `npx jav-manager` with `jav-manager` if you installed it globally (`npm install -g jav-manager`).
+- If you need support for other tools with HTTP APIs (e.g., other search engines or download clients), please [create an issue](../../issues/new).
 
 ## Features
 
 - GUI (local web UI) and console mode (Node.js)
-- Multilingual UI (English, Chinese)
+- Multilingual UI (English, Chinese, Japanese, Korean)
 - Search JAV metadata and torrents/magnets from JavDB
 - Check local files via Everything search engine
 - Download via qBittorrent WebUI API
@@ -98,8 +118,10 @@ The worker also serves a small UI:
 
 Settings are configured via `appsettings.json` (and optional `appsettings.Development.json`).
 
-- Development: edit `JavManager/appsettings.json` (it is copied to `bin/Debug/net10.0/appsettings.json`).
-- Release/single-file: the app will read (and if missing, create) an `appsettings.json` next to the executable on first run.
+Config file location:
+- If `JAVMANAGER_CONFIG_DIR` is set and exists, config is read from there.
+- Otherwise, JavManager looks for `appsettings.json` in the executable directory first, then the current working directory.
+- GUI "Settings" and CLI `cfg set ...` write `appsettings.json` to the selected config directory (see lookup rules above).
 
 Configuration reference:
 
@@ -138,36 +160,22 @@ Notes:
 - `JavInfoSync:*` is a legacy section name; newer builds use `Telemetry:*` (the app still reads the legacy keys for backward compatibility).
 - Advanced: configuration also supports environment variables with the `JAVMANAGER_` prefix (nested keys use `__`), but file-based config is the primary supported method.
 
-## Usage
+## Development
 
 ```bash
-# Install dependencies (once)
-cd JavManager
+# Install deps
 npm install
 
-# GUI (default when no args)
-npm run gui
-
-# Console (interactive)
-npm run cli
-
-# Console (non-interactive)
-npm run cli -- STARS-001
-
-# Show help
-npm run cli -- help
-
-# Show version
-npm run cli -- version
-```
-
-## Build & Package
-
-```bash
 # Build
-cd JavManager
 npm run build
 
-# Run (compiled)
+# Run (GUI / CLI)
+npm run gui
+npm run cli
+
+# Run (compiled default entry)
 npm run start
+
+# Tests
+npm test
 ```

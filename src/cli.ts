@@ -97,7 +97,8 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
       return;
     }
 
-    const language = args[1] === "zh" ? "zh" : "en";
+    const raw = String(args[1] ?? "").trim().toLowerCase();
+    const language = raw === "zh" ? "zh" : raw === "ja" ? "ja" : raw === "ko" ? "ko" : "en";
     loc.setLanguage(language);
     printSuccess(`Language: ${language}`);
     return;

@@ -479,6 +479,10 @@ const BASE_STYLES = `
     transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
     animation: fadeUp 0.4s ease both;
     cursor: default;
+    /* Make all cards in a grid row share a consistent bottom alignment. */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
   .jav-card:hover {
     transform: translateY(-3px);
@@ -512,7 +516,13 @@ const BASE_STYLES = `
     letter-spacing: 0.04em;
     background: linear-gradient(135deg, var(--bg-elevated), var(--bg-secondary));
   }
-  .jav-card-body { padding: 0.75rem; }
+  .jav-card-body {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   .jav-card-id {
     font-family: var(--font-display);
     font-weight: 700;
@@ -577,6 +587,9 @@ const BASE_STYLES = `
     align-items: center;
     font-size: 0.6875rem;
     color: var(--text-muted);
+    /* Keep footer pinned to the bottom even when tags/actors wrap differently. */
+    margin-top: auto;
+    gap: 0.5rem;
   }
   .jav-card-pop {
     display: inline-flex;
@@ -1295,6 +1308,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         filterAllCategories: t.filterAllCategories,
         filterAllActors: t.filterAllActors,
         bestMagnetTitle: t.bestMagnetTitle,
+        copyMagnet: t.copyMagnet,
         copySuccess: t.copySuccess,
         copyFailed: t.copyFailed,
         tableSearchCount: t.tableSearchCount,
@@ -1417,6 +1431,10 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
           }).join('');
           if (categories.length > 3) tagHtml += '<span class="jav-tag more">+' + (categories.length - 3) + '</span>';
 
+          var copyBtnHtml = bestMagnet
+            ? '<button class="button secondary sm" type="button" title="' + escapeAttr(text.bestMagnetTitle) + '" data-mag="' + escapeAttr(bestMagnet) + '" onclick="copyInlineMagnet(this.dataset.mag); return false;">' + escapeHtml(text.copyMagnet) + '</button>'
+            : '';
+
           return '<div class="jav-card" style="animation-delay:' + (idx * 0.025) + 's">'
             + '<div class="jav-card-cover">' + coverHtml + '</div>'
             + '<div class="jav-card-body">'
@@ -1424,7 +1442,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
             + '<div class="jav-card-title">' + escapeHtml(title || '-') + '</div>'
             + (actorHtml ? '<div class="jav-card-meta">' + actorHtml + '</div>' : '')
             + '<div class="jav-card-tags">' + tagHtml + '</div>'
-            + '<div class="jav-card-footer"><span class="jav-card-pop">' + escapeHtml(searchCount.toLocaleString(locale)) + '</span></div>'
+            + '<div class="jav-card-footer"><span class="jav-card-pop" title="' + escapeAttr(text.tableSearchCount) + '">' + escapeHtml(searchCount.toLocaleString(locale)) + '</span>' + copyBtnHtml + '</div>'
             + '</div></div>';
         }).join('');
       }
@@ -1451,16 +1469,40 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         loadData(currentPage).catch(function() {});
       }
 
+      async function copyTextToClipboard(value) {
+        if (!value) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(value);
+          return;
+        }
+        // Fallback for older browsers / restrictive contexts.
+        var ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', 'true');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+
       async function copyBestMagnet() {
         if (!magnetText || !magnetText.value) return;
         try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(magnetText.value);
-          } else {
-            magnetText.focus();
-            magnetText.select();
-            document.execCommand('copy');
-          }
+          await copyTextToClipboard(magnetText.value);
+          window.alert(text.copySuccess);
+        } catch {
+          window.alert(text.copyFailed);
+        }
+      }
+
+      async function copyInlineMagnet(magnet) {
+        if (!magnet) return;
+        try {
+          await copyTextToClipboard(String(magnet));
           window.alert(text.copySuccess);
         } catch {
           window.alert(text.copyFailed);

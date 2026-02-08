@@ -68,7 +68,8 @@ async function runCommand(context, args, autoConfirm) {
             (0, cliDisplay_1.printInfo)(loc.get("help_lang"));
             return;
         }
-        const language = args[1] === "zh" ? "zh" : "en";
+        const raw = String(args[1] ?? "").trim().toLowerCase();
+        const language = raw === "zh" ? "zh" : raw === "ja" ? "ja" : raw === "ko" ? "ko" : "en";
         loc.setLanguage(language);
         (0, cliDisplay_1.printSuccess)(`Language: ${language}`);
         return;

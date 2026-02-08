@@ -14,18 +14,18 @@ const { overrides, remaining } = extractOverrides(rawArgs);
 const config = loadConfig(overrides);
 const loc = new LocalizationService(config.console.language);
 const context = createAppContext(config, loc);
-const args = filterGuiArgs(remaining);
+const cliArgs = filterGuiArgs(remaining);
 context.services.telemetryService.trackStartup();
 
 if (shouldRunGui(remaining)) {
   const gui = parseGuiArgs(remaining);
   startGuiServer(context, gui.port, gui.host);
 } else {
-  runCli(context, args);
+  runCli(context, cliArgs);
 }
 
 function parseGuiArgs(args: string[]): { host: string; port: number } {
-  let host = "127.0.0.1";
+  let host = "0.0.0.0";
   let port = 4860;
 
   for (let i = 0; i < args.length; i += 1) {
@@ -109,34 +109,65 @@ function createAppContext(config: AppConfig, loc: LocalizationService): AppConte
 }
 
 function shouldRunGui(args: string[]): boolean {
-  for (const arg of args) {
-    if (arg === "--no-gui" || arg === "--console" || arg === "-c") {
-      return false;
-    }
+  if (args.length === 0) {
+    // Default mode: CLI.
+    return false;
   }
 
+  // CLI takes precedence for these common commands.
   for (const arg of args) {
     if (["help", "h", "--help", "-h", "version", "v", "--version", "-v", "--test-curl", "--id"].includes(arg)) {
       return false;
     }
   }
 
-  if (args.length > 0) {
-    const first = args[0].trim();
-    if (!first.startsWith("--") && first.toLowerCase() !== "gui") {
-      return false;
+  // Explicit GUI selector.
+  for (const arg of args) {
+    const raw = (arg ?? "").trim();
+    const name = raw.includes("=") ? raw.slice(0, raw.indexOf("=")) : raw;
+    if (name === "--gui" || name === "--host" || name === "--port" || name === "--gui-host" || name === "--gui-port") {
+      return true;
+    }
+    if (name.startsWith("--gui-")) {
+      return true;
     }
   }
 
-  return true;
+  // `gui` subcommand.
+  const first = (args[0] ?? "").trim();
+  if (first.toLowerCase() === "gui") {
+    return true;
+  }
+
+  return false;
 }
 
 function filterGuiArgs(args: string[]): string[] {
-  return args.filter(
-    (arg) =>
-      arg !== "--no-gui" &&
-      arg !== "--console" &&
-      arg !== "-c" &&
-      arg.toLowerCase() !== "gui"
-  );
+  const result: string[] = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i] ?? "";
+    const raw = token.trim();
+    const lower = raw.toLowerCase();
+
+    if (lower === "gui") continue;
+    if (lower === "--gui") continue;
+
+    // Keep backward compatibility as no-ops (don't let CLI treat them as a JAV ID).
+    if (lower === "--no-gui" || lower === "--console" || lower === "-c") continue;
+
+    if (lower === "--host" || lower === "--gui-host" || lower === "--port" || lower === "--gui-port") {
+      // Skip flag + optional value.
+      if (i + 1 < args.length && !(String(args[i + 1] ?? "").startsWith("--"))) {
+        i += 1;
+      }
+      continue;
+    }
+
+    if (lower.startsWith("--host=") || lower.startsWith("--gui-host=") || lower.startsWith("--port=") || lower.startsWith("--gui-port=")) {
+      continue;
+    }
+
+    result.push(token);
+  }
+  return result;
 }
