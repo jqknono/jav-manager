@@ -9,7 +9,8 @@ const config_1 = require("./config");
 const models_1 = require("./models");
 const torrentNameParser_1 = require("./utils/torrentNameParser");
 const defaultPort = 4860;
-function startGuiServer(context, port = defaultPort) {
+const defaultHost = "127.0.0.1";
+function startGuiServer(context, port = defaultPort, host = defaultHost) {
     const app = (0, express_1.default)();
     app.use(express_1.default.urlencoded({ extended: true }));
     app.get("/", async (req, res) => {
@@ -87,8 +88,15 @@ function startGuiServer(context, port = defaultPort) {
         res.send(renderSearchPage(context.loc, { query: javId, searchLocal: true, searchRemote: true, status }));
     });
     app.get("/downloads", async (_, res) => {
-        const torrents = await context.services.downloadService.getDownloads();
-        res.send(renderDownloadsPage(context.loc, torrents));
+        let torrents = [];
+        let status = "";
+        try {
+            torrents = await context.services.downloadService.getDownloads();
+        }
+        catch (error) {
+            status = formatDownloadsError(context.loc, error);
+        }
+        res.send(renderDownloadsPage(context.loc, torrents, status));
     });
     app.get("/settings", (_, res) => {
         res.send(renderSettingsPage(context.loc, context));
@@ -98,8 +106,9 @@ function startGuiServer(context, port = defaultPort) {
         (0, config_1.saveConfig)(context.config);
         res.send(renderSettingsPage(context.loc, context, context.loc.get("gui_settings_saved")));
     });
-    app.listen(port, () => {
-        console.log(`GUI running at http://localhost:${port}`);
+    app.listen(port, host, () => {
+        const displayHost = host === "127.0.0.1" ? "localhost" : host;
+        console.log(`GUI running at http://${displayHost}:${port}`);
     });
 }
 function renderSearchPage(loc, data) {
@@ -143,7 +152,7 @@ function renderSearchPage(loc, data) {
       ${torrentSection}
     `);
 }
-function renderDownloadsPage(loc, torrents) {
+function renderDownloadsPage(loc, torrents, status) {
     const rows = torrents
         .map((torrent) => `<tr>
         <td>${escapeHtml(torrent.name ?? torrent.title)}</td>
@@ -151,8 +160,21 @@ function renderDownloadsPage(loc, torrents) {
         <td>${formatSize(torrent.size)}</td>
       </tr>`)
         .join("");
-    const content = renderCard(loc.get("gui_nav_downloads"), `<table>${tableHeader(["Name", "State", "Size"])}<tbody>${rows}</tbody></table>`);
+    const statusHtml = status ? renderStatus(loc, status) : "";
+    const content = `
+    ${statusHtml}
+    ${renderCard(loc.get("gui_nav_downloads"), `<table>${tableHeader(["Name", "State", "Size"])}<tbody>${rows}</tbody></table>`)}
+  `;
     return renderLayout(loc, loc.get("gui_nav_downloads"), content);
+}
+function formatDownloadsError(loc, error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    // Convert common config errors into actionable UI hints.
+    if (/qBittorrent\.BaseUrl\s+is\s+empty/i.test(message)) {
+        const settingsLabel = loc.get("gui_nav_settings");
+        return `${loc.get("gui_status_download_failed")}: qBittorrent is not configured. Set qBittorrent Base URL in ${settingsLabel}.`;
+    }
+    return `${loc.get("gui_status_download_failed")}: ${message}`;
 }
 function renderSettingsPage(loc, context, status) {
     const cfg = context.config;

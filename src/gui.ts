@@ -6,8 +6,9 @@ import { TorrentInfo, UncensoredMarkerType } from "./models";
 import { normalizeJavId } from "./utils/torrentNameParser";
 
 const defaultPort = 4860;
+const defaultHost = "127.0.0.1";
 
-export function startGuiServer(context: AppContext, port: number = defaultPort): void {
+export function startGuiServer(context: AppContext, port: number = defaultPort, host: string = defaultHost): void {
   const app = express();
   app.use(express.urlencoded({ extended: true }));
 
@@ -93,8 +94,14 @@ export function startGuiServer(context: AppContext, port: number = defaultPort):
   });
 
   app.get("/downloads", async (_, res) => {
-    const torrents = await context.services.downloadService.getDownloads();
-    res.send(renderDownloadsPage(context.loc, torrents));
+    let torrents: TorrentInfo[] = [];
+    let status = "";
+    try {
+      torrents = await context.services.downloadService.getDownloads();
+    } catch (error) {
+      status = formatDownloadsError(context.loc, error);
+    }
+    res.send(renderDownloadsPage(context.loc, torrents, status));
   });
 
   app.get("/settings", (_, res) => {
@@ -107,8 +114,9 @@ export function startGuiServer(context: AppContext, port: number = defaultPort):
     res.send(renderSettingsPage(context.loc, context, context.loc.get("gui_settings_saved")));
   });
 
-  app.listen(port, () => {
-    console.log(`GUI running at http://localhost:${port}`);
+  app.listen(port, host, () => {
+    const displayHost = host === "127.0.0.1" ? "localhost" : host;
+    console.log(`GUI running at http://${displayHost}:${port}`);
   });
 }
 
@@ -181,7 +189,7 @@ function renderSearchPage(
   );
 }
 
-function renderDownloadsPage(loc: LocalizationService, torrents: TorrentInfo[]): string {
+function renderDownloadsPage(loc: LocalizationService, torrents: TorrentInfo[], status?: string): string {
   const rows = torrents
     .map(
       (torrent) => `<tr>
@@ -192,12 +200,26 @@ function renderDownloadsPage(loc: LocalizationService, torrents: TorrentInfo[]):
     )
     .join("");
 
-  const content = renderCard(
-    loc.get("gui_nav_downloads"),
-    `<table>${tableHeader(["Name", "State", "Size"])}<tbody>${rows}</tbody></table>`
-  );
+  const statusHtml = status ? renderStatus(loc, status) : "";
+  const content = `
+    ${statusHtml}
+    ${renderCard(
+      loc.get("gui_nav_downloads"),
+      `<table>${tableHeader(["Name", "State", "Size"])}<tbody>${rows}</tbody></table>`
+    )}
+  `;
 
   return renderLayout(loc, loc.get("gui_nav_downloads"), content);
+}
+
+function formatDownloadsError(loc: LocalizationService, error: unknown): string {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  // Convert common config errors into actionable UI hints.
+  if (/qBittorrent\.BaseUrl\s+is\s+empty/i.test(message)) {
+    const settingsLabel = loc.get("gui_nav_settings");
+    return `${loc.get("gui_status_download_failed")}: qBittorrent is not configured. Set qBittorrent Base URL in ${settingsLabel}.`;
+  }
+  return `${loc.get("gui_status_download_failed")}: ${message}`;
 }
 
 function renderSettingsPage(loc: LocalizationService, context: AppContext, status?: string): string {

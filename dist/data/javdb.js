@@ -44,12 +44,10 @@ const RetryBaseDelayMs = 1000;
 const PreferredLocale = "zh";
 class JavDbWebScraper {
     config;
-    userAgents;
     cookieJar = new Map();
     curlFetcher;
     constructor(config) {
         this.config = config;
-        this.userAgents = buildUserAgentCandidates(config);
         this.curlFetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(config.curlImpersonate);
     }
     get serviceName() {
@@ -159,44 +157,10 @@ class JavDbWebScraper {
         }
         return { status: 0, body: "", error: lastError };
     }
-    async sendRequest(url, referer, attemptIndex, timeoutMs) {
+    async sendRequest(url, referer, _attemptIndex, timeoutMs) {
         const cookieHeader = this.getCookieHeader(url);
         const timeout = timeoutMs ?? this.config.requestTimeout;
-        // Try curl-impersonate first if enabled and available
-        if (this.curlFetcher.isAvailable()) {
-            try {
-                const result = await this.curlFetcher.get(url, referer, cookieHeader, timeout);
-                if (isSuccessStatus(result.status)) {
-                    return { status: result.status, body: result.body };
-                }
-                // If curl-impersonate fails, fall back to standard fetch
-                console.warn(`curl-impersonate failed: ${result.error}, falling back to standard fetch`);
-            }
-            catch (error) {
-                console.warn(`curl-impersonate error: ${error instanceof Error ? error.message : "Unknown error"}, falling back to standard fetch`);
-            }
-        }
-        // Fallback to standard fetch
-        const userAgent = this.userAgents[attemptIndex % this.userAgents.length] ?? defaultUserAgent;
-        const headers = buildChromeHeaders(userAgent, referer);
-        if (cookieHeader) {
-            headers.Cookie = cookieHeader;
-        }
-        const controller = new AbortController();
-        const timeoutTimer = setTimeout(() => controller.abort(), timeout);
-        try {
-            const response = await fetch(url, {
-                method: "GET",
-                headers,
-                signal: controller.signal,
-            });
-            const body = await response.text();
-            this.captureCookies(url, response.headers);
-            return { status: response.status, body };
-        }
-        finally {
-            clearTimeout(timeoutTimer);
-        }
+        return this.curlFetcher.get(url, referer, cookieHeader, timeout);
     }
     seedCookiesForUrl(baseUrl) {
         if (!baseUrl) {
@@ -218,21 +182,6 @@ class JavDbWebScraper {
             .map(([key, value]) => `${key}=${value}`)
             .join("; ");
     }
-    captureCookies(url, headers) {
-        const host = new URL(url).host;
-        const jar = this.cookieJar.get(host) ?? new Map();
-        const setCookies = typeof headers.getSetCookie === "function"
-            ? headers.getSetCookie()
-            : (headers.get("set-cookie") ? [headers.get("set-cookie")] : []);
-        for (const raw of setCookies) {
-            const [pair] = raw.split(";", 1);
-            const [name, value] = pair.split("=", 2);
-            if (name && value) {
-                jar.set(name.trim(), value.trim());
-            }
-        }
-        this.cookieJar.set(host, jar);
-    }
 }
 exports.JavDbWebScraper = JavDbWebScraper;
 function buildBaseUrls(config) {
@@ -240,56 +189,6 @@ function buildBaseUrls(config) {
         .map((url) => url.trim())
         .filter((url) => url.length > 0);
     return Array.from(new Set(urls));
-}
-function buildUserAgentCandidates(config) {
-    const candidates = [];
-    if (config.userAgent?.trim()) {
-        candidates.push(config.userAgent.trim());
-    }
-    candidates.push(defaultUserAgent);
-    candidates.push("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-    candidates.push("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-    return Array.from(new Set(candidates));
-}
-function buildChromeHeaders(userAgent, referer) {
-    const chromeMajor = parseChromeMajorVersion(userAgent);
-    const platform = getPlatformFromUserAgent(userAgent);
-    const mobile = userAgent.toLowerCase().includes("mobile") ? "?1" : "?0";
-    const headers = {
-        Connection: "keep-alive",
-        "Cache-Control": "max-age=0",
-        "sec-ch-ua": `"Google Chrome";v="${chromeMajor}", "Chromium";v="${chromeMajor}", "Not_A Brand";v="24"`,
-        "sec-ch-ua-mobile": mobile,
-        "sec-ch-ua-platform": `"${platform}"`,
-        DNT: "1",
-        "Upgrade-Insecure-Requests": "1",
-        "User-Agent": userAgent,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Sec-Fetch-Site": referer ? "same-origin" : "none",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
-        "Sec-Fetch-Dest": "document",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7",
-    };
-    if (referer) {
-        headers.Referer = referer;
-    }
-    return headers;
-}
-function parseChromeMajorVersion(userAgent) {
-    const match = userAgent.match(/Chrome\/(\d+)/);
-    return match?.[1] ?? "131";
-}
-function getPlatformFromUserAgent(userAgent) {
-    const ua = userAgent.toLowerCase();
-    if (ua.includes("windows"))
-        return "Windows";
-    if (ua.includes("mac os x") || ua.includes("macintosh"))
-        return "macOS";
-    if (ua.includes("linux"))
-        return "Linux";
-    return "Windows";
 }
 function isSuccessStatus(status) {
     return status >= 200 && status < 300;
@@ -643,4 +542,3 @@ function emptySearchResult(javId) {
         cachedAt: undefined,
     };
 }
-const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";

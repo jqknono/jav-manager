@@ -100,6 +100,66 @@
                 "cwd": "${workspaceFolder}/telemetry-worker"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "build:npm (tsc)",
+            "detail": "Build TypeScript output to dist/ via tsc",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "run",
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "test:npm (node --test)",
+            "detail": "Run build + node --test test/*.test.js",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "test"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "pack:npm (dry-run)",
+            "detail": "Preview npm tarball contents without publishing",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "pack",
+                "--dry-run"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "publish:npm (public)",
+            "detail": "Publish to npm registry as a public package. Requires prior npm login (npm adduser).",
+            "type": "process",
+            "command": "npm",
+            "args": [
+                "publish",
+                "--access",
+                "public"
+            ],
+            "dependsOn": [
+                "test:npm (node --test)",
+                "pack:npm (dry-run)"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
         }
     ]
 }

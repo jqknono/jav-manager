@@ -4,12 +4,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCurlImpersonateBinaryPath = getCurlImpersonateBinaryPath;
+exports.getCurlImpersonateMainBinaryPath = getCurlImpersonateMainBinaryPath;
 exports.getCurlCaBundlePath = getCurlCaBundlePath;
 exports.checkCurlImpersonateAvailable = checkCurlImpersonateAvailable;
 exports.getAvailableTargets = getAvailableTargets;
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-function resolvePathMaybeRelative(filePath) {
+/**
+ * Package root directory (works for both src/ and dist/ layouts).
+ * __dirname is either src/utils/ or dist/utils/ – two levels up is the package root.
+ */
+const packageRoot = path_1.default.resolve(__dirname, "..", "..");
+function resolveRelativeToPackageRoot(filePath) {
+    if (!filePath) {
+        return filePath;
+    }
+    if (path_1.default.isAbsolute(filePath)) {
+        return filePath;
+    }
+    return path_1.default.resolve(packageRoot, filePath);
+}
+function resolveRelativeToCwd(filePath) {
     if (!filePath) {
         return filePath;
     }
@@ -43,15 +58,18 @@ function findOnPath(fileName) {
     return null;
 }
 /**
- * Get the platform-specific curl-impersonate binary path
+ * Get the platform-specific curl-impersonate target wrapper script path.
+ * Resolves vendored paths relative to the **package root** (not CWD) so that
+ * the binary is found regardless of where the user invokes the command.
  */
 function getCurlImpersonateBinaryPath(target = "chrome116", configuredPath = null) {
+    // User-configured path is resolved relative to CWD (explicit override).
     if (configuredPath && configuredPath.trim()) {
-        return resolvePathMaybeRelative(configuredPath.trim());
+        return resolveRelativeToCwd(configuredPath.trim());
     }
     const platform = process.platform;
     const arch = process.arch;
-    // Map platform/arch to binary path in third_party/curl-impersonate/
+    // Map platform/arch to target wrapper script in third_party/curl-impersonate/
     const binaryMap = {
         win32: {
             x64: path_1.default.join("third_party", "curl-impersonate", "bin", `curl_${target}.exe`),
@@ -71,7 +89,27 @@ function getCurlImpersonateBinaryPath(target = "chrome116", configuredPath = nul
         return null;
     }
     const binaryPath = platformBinaries[arch] || platformBinaries.x64;
-    return resolvePathMaybeRelative(binaryPath);
+    return resolveRelativeToPackageRoot(binaryPath);
+}
+/**
+ * Get the path to the main `curl-impersonate` executable (not a target wrapper).
+ * Checks vendored location first, then falls back to PATH lookup.
+ */
+function getCurlImpersonateMainBinaryPath() {
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const vendoredRelative = path_1.default.join("third_party", "curl-impersonate", "bin", `curl-impersonate${ext}`);
+    const vendored = resolveRelativeToPackageRoot(vendoredRelative);
+    if (isExecutableFile(vendored)) {
+        return vendored;
+    }
+    // Windows fallback: vendored Linux binary (to be run via WSL).
+    if (process.platform === "win32") {
+        const alt = resolveRelativeToPackageRoot(path_1.default.join("third_party", "curl-impersonate", "bin", "curl-impersonate"));
+        if (isExecutableFile(alt)) {
+            return alt;
+        }
+    }
+    return findOnPath(`curl-impersonate${ext}`);
 }
 /**
  * Get the CA bundle path for curl-impersonate
@@ -101,41 +139,81 @@ function getCurlCaBundlePath(configuredPath = null) {
     if (!platformCaBundles) {
         return null;
     }
-    const caBundlePath = platformCaBundles[arch] || platformCaBundles.x64;
-    if (fs_1.default.existsSync(caBundlePath)) {
-        return caBundlePath;
+    const relative = platformCaBundles[arch] || platformCaBundles.x64;
+    const resolved = resolveRelativeToPackageRoot(relative);
+    if (fs_1.default.existsSync(resolved)) {
+        return resolved;
     }
     return null;
 }
 /**
- * Check if curl-impersonate binary is available
+ * Check if curl-impersonate binary is available.
+ *
+ * On Linux/macOS the main `curl-impersonate` ELF binary is preferred because
+ * it is a standalone executable that does not depend on bash; the `curl_<target>`
+ * wrapper scripts are shell scripts requiring `#!/usr/bin/env bash` which may
+ * not be available in all environments.
+ *
+ * Resolution order (Linux/macOS):
+ *   1. User-configured path
+ *   2. Vendored main `curl-impersonate` binary (package root) – with `--impersonate` flag
+ *   3. `curl-impersonate` on PATH – with `--impersonate` flag
+ *   4. Vendored wrapper script `curl_<target>` (package root)
+ *   5. `curl_<target>` on PATH
+ *
+ * Resolution order (Windows):
+ *   1. User-configured path
+ *   2. Vendored wrapper `curl_<target>.exe` / non-`.exe` WSL fallback (package root)
+ *   3. `curl_<target>.exe` on PATH
+ *   4. Main `curl-impersonate` binary (vendored or PATH) – with `--impersonate` flag
  */
 function checkCurlImpersonateAvailable(target = "chrome116", configuredPath = null) {
-    const binaryPath = getCurlImpersonateBinaryPath(target, configuredPath);
-    if (!binaryPath) {
-        return { path: "", exists: false, target };
-    }
-    const existsOnDisk = fs_1.default.existsSync(binaryPath);
-    if (existsOnDisk) {
-        return { path: binaryPath, exists: true, target };
-    }
-    // Windows fallback: allow vendored Linux binaries (to be run via WSL) when the .exe doesn't exist.
-    if (process.platform === "win32" && binaryPath.toLowerCase().endsWith(".exe")) {
-        const alt = binaryPath.slice(0, -4);
-        if (alt && fs_1.default.existsSync(alt)) {
-            return { path: alt, exists: true, target };
+    // 1. User-configured path (resolved relative to CWD).
+    if (configuredPath && configuredPath.trim()) {
+        const binaryPath = getCurlImpersonateBinaryPath(target, configuredPath);
+        if (binaryPath && fs_1.default.existsSync(binaryPath)) {
+            return { path: binaryPath, exists: true, target, useImpersonateFlag: false };
         }
     }
-    // Allow PATH-installed curl_<target> binaries (useful when vendoring isn't available).
+    // On non-Windows, prefer the main binary (standalone ELF, no bash dependency).
+    if (process.platform !== "win32") {
+        const mainBinary = getCurlImpersonateMainBinaryPath();
+        if (mainBinary) {
+            return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
+        }
+    }
+    // Vendored wrapper script lookup.
+    const binaryPath = getCurlImpersonateBinaryPath(target, null);
+    if (binaryPath) {
+        if (fs_1.default.existsSync(binaryPath)) {
+            return { path: binaryPath, exists: true, target, useImpersonateFlag: false };
+        }
+        // Windows fallback: allow vendored Linux binaries (to be run via WSL) when the .exe doesn't exist.
+        if (process.platform === "win32" && binaryPath.toLowerCase().endsWith(".exe")) {
+            const alt = binaryPath.slice(0, -4);
+            if (alt && fs_1.default.existsSync(alt)) {
+                return { path: alt, exists: true, target, useImpersonateFlag: false };
+            }
+        }
+    }
+    // Allow PATH-installed curl_<target> binaries.
     const fileName = process.platform === "win32" ? `curl_${target}.exe` : `curl_${target}`;
     const found = findOnPath(fileName);
     if (found) {
-        return { path: found, exists: true, target };
+        return { path: found, exists: true, target, useImpersonateFlag: false };
+    }
+    // Windows: main binary fallback (vendored or PATH) as last resort.
+    if (process.platform === "win32") {
+        const mainBinary = getCurlImpersonateMainBinaryPath();
+        if (mainBinary) {
+            return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
+        }
     }
     return {
-        path: binaryPath,
+        path: binaryPath ?? "",
         exists: false,
         target,
+        useImpersonateFlag: false,
     };
 }
 /**

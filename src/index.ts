@@ -18,9 +18,52 @@ const args = filterGuiArgs(remaining);
 context.services.telemetryService.trackStartup();
 
 if (shouldRunGui(remaining)) {
-  startGuiServer(context);
+  const gui = parseGuiArgs(remaining);
+  startGuiServer(context, gui.port, gui.host);
 } else {
   runCli(context, args);
+}
+
+function parseGuiArgs(args: string[]): { host: string; port: number } {
+  let host = "127.0.0.1";
+  let port = 4860;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const raw = args[i] ?? "";
+    if (!raw.startsWith("--")) continue;
+
+    let name = raw;
+    let value: string | undefined;
+    if (raw.includes("=")) {
+      const idx = raw.indexOf("=");
+      name = raw.slice(0, idx);
+      value = raw.slice(idx + 1);
+    }
+
+    if (name === "--host" || name === "--gui-host") {
+      if (value === undefined) {
+        value = args[i + 1];
+        i += 1;
+      }
+      const next = String(value ?? "").trim();
+      if (next) host = next;
+      continue;
+    }
+
+    if (name === "--port" || name === "--gui-port") {
+      if (value === undefined) {
+        value = args[i + 1];
+        i += 1;
+      }
+      const n = Number.parseInt(String(value ?? ""), 10);
+      if (Number.isFinite(n) && n > 0 && n <= 65535) {
+        port = n;
+      }
+      continue;
+    }
+  }
+
+  return { host, port };
 }
 
 function createAppContext(config: AppConfig, loc: LocalizationService): AppContext {

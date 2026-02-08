@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { JavDbConfig } from "../config";
-import { IJavDbDataProvider, IHealthChecker, IHttpFetcher } from "../interfaces";
+import { IJavDbDataProvider, IHealthChecker } from "../interfaces";
 import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../models";
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../utils/torrentNameParser";
 import { CurlImpersonateFetcher } from "./curlImpersonateFetcher";
@@ -14,13 +14,11 @@ type FetchResult = { status: number; body: string; error?: string };
 
 export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
   private config: JavDbConfig;
-  private userAgents: string[];
   private cookieJar = new Map<string, Map<string, string>>();
   private curlFetcher: CurlImpersonateFetcher;
 
   constructor(config: JavDbConfig) {
     this.config = config;
-    this.userAgents = buildUserAgentCandidates(config);
     this.curlFetcher = new CurlImpersonateFetcher(config.curlImpersonate);
   }
 
@@ -147,47 +145,10 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
     return { status: 0, body: "", error: lastError };
   }
 
-  private async sendRequest(url: string, referer: string | null, attemptIndex: number, timeoutMs?: number): Promise<FetchResult> {
+  private async sendRequest(url: string, referer: string | null, _attemptIndex: number, timeoutMs?: number): Promise<FetchResult> {
     const cookieHeader = this.getCookieHeader(url);
     const timeout = timeoutMs ?? this.config.requestTimeout;
-
-    // Try curl-impersonate first if enabled and available
-    if (this.curlFetcher.isAvailable()) {
-      try {
-        const result = await this.curlFetcher.get(url, referer, cookieHeader, timeout);
-        if (isSuccessStatus(result.status)) {
-          return { status: result.status, body: result.body };
-        }
-        // If curl-impersonate fails, fall back to standard fetch
-        console.warn(`curl-impersonate failed: ${result.error}, falling back to standard fetch`);
-      } catch (error) {
-        console.warn(`curl-impersonate error: ${error instanceof Error ? error.message : "Unknown error"}, falling back to standard fetch`);
-      }
-    }
-
-    // Fallback to standard fetch
-    const userAgent = this.userAgents[attemptIndex % this.userAgents.length] ?? defaultUserAgent;
-    const headers: Record<string, string> = buildChromeHeaders(userAgent, referer);
-
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader;
-    }
-
-    const controller = new AbortController();
-    const timeoutTimer = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        signal: controller.signal,
-      });
-      const body = await response.text();
-      this.captureCookies(url, response.headers);
-      return { status: response.status, body };
-    } finally {
-      clearTimeout(timeoutTimer);
-    }
+    return this.curlFetcher.get(url, referer, cookieHeader, timeout);
   }
 
   private seedCookiesForUrl(baseUrl: string): void {
@@ -212,24 +173,6 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
       .join("; ");
   }
 
-  private captureCookies(url: string, headers: Headers): void {
-    const host = new URL(url).host;
-    const jar = this.cookieJar.get(host) ?? new Map<string, string>();
-
-    const setCookies = typeof headers.getSetCookie === "function"
-      ? headers.getSetCookie()
-      : (headers.get("set-cookie") ? [headers.get("set-cookie") as string] : []);
-
-    for (const raw of setCookies) {
-      const [pair] = raw.split(";", 1);
-      const [name, value] = pair.split("=", 2);
-      if (name && value) {
-        jar.set(name.trim(), value.trim());
-      }
-    }
-
-    this.cookieJar.set(host, jar);
-  }
 }
 
 function buildBaseUrls(config: JavDbConfig): string[] {
@@ -237,60 +180,6 @@ function buildBaseUrls(config: JavDbConfig): string[] {
     .map((url) => url.trim())
     .filter((url) => url.length > 0);
   return Array.from(new Set(urls));
-}
-
-function buildUserAgentCandidates(config: JavDbConfig): string[] {
-  const candidates: string[] = [];
-  if (config.userAgent?.trim()) {
-    candidates.push(config.userAgent.trim());
-  }
-  candidates.push(defaultUserAgent);
-  candidates.push("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-  candidates.push("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-  return Array.from(new Set(candidates));
-}
-
-function buildChromeHeaders(userAgent: string, referer: string | null): Record<string, string> {
-  const chromeMajor = parseChromeMajorVersion(userAgent);
-  const platform = getPlatformFromUserAgent(userAgent);
-  const mobile = userAgent.toLowerCase().includes("mobile") ? "?1" : "?0";
-
-  const headers: Record<string, string> = {
-    Connection: "keep-alive",
-    "Cache-Control": "max-age=0",
-    "sec-ch-ua": `"Google Chrome";v="${chromeMajor}", "Chromium";v="${chromeMajor}", "Not_A Brand";v="24"`,
-    "sec-ch-ua-mobile": mobile,
-    "sec-ch-ua-platform": `"${platform}"`,
-    DNT: "1",
-    "Upgrade-Insecure-Requests": "1",
-    "User-Agent": userAgent,
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Sec-Fetch-Site": referer ? "same-origin" : "none",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-User": "?1",
-    "Sec-Fetch-Dest": "document",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7",
-  };
-
-  if (referer) {
-    headers.Referer = referer;
-  }
-
-  return headers;
-}
-
-function parseChromeMajorVersion(userAgent: string): string {
-  const match = userAgent.match(/Chrome\/(\d+)/);
-  return match?.[1] ?? "131";
-}
-
-function getPlatformFromUserAgent(userAgent: string): string {
-  const ua = userAgent.toLowerCase();
-  if (ua.includes("windows")) return "Windows";
-  if (ua.includes("mac os x") || ua.includes("macintosh")) return "macOS";
-  if (ua.includes("linux")) return "Linux";
-  return "Windows";
 }
 
 function isSuccessStatus(status: number): boolean {
@@ -685,5 +574,3 @@ function emptySearchResult(javId: string): JavSearchResult {
   };
 }
 
-const defaultUserAgent =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";

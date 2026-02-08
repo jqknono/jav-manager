@@ -1,11 +1,23 @@
 {
   "name": "jav-manager",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.2",
+  "private": false,
   "description": "TypeScript rewrite of JavManager",
   "main": "dist/index.js",
+  "bin": {
+    "jav-manager": "bin/jav-manager.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "scripts/postinstall.js",
+    "third_party",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postinstall": "node scripts/postinstall.js",
     "start": "node dist/index.js",
     "cli": "node dist/index.js --no-gui",
     "gui": "node dist/index.js",

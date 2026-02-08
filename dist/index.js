@@ -17,10 +17,49 @@ const context = createAppContext(config, loc);
 const args = filterGuiArgs(remaining);
 context.services.telemetryService.trackStartup();
 if (shouldRunGui(remaining)) {
-    (0, gui_1.startGuiServer)(context);
+    const gui = parseGuiArgs(remaining);
+    (0, gui_1.startGuiServer)(context, gui.port, gui.host);
 }
 else {
     (0, cli_1.runCli)(context, args);
+}
+function parseGuiArgs(args) {
+    let host = "127.0.0.1";
+    let port = 4860;
+    for (let i = 0; i < args.length; i += 1) {
+        const raw = args[i] ?? "";
+        if (!raw.startsWith("--"))
+            continue;
+        let name = raw;
+        let value;
+        if (raw.includes("=")) {
+            const idx = raw.indexOf("=");
+            name = raw.slice(0, idx);
+            value = raw.slice(idx + 1);
+        }
+        if (name === "--host" || name === "--gui-host") {
+            if (value === undefined) {
+                value = args[i + 1];
+                i += 1;
+            }
+            const next = String(value ?? "").trim();
+            if (next)
+                host = next;
+            continue;
+        }
+        if (name === "--port" || name === "--gui-port") {
+            if (value === undefined) {
+                value = args[i + 1];
+                i += 1;
+            }
+            const n = Number.parseInt(String(value ?? ""), 10);
+            if (Number.isFinite(n) && n > 0 && n <= 65535) {
+                port = n;
+            }
+            continue;
+        }
+    }
+    return { host, port };
 }
 function createAppContext(config, loc) {
     const javDbProvider = new javdb_1.JavDbWebScraper(config.javDb);
