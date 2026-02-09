@@ -98,7 +98,7 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
     }
 
     const raw = String(args[1] ?? "").trim().toLowerCase();
-    const language = raw === "zh" ? "zh" : raw === "ja" ? "ja" : raw === "ko" ? "ko" : "en";
+    const language = raw === "en" ? "en" : raw === "ja" ? "ja" : raw === "ko" ? "ko" : "zh";
     loc.setLanguage(language);
     printSuccess(`Language: ${language}`);
     return;
@@ -387,7 +387,7 @@ function buildTags(
 
 function buildTagLegend(loc: LocalizationService): string {
   if (loc.currentLocale === "zh") {
-    return "说明: UC=无码, SUB=字幕, HD=高清";
+    return "說明: UC=無碼, SUB=字幕, HD=高清";
   }
   return "Legend: UC=Uncensored, SUB=Subtitles, HD=High Definition";
 }
@@ -396,23 +396,23 @@ function showHelp(loc: LocalizationService): void {
   const isZh = loc.currentLocale === "zh";
 
   const commands = [
-    { cmd: "<JAV-ID> / j <id>", desc: isZh ? "搜索并下载" : "Search and download", category: isZh ? "搜索" : "Search" },
-    { cmd: "search <id> / s", desc: isZh ? "搜索并下载" : "Search and download", category: isZh ? "搜索" : "Search" },
-    { cmd: "remote <id> / r", desc: isZh ? "仅远端搜索 (跳过缓存)" : "Search JavDB only (skip cache)", category: isZh ? "搜索" : "Search" },
-    { cmd: "local <query> / l", desc: isZh ? "本地文件搜索" : "Search local files via Everything", category: isZh ? "搜索" : "Search" },
+    { cmd: "<JAV-ID> / j <id>", desc: isZh ? "搜尋並下載" : "Search and download", category: isZh ? "搜尋" : "Search" },
+    { cmd: "search <id> / s", desc: isZh ? "搜尋並下載" : "Search and download", category: isZh ? "搜尋" : "Search" },
+    { cmd: "remote <id> / r", desc: isZh ? "僅遠端搜尋 (跳過快取)" : "Search JavDB only (skip cache)", category: isZh ? "搜尋" : "Search" },
+    { cmd: "local <query> / l", desc: isZh ? "本地檔案搜尋" : "Search local files via Everything", category: isZh ? "搜尋" : "Search" },
 
-    { cmd: "downloads / t", desc: isZh ? "下载列表" : "List all torrents", category: isZh ? "下载" : "Downloads" },
-    { cmd: "downloading / d", desc: isZh ? "下载中列表" : "List active downloads only", category: isZh ? "下载" : "Downloads" },
+    { cmd: "downloads / t", desc: isZh ? "下載列表" : "List all torrents", category: isZh ? "下載" : "Downloads" },
+    { cmd: "downloading / d", desc: isZh ? "下載中列表" : "List active downloads only", category: isZh ? "下載" : "Downloads" },
 
-    { cmd: "cache / c", desc: isZh ? "缓存统计" : "Show cache statistics", category: isZh ? "系统" : "System" },
-    { cmd: "health / hc", desc: isZh ? "健康检查" : "Check service health", category: isZh ? "系统" : "System" },
-    { cmd: "cfg show / cs", desc: isZh ? "查看配置" : "View current config", category: isZh ? "系统" : "System" },
-    { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "设置服务连接 (支持交互)" : "Set service connection (interactive supported)", category: isZh ? "系统" : "System" },
-    { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 诊断" : "curl-impersonate diagnostic", category: isZh ? "系统" : "System" },
+    { cmd: "cache / c", desc: isZh ? "快取統計" : "Show cache statistics", category: isZh ? "系統" : "System" },
+    { cmd: "health / hc", desc: isZh ? "健康檢查" : "Check service health", category: isZh ? "系統" : "System" },
+    { cmd: "cfg show / cs", desc: isZh ? "檢視設定" : "View current config", category: isZh ? "系統" : "System" },
+    { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "設定服務連線 (支援互動)" : "Set service connection (interactive supported)", category: isZh ? "系統" : "System" },
+    { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 診斷" : "curl-impersonate diagnostic", category: isZh ? "系統" : "System" },
 
-    { cmd: "lang <en|zh> / lg", desc: isZh ? "切换语言" : "Switch language", category: isZh ? "其他" : "Other" },
-    { cmd: "version / v", desc: isZh ? "版本信息" : "Show version", category: isZh ? "其他" : "Other" },
-    { cmd: "help / h", desc: isZh ? "帮助" : "Show this help", category: isZh ? "其他" : "Other" },
+    { cmd: "lang <en|zh|ja|ko> / lg", desc: isZh ? "切換語言" : "Switch language", category: isZh ? "其他" : "Other" },
+    { cmd: "version / v", desc: isZh ? "版本資訊" : "Show version", category: isZh ? "其他" : "Other" },
+    { cmd: "help / h", desc: isZh ? "說明" : "Show this help", category: isZh ? "其他" : "Other" },
     { cmd: "quit / q", desc: isZh ? "退出" : "Exit interactive mode", category: isZh ? "其他" : "Other" },
   ];
 

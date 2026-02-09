@@ -95,8 +95,8 @@ class QBittorrentApiClient {
     }
     async checkHealth() {
         this.applyRuntimeConfig();
-        const baseUrl = this.getBaseUrl();
         try {
+            const baseUrl = this.getBaseUrl();
             if (this.hasCredentials()) {
                 await this.login();
             }
@@ -107,6 +107,7 @@ class QBittorrentApiClient {
         }
         catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error";
+            const baseUrl = this.config.baseUrl.trim().replace(/\/+$/, "");
             return { serviceName: this.serviceName, isHealthy: false, message, url: baseUrl };
         }
     }
@@ -118,7 +119,11 @@ class QBittorrentApiClient {
         return trimmed;
     }
     applyRuntimeConfig() {
-        const baseUrl = this.getBaseUrl();
+        const baseUrl = this.config.baseUrl.trim().replace(/\/+$/, "");
+        if (!baseUrl) {
+            // Defer validation to actual request paths.
+            return;
+        }
         const baseChanged = this.appliedBaseUrl?.toLowerCase() !== baseUrl.toLowerCase();
         const credentialsChanged = this.appliedUserName !== this.config.userName || this.appliedPassword !== this.config.password;
         if (baseChanged) {

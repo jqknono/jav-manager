@@ -7,8 +7,8 @@
             },
             "targetFiles": [
                 {
-                    "path": "README.zh-CN.md",
-                    "lang": "zh-cn"
+                    "path": "README.zh.md",
+                    "lang": "zh-tw"
                 },
                 {
                     "path": "README.ja.md",
@@ -28,7 +28,7 @@
             "targetFiles": [
                 {
                     "path": "JavManager\\Localization\\Strings.zh.resx",
-                    "lang": "zh-cn"
+                    "lang": "zh-tw"
                 },
                 {
                     "path": "JavManager\\Localization\\Strings.ja.resx",

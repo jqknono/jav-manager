@@ -2,7 +2,7 @@
 
 A lightweight GUI + CLI tool for automated JAV content management with fast repeat searches, torrent search, and optional qBittorrent integration.
 
-[中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
+[繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 ## Usage
 

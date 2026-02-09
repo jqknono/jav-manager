@@ -32,10 +32,9 @@ export class EverythingHttpClient implements IEverythingSearchProvider, IHealthC
 
   async checkHealth(): Promise<{ serviceName: string; isHealthy: boolean; message: string; url?: string }> {
     this.applyRuntimeConfig();
-    const baseUrl = this.getBaseUrl();
-    const url = `${baseUrl}/?s=test&json=1&count=1`;
-
     try {
+      const baseUrl = this.getBaseUrl();
+      const url = `${baseUrl}/?s=test&json=1&count=1`;
       const response = await this.http.get(url, undefined, 3000);
       const parsed = JSON.parse(response) as { results?: unknown[] };
       if (!Array.isArray(parsed.results)) {
@@ -44,6 +43,7 @@ export class EverythingHttpClient implements IEverythingSearchProvider, IHealthC
       return { serviceName: this.serviceName, isHealthy: true, message: "OK", url: baseUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      const baseUrl = this.config.baseUrl.trim().replace(/\/+$/, "");
       return { serviceName: this.serviceName, isHealthy: false, message, url: baseUrl };
     }
   }
