@@ -596,13 +596,12 @@ const BASE_STYLES = `
   .jav-card-title {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    white-space: normal;
+    overflow: visible;
     line-height: 1.5;
     margin-bottom: 0.5rem;
-    min-height: 2.25em;
+    min-height: 0;
   }
   .jav-card-meta {
     font-size: 0.6875rem;
@@ -910,7 +909,7 @@ const BASE_STYLES = `
   }
   @media (max-width: 30rem) {
     .jav-grid { grid-template-columns: repeat(2, 1fr); gap: 0.625rem; }
-    .jav-card-title { font-size: 0.6875rem; -webkit-line-clamp: 1; min-height: 1em; }
+    .jav-card-title { font-size: 0.6875rem; }
     .jav-card-tags { display: none; }
     .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.625rem; }
     .stat-value { font-size: 1.375rem; }
