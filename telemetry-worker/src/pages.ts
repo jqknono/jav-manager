@@ -1,4 +1,4 @@
-import { PageLang, TEXT } from './i18n';
+import { PageLang, PAGE_LANGS, TEXT } from './i18n';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const LATEST_RELEASE_URL = 'https://github.com/jqknono/jav-manager/releases/latest';
@@ -25,19 +25,44 @@ function escapeHtml(value: string): string {
 }
 
 function buildLangSwitch(url: URL, lang: PageLang): string {
-  const t = TEXT[lang];
-  const langs: { code: PageLang; label: string }[] = [
-    { code: 'en', label: t.langEnglish },
-    { code: 'zh', label: t.langChinese },
-    { code: 'ja', label: t.langJapanese },
-    { code: 'ko', label: t.langKorean },
-  ];
-  const links = langs.map(({ code, label }) => {
-    const u = new URL(url.toString());
-    u.searchParams.set('lang', code);
-    return `<a class="${lang === code ? 'active' : ''}" href="${u.pathname + u.search}">${label}</a>`;
+  const LANG_LABELS: Partial<Record<PageLang, string>> = {
+    en: 'English',
+    zh: '繁體中文',
+    ja: '日本語',
+    ko: '한국어',
+    th: 'ไทย',
+    vi: 'Tiếng Việt',
+    ms: 'Bahasa Melayu',
+    fil: 'Filipino',
+    id: 'Bahasa Indonesia',
+  };
+
+  const options = PAGE_LANGS.map((code) => {
+    const label = LANG_LABELS[code] ?? code;
+    const selected = lang === code ? ' selected' : '';
+    return `<option value="${escapeHtml(code)}"${selected}>${escapeHtml(label)}</option>`;
   }).join('');
-  return `<div class="lang-switch">${links}</div>`;
+
+  const ariaLabel = escapeHtml(TEXT[lang].appName + ' language');
+  // JS: update ?lang= and immediately reload so the server-rendered strings switch.
+  const script = `
+    (function () {
+      var sel = document.getElementById('lang-select');
+      if (!sel) return;
+      function go() {
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.set('lang', String(sel.value || 'en'));
+          // replace(): update without adding another history entry
+          window.location.replace(u.pathname + u.search + (u.hash || ''));
+        } catch (e) {}
+      }
+      sel.addEventListener('change', go);
+      sel.addEventListener('input', go);
+    })();
+  `;
+
+  return `<div class="lang-switch"><select id="lang-select" class="lang-select" aria-label="${ariaLabel}">${options}</select></div><script>${script}</script>`;
 }
 
 function renderNav(
@@ -159,13 +184,22 @@ const BASE_STYLES = `
   .header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 1.5rem;
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
     animation: fadeUp 0.5s ease both;
+  }
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-left: auto;
+    text-align: right;
+    align-self: flex-start;
   }
   .app-title {
     font-family: var(--font-display);
@@ -189,6 +223,15 @@ const BASE_STYLES = `
     flex-wrap: wrap;
     animation: fadeUp 0.5s ease 0.05s both;
   }
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .nav-row .nav { margin-bottom: 0; }
   .nav a {
     padding: 0.5rem 1rem;
     border-radius: var(--radius);
@@ -213,30 +256,49 @@ const BASE_STYLES = `
 
   /* ---- Language switch ---- */
   .lang-switch {
-    display: flex;
-    gap: 0.125rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     font-size: 0.75rem;
     background: var(--bg-elevated);
     padding: 0.1875rem;
     border-radius: var(--radius);
     border: 1px solid var(--border-subtle);
   }
-  .lang-switch a {
-    color: var(--text-muted);
-    padding: 0.3125rem 0.5rem;
-    border-radius: calc(var(--radius) - 0.125rem);
-    transition: all 0.2s;
-  }
-  .lang-switch a:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-  .lang-switch a.active {
-    font-weight: 600;
-    color: var(--text-primary);
+  .lang-switch .lang-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: 1px solid var(--border);
     background: var(--bg-secondary);
-    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    padding: 0.3125rem 2rem 0.3125rem 0.5rem;
+    border-radius: calc(var(--radius) - 0.125rem);
+    line-height: 1.2;
+    cursor: pointer;
+    min-width: 8.75rem;
+    max-width: 11.5rem;
   }
+  .lang-switch .lang-select:hover { border-color: var(--border-hover); background: var(--bg-elevated); }
+  .lang-switch .lang-select:focus { outline: 2px solid var(--accent-glow); outline-offset: 2px; }
+
+  /* Dropdown arrow */
+  .lang-switch { position: relative; }
+  .lang-switch::after {
+    content: '';
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-left: 0.33rem solid transparent;
+    border-right: 0.33rem solid transparent;
+    border-top: 0.42rem solid var(--text-muted);
+    transform: translateY(-25%);
+    pointer-events: none;
+  }
+  .lang-switch:has(.lang-select:focus)::after { border-top-color: var(--text-primary); }
 
   /* ---- Admin ---- */
   .admin-actions {
@@ -863,15 +925,16 @@ function renderPage(params: {
   hideUserNav?: boolean;
   adminActions?: string;
   wideContainer?: boolean;
+  langSwitchPlacement?: 'header' | 'nav';
   body: string;
   script?: string;
   requestUrl: URL;
 }): string {
-  const { lang, title, description, active, hideUserNav, adminActions, wideContainer, body, script, requestUrl } = params;
+  const { lang, title, description, active, hideUserNav, adminActions, wideContainer, langSwitchPlacement, body, script, requestUrl } = params;
   const t = TEXT[lang];
-  const htmlLangMap: Record<PageLang, string> = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
-  const htmlLang = htmlLangMap[lang] ?? 'en';
+  const htmlLang = lang ?? 'en';
   const pageTitle = title ? `${title} - ${t.appName}` : t.appName;
+  const placeLang = langSwitchPlacement ?? 'header';
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">
 <head>
@@ -892,12 +955,14 @@ function renderPage(params: {
           <div class="app-title"><span class="app-title-accent">Jav</span>Manager</div>
           <div class="app-subtitle">${description ?? t.appTagline}</div>
         </div>
-        <div>
+        <div class="header-right">
           ${adminActions ?? ''}
-          ${buildLangSwitch(requestUrl, lang)}
+          ${placeLang === 'header' ? buildLangSwitch(requestUrl, lang) : ''}
         </div>
       </header>
-      ${renderNav(lang, active, { hideUser: hideUserNav })}
+      ${placeLang === 'nav'
+        ? `<div class="nav-row">${renderNav(lang, active, { hideUser: hideUserNav })}${buildLangSwitch(requestUrl, lang)}</div>`
+        : renderNav(lang, active, { hideUser: hideUserNav })}
       ${body}
     </div>
   </div>
@@ -944,6 +1009,7 @@ export function getHomePage(url: URL, lang: PageLang): string {
     title: t.homeTitle,
     active: 'home',
     hideUserNav: true,
+    langSwitchPlacement: 'nav',
     body,
     requestUrl: url,
   });
@@ -1070,8 +1136,7 @@ export function getUserPage(url: URL, lang: PageLang, adminMode = false): string
   `;
   const script = `
     const lang = ${JSON.stringify(lang)};
-    const localeMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
-    const locale = localeMap[lang] || 'en';
+    const locale = lang || 'en';
     const text = ${JSON.stringify({
       loading: t.loading,
       empty: t.empty,
@@ -1298,8 +1363,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
     `;
     const script = `
       const lang = ${JSON.stringify(lang)};
-      const localeMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
-      const locale = localeMap[lang] || 'en';
+      const locale = lang || 'en';
       const text = ${JSON.stringify({
         loading: t.loading,
         empty: t.empty,
@@ -1647,8 +1711,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
   `;
   const script = `
     const lang = ${JSON.stringify(lang)};
-    const localeMap = { en: 'en', zh: 'zh-Hans', ja: 'ja', ko: 'ko' };
-    const locale = localeMap[lang] || 'en';
+    const locale = lang || 'en';
     const text = ${JSON.stringify({
       loading: t.loading,
       empty: t.empty,

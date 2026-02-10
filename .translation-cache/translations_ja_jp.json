@@ -22,5 +22,11 @@
     "src_hash": "b02e12ad68bd5d32d3bb4fac7264a2a8",
     "src_size": 4312,
     "src_mtime_ms": 1770626077543.425
+  },
+  "telemetry-worker/src/locales/en.json": {
+    "translate_datetime": "2026-02-10:15:20",
+    "src_hash": "7172f12116c0a0cfde72fc576098b6a2",
+    "src_size": 3535,
+    "src_mtime_ms": 1770707435183.0232
   }
 }

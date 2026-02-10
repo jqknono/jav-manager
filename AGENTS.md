@@ -51,6 +51,9 @@ Legacy .NET commands (deprecated):
 - When updating UI text, update English strings first (`en` section) and `README.md` when needed.
 - Do **not** update non-English docs/readmes (`README.zh-CN.md`, `README.ja.md`, `README.ko.md`) unless explicitly requested.
 - Chinese strings in `src/localization.ts` should only be changed when explicitly requested.
+- Telemetry worker UI strings are stored as JSON in `telemetry-worker/src/locales/*.json`.
+  - Only `telemetry-worker/src/locales/en.json` is maintained in code changes.
+  - Other locale files are translator-owned and may be partial; the worker falls back to English for missing keys.
 
 ## Coding Style & Naming Conventions
 

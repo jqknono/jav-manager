@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "gen:locales": "node scripts/gen-locales.cjs",
+    "predev": "npm run gen:locales",
+    "predeploy": "npm run gen:locales",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create jav-manager-telemetry",

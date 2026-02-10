@@ -1,5 +1,5 @@
 import { FAVICON_ICO_BYTES } from './favicon';
-import { PageLang, TEXT } from './i18n';
+import { PageLang, PAGE_LANGS, TEXT } from './i18n';
 import { getAdminLoginPage, getHomePage, getJavPage, getUserPage } from './pages';
 
 export interface Env {
@@ -55,9 +55,57 @@ interface JavInfoRecord {
 
 const ADMIN_SESSION_COOKIE = 'jm_admin_session';
 const ADMIN_SESSION_MAX_AGE = 60 * 60 * 12;
+const LANG_COOKIE = 'jm_lang';
 const LOCAL_DEV_ADMIN_USERNAME = 'test';
 const LOCAL_DEV_ADMIN_PASSWORD = 'test';
 
+const SUPPORTED_LANGS = new Set<string>(PAGE_LANGS as unknown as string[]);
+
+type MemCacheEntry<T> = { t: number; value: T };
+const MEM_CACHE = new Map<string, MemCacheEntry<unknown>>();
+const MEM_CACHE_MAX_ENTRIES = 2000;
+
+function memCacheGet<T>(key: string, ttlMs: number): T | null {
+  const hit = MEM_CACHE.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.t > ttlMs) {
+    MEM_CACHE.delete(key);
+    return null;
+  }
+  return hit.value as T;
+}
+
+function memCacheSet(key: string, value: unknown): void {
+  if (MEM_CACHE.size >= MEM_CACHE_MAX_ENTRIES) {
+    // Simple bound: drop all entries (fast, avoids a more complex LRU).
+    MEM_CACHE.clear();
+  }
+  MEM_CACHE.set(key, { t: Date.now(), value });
+}
+
+type TelemetryWriteGate = { t: number; sig: string };
+const TELEMETRY_WRITE_GATE = new Map<string, TelemetryWriteGate>();
+const TELEMETRY_WRITE_GATE_MAX = 10000;
+const TELEMETRY_MIN_INTERVAL_MS = 60_000; // allow at most 1 write/min/user per isolate
+const TELEMETRY_DUP_INTERVAL_MS = 10 * 60_000; // suppress identical event payloads for longer
+const TELEMETRY_PRUNE_EVERY_N_INSERTS = 50; // reduce DELETE frequency
+let telemetryInsertCount = 0;
+
+function shouldWriteTelemetry(userId: string, sig: string): boolean {
+  const now = Date.now();
+  const prev = TELEMETRY_WRITE_GATE.get(userId);
+  if (!prev) {
+    if (TELEMETRY_WRITE_GATE.size >= TELEMETRY_WRITE_GATE_MAX) TELEMETRY_WRITE_GATE.clear();
+    TELEMETRY_WRITE_GATE.set(userId, { t: now, sig });
+    return true;
+  }
+
+  if (sig === prev.sig && now - prev.t < TELEMETRY_DUP_INTERVAL_MS) return false;
+  if (now - prev.t < TELEMETRY_MIN_INTERVAL_MS) return false;
+
+  TELEMETRY_WRITE_GATE.set(userId, { t: now, sig });
+  return true;
+}
 
 let schemaInit: Promise<void> | null = null;
 let userIdBackfill: Promise<void> | null = null;
@@ -74,19 +122,45 @@ function htmlResponse(body: string, init?: ResponseInit): Response {
   return new Response(body, { ...init, headers });
 }
 
-function getLang(request: Request): PageLang {
+function normalizePageLang(value: unknown): PageLang | null {
+  if (typeof value !== 'string') return null;
+  const raw = value.trim().toLowerCase();
+  if (!raw) return null;
+
+  // Exact match first (e.g. "pt-br" if you have pt-br.json)
+  if (SUPPORTED_LANGS.has(raw)) return raw as PageLang;
+
+  // Fallback to primary tag (e.g. "zh-Hans" => "zh")
+  const primary = raw.split(/[,;]/)[0].trim().split(/[_-]/)[0];
+  if (SUPPORTED_LANGS.has(primary)) return primary as PageLang;
+
+  return null;
+}
+
+function buildLangCookie(request: Request, lang: PageLang): string {
+  // Session cookie: no Max-Age/Expires, so it persists only for the current browser session.
+  return `${LANG_COOKIE}=${encodeURIComponent(lang)}; Path=/; SameSite=Lax${buildCookieSecuritySuffix(request)}`;
+}
+
+function getLangInfo(request: Request): { lang: PageLang; setCookie: string | null } {
   const url = new URL(request.url);
-  const langParam = (url.searchParams.get('lang') ?? '').toLowerCase();
-  if (langParam === 'zh' || langParam === 'zh-tw' || langParam === 'zh-hant' || langParam === 'zh-hk' || langParam === 'zh-cn')
-    return 'zh';
-  if (langParam === 'ja') return 'ja';
-  if (langParam === 'ko') return 'ko';
-  if (langParam === 'en') return 'en';
-  const accept = (request.headers.get('Accept-Language') ?? '').toLowerCase();
-  if (accept.includes('ja')) return 'ja';
-  if (accept.includes('ko')) return 'ko';
-  if (accept.includes('zh')) return 'zh';
-  return 'en';
+  const fromQuery = normalizePageLang(url.searchParams.get('lang'));
+  const cookies = parseCookies(request);
+  const fromCookie = normalizePageLang(cookies[LANG_COOKIE]);
+
+  // Requirement: first visit defaults to English (ignore Accept-Language).
+  const lang = fromQuery ?? fromCookie ?? 'en';
+
+  // If the user explicitly set a lang in the URL, remember it for this session.
+  const setCookie = fromQuery && fromQuery !== fromCookie ? buildLangCookie(request, fromQuery) : null;
+  return { lang, setCookie };
+}
+
+function withSetCookie(response: Response, cookie: string | null): Response {
+  if (!cookie) return response;
+  const headers = new Headers(response.headers);
+  headers.append('Set-Cookie', cookie);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function getAdminCredentials(env: Env, _request: Request): { username: string; password: string } | null {
@@ -446,7 +520,8 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
-    const lang = getLang(request);
+    const { lang, setCookie: langCookie } = getLangInfo(request);
+    const respond = (res: Response) => withSetCookie(res, langCookie);
     const admin = isAdminRequest(request, env);
 
     // CORS headers
@@ -457,7 +532,7 @@ export default {
     };
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return respond(new Response(null, { headers: corsHeaders }));
     }
 
     // GET /favicon.ico - Site icon
@@ -466,7 +541,7 @@ export default {
         'Content-Type': 'image/x-icon',
         'Cache-Control': 'public, max-age=31536000, immutable',
       });
-      return new Response(request.method === 'HEAD' ? null : FAVICON_ICO_BYTES, { headers });
+      return respond(new Response(request.method === 'HEAD' ? null : FAVICON_ICO_BYTES, { headers }));
     }
 
     // Best-effort background migration for existing deployments.
@@ -488,13 +563,13 @@ export default {
 
       // Use waitUntil for non-blocking database write
       ctx.waitUntil(this.saveTelemetry(payload, request, env));
-      return jsonResponse({ success: true }, { headers: corsHeaders });
+      return respond(jsonResponse({ success: true }, { headers: corsHeaders }));
     }
 
     // GET /api/stats - Get statistics
     if (path === '/api/stats' && request.method === 'GET') {
       const userId = url.searchParams.get('userId');
-      return this.getStats(env, corsHeaders, userId);
+      return respond(await this.getStats(env, corsHeaders, userId));
     }
 
     // GET /api/javinfo - Get paginated JavInfo data
@@ -503,70 +578,70 @@ export default {
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
       const category = url.searchParams.get('category');
       const actor = url.searchParams.get('actor');
-      return this.getJavInfoData(env, page, pageSize, corsHeaders, category, actor, admin);
+      return respond(await this.getJavInfoData(env, page, pageSize, corsHeaders, category, actor, admin));
     }
 
     // GET /api/javinfo/categories - Category filter options
     if (path === '/api/javinfo/categories' && request.method === 'GET') {
-      return this.getJavCategories(env, corsHeaders);
+      return respond(await this.getJavCategories(env, corsHeaders));
     }
 
     // GET /api/javinfo/actors - Actor filter options
     if (path === '/api/javinfo/actors' && request.method === 'GET') {
-      return this.getJavActors(env, corsHeaders);
+      return respond(await this.getJavActors(env, corsHeaders));
     }
 
     // POST /api/javinfo/delete - Delete a javinfo record (admin only)
     if (path === '/api/javinfo/delete' && request.method === 'POST') {
       if (!admin) {
-        return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+        return respond(jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders }));
       }
-      return this.deleteJavInfo(request, env, corsHeaders);
+      return respond(await this.deleteJavInfo(request, env, corsHeaders));
     }
 
     // POST /api/javinfo - Store JavInfo (idempotent)
     if (path === '/api/javinfo' && request.method === 'POST') {
-      return this.saveJavInfo(request, env, corsHeaders);
+      return respond(await this.saveJavInfo(request, env, corsHeaders));
     }
 
     // GET /api/user - Get paginated user data
     if (path === '/api/user' && request.method === 'GET') {
       if (!admin) {
-        return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+        return respond(jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders }));
       }
       const page = parseInt(url.searchParams.get('page') || '1', 10);
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
       const userId = url.searchParams.get('userId');
-      return this.getData(env, page, pageSize, corsHeaders, userId);
+      return respond(await this.getData(env, page, pageSize, corsHeaders, userId));
     }
 
     // GET /api/data - Backward-compatible alias for /api/user
     if (path === '/api/data' && request.method === 'GET') {
       if (!admin) {
-        return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+        return respond(jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders }));
       }
       const page = parseInt(url.searchParams.get('page') || '1', 10);
       const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
       const userId = url.searchParams.get('userId');
-      return this.getData(env, page, pageSize, corsHeaders, userId);
+      return respond(await this.getData(env, page, pageSize, corsHeaders, userId));
     }
 
     // GET /api/users - List users for filtering (latest row + event counts)
     if (path === '/api/users' && request.method === 'GET') {
       if (!admin) {
-        return jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+        return respond(jsonResponse({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders }));
       }
-      return this.getUsers(env, corsHeaders);
+      return respond(await this.getUsers(env, corsHeaders));
     }
 
     // GET /api/javdb-domain - Get latest JavDB domain
     if (path === '/api/javdb-domain' && request.method === 'GET') {
-      return this.getJavDbDomain(corsHeaders);
+      return respond(await this.getJavDbDomain(corsHeaders));
     }
 
     // GET / - Home page
     if (path === '/' && request.method === 'GET') {
-      return htmlResponse(getHomePage(url, lang));
+      return respond(htmlResponse(getHomePage(url, lang)));
     }
 
     // GET /user - Telemetry page
@@ -575,29 +650,29 @@ export default {
         const redirectUrl = new URL(url.toString());
         redirectUrl.pathname = '/admin';
         redirectUrl.searchParams.set('lang', lang);
-        return htmlRedirect(redirectUrl.toString());
+        return respond(htmlRedirect(redirectUrl.toString()));
       }
-      return htmlResponse(getUserPage(url, lang, true));
+      return respond(htmlResponse(getUserPage(url, lang, true)));
     }
 
     // GET /jav - JavInfo page
     if (path === '/jav' && request.method === 'GET') {
-      return htmlResponse(getJavPage(url, lang, { adminMode: admin }));
+      return respond(htmlResponse(getJavPage(url, lang, { adminMode: admin })));
     }
 
     // GET /admin - Hidden admin portal
     if (path === '/admin' && request.method === 'GET') {
       if (admin) {
-        return htmlResponse(getJavPage(url, lang, { adminMode: true }));
+        return respond(htmlResponse(getJavPage(url, lang, { adminMode: true })));
       }
-      return htmlResponse(getAdminLoginPage(url, lang));
+      return respond(htmlResponse(getAdminLoginPage(url, lang)));
     }
 
     // POST /admin/login - Admin login
     if (path === '/admin/login' && request.method === 'POST') {
       const credentials = getAdminCredentials(env, request);
       if (!credentials) {
-        return htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminNotConfigured), { status: 503 });
+        return respond(htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminNotConfigured), { status: 503 }));
       }
       const form = await request.formData();
       const username = normalizeText(form.get('username'), 128) ?? '';
@@ -605,14 +680,14 @@ export default {
       if (username === credentials.username && password === credentials.password) {
         const cookie = buildAdminSessionCookie(env, request);
         if (!cookie) {
-          return htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminNotConfigured), { status: 503 });
+          return respond(htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminNotConfigured), { status: 503 }));
         }
         const redirectUrl = new URL(url.toString());
         redirectUrl.pathname = '/admin';
         redirectUrl.searchParams.set('lang', lang);
-        return htmlRedirect(redirectUrl.toString(), cookie);
+        return respond(htmlRedirect(redirectUrl.toString(), cookie));
       }
-      return htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminInvalidCreds), { status: 401 });
+      return respond(htmlResponse(getAdminLoginPage(url, lang, TEXT[lang].adminInvalidCreds), { status: 401 }));
     }
 
     // POST /admin/logout - Clear admin session
@@ -620,10 +695,10 @@ export default {
       const redirectUrl = new URL(url.toString());
       redirectUrl.pathname = '/admin';
       redirectUrl.searchParams.set('lang', lang);
-      return htmlRedirect(redirectUrl.toString(), buildClearAdminSessionCookie(request));
+      return respond(htmlRedirect(redirectUrl.toString(), buildClearAdminSessionCookie(request)));
     }
 
-    return new Response('Not Found', { status: 404 });
+    return respond(new Response('Not Found', { status: 404 }));
   },
 
   async saveTelemetry(payloadRaw: unknown, request: Request, env: Env): Promise<void> {
@@ -642,6 +717,11 @@ export default {
         city: location.city,
       });
 
+      const eventType = normalizeEventType(payload.event_type);
+      const eventData = normalizeText(payload.event_data, 512);
+      const sig = `${eventType}|${eventData ?? ''}`;
+      if (!shouldWriteTelemetry(userId, sig)) return;
+
       await env.DB.prepare(`
         INSERT INTO user (user_id, machine_name, user_name, app_version, os_info, event_type, event_data, ip_address, user_agent, country, region, city)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -651,8 +731,8 @@ export default {
         userName,
         normalizeText(payload.app_version, 64),
         normalizeText(payload.os_info, 128),
-        normalizeEventType(payload.event_type),
-        normalizeText(payload.event_data, 512),
+        eventType,
+        eventData,
         request.headers.get('CF-Connecting-IP') || null,
         request.headers.get('User-Agent') || null,
         location.country,
@@ -660,7 +740,10 @@ export default {
         location.city
       ).run();
 
-      await pruneOldUserEvents(env, userId, 999);
+      telemetryInsertCount += 1;
+      if (telemetryInsertCount % TELEMETRY_PRUNE_EVERY_N_INSERTS === 0) {
+        await pruneOldUserEvents(env, userId, 999);
+      }
     } catch (error) {
       console.error('Failed to save telemetry:', error);
     }
@@ -670,6 +753,11 @@ export default {
     try {
       await ensureSchema(env);
       const userId = normalizeText(userIdRaw, 128);
+      const cacheKey = `stats:${userId ?? ''}`;
+      const cached = memCacheGet<unknown>(cacheKey, 15_000);
+      if (cached) {
+        return jsonResponse(cached, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=15' } });
+      }
       const totalResult = userId
         ? await env.DB.prepare('SELECT COUNT(*) as total FROM user WHERE user_id = ?').bind(userId).first<{ total: number }>()
         : await env.DB.prepare('SELECT COUNT(*) as total FROM user').first<{ total: number }>();
@@ -689,7 +777,7 @@ export default {
       const javInfoTotalResult = await env.DB.prepare('SELECT COUNT(*) as total FROM javinfo').first<{ total: number }>();
       const javInfoTodayResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM javinfo WHERE date(created_at) = date('now')`).first<{ count: number }>();
 
-      return jsonResponse({
+      const payload = {
         total_records: totalResult?.total || 0,
         unique_machines: uniqueMachinesResult?.count || 0,
         unique_users: uniqueUsersResult?.count || 0,
@@ -697,7 +785,9 @@ export default {
         javinfo_total: javInfoTotalResult?.total || 0,
         javinfo_today: javInfoTodayResult?.count || 0,
         filter: userId ? { user_id: userId } : null,
-      }, { headers: corsHeaders });
+      };
+      memCacheSet(cacheKey, payload);
+      return jsonResponse(payload, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=15' } });
     } catch (error) {
       console.error('Failed to get stats:', error);
       // Fail soft so the UI can still render something.
@@ -847,6 +937,11 @@ export default {
   async getUsers(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
     try {
       await ensureSchema(env);
+      const cacheKey = 'users';
+      const cached = memCacheGet<unknown>(cacheKey, 15_000);
+      if (cached) {
+        return jsonResponse(cached, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=15' } });
+      }
 
       const result = await env.DB.prepare(`
         SELECT
@@ -879,7 +974,9 @@ export default {
         event_count: number;
       }>();
 
-      return jsonResponse({ data: result.results ?? [] }, { headers: corsHeaders });
+      const payload = { data: result.results ?? [] };
+      memCacheSet(cacheKey, payload);
+      return jsonResponse(payload, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=15' } });
     } catch (error) {
       console.error('Failed to get users:', error);
       return jsonResponse({ data: [] }, { headers: corsHeaders });
@@ -985,6 +1082,11 @@ export default {
   async getJavCategories(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
     try {
       await ensureSchema(env);
+      const cacheKey = 'jav:categories';
+      const cached = memCacheGet<unknown>(cacheKey, 5 * 60_000);
+      if (cached) {
+        return jsonResponse(cached, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=300' } });
+      }
       const rows = await env.DB.prepare(`
         SELECT categories_json
         FROM javinfo
@@ -1006,7 +1108,9 @@ export default {
       }
 
       const data = Array.from(set).sort((a, b) => a.localeCompare(b));
-      return jsonResponse({ data }, { headers: corsHeaders });
+      const payload = { data };
+      memCacheSet(cacheKey, payload);
+      return jsonResponse(payload, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=300' } });
     } catch (error) {
       console.error('Failed to get jav categories:', error);
       return jsonResponse({ data: [] }, { headers: corsHeaders });
@@ -1016,6 +1120,11 @@ export default {
   async getJavActors(env: Env, corsHeaders: Record<string, string>): Promise<Response> {
     try {
       await ensureSchema(env);
+      const cacheKey = 'jav:actors';
+      const cached = memCacheGet<unknown>(cacheKey, 5 * 60_000);
+      if (cached) {
+        return jsonResponse(cached, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=300' } });
+      }
       const rows = await env.DB.prepare(`
         SELECT actors_json
         FROM javinfo
@@ -1037,7 +1146,9 @@ export default {
       }
 
       const data = Array.from(set).sort((a, b) => a.localeCompare(b));
-      return jsonResponse({ data }, { headers: corsHeaders });
+      const payload = { data };
+      memCacheSet(cacheKey, payload);
+      return jsonResponse(payload, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=300' } });
     } catch (error) {
       console.error('Failed to get jav actors:', error);
       return jsonResponse({ data: [] }, { headers: corsHeaders });
@@ -1073,6 +1184,11 @@ export default {
 
   async getJavDbDomain(corsHeaders: Record<string, string>): Promise<Response> {
     try {
+      const cacheKey = 'javdb:domain';
+      const cached = memCacheGet<unknown>(cacheKey, 60 * 60_000);
+      if (cached) {
+        return jsonResponse(cached, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=3600' } });
+      }
       // 从 javdb.com 获取 HTML
       const response = await fetch('https://javdb.com/', {
         headers: {
@@ -1096,10 +1212,12 @@ export default {
 
       const latestDomain = latestDomainMatch[2];
 
-      return jsonResponse({
+      const payload = {
         success: true,
         domains: [latestDomain],
-      }, { headers: corsHeaders });
+      };
+      memCacheSet(cacheKey, payload);
+      return jsonResponse(payload, { headers: { ...corsHeaders, 'Cache-Control': 'private, max-age=3600' } });
     } catch (error) {
       console.error('Failed to get JavDB domain:', error);
       return jsonResponse({

@@ -36,6 +36,36 @@ Notes:
 - Local JSON cache for repeat searches
 - Smart torrent selection with weight-based ranking (markers + weights)
 
+## Screenshots
+
+### CLI
+
+<p align="center">
+  <img src="assets/cli-help.png" alt="CLI help — available commands" width="700" />
+</p>
+
+<p align="center"><em>Interactive CLI — available commands and keyboard shortcuts</em></p>
+
+<p align="center">
+  <img src="assets/cli-search.png" alt="CLI search results and torrent selection" width="700" />
+</p>
+
+<p align="center"><em>Search results table and torrent selection with tags (HD / SUB / UC)</em></p>
+
+### GUI
+
+<p align="center">
+  <img src="assets/gui-search.png" alt="GUI search page (dark mode)" width="800" />
+</p>
+
+<p align="center"><em>Web UI — search page with JAV ID input and filter options</em></p>
+
+<p align="center">
+  <img src="assets/gui-settings.png" alt="GUI settings page" width="800" />
+</p>
+
+<p align="center"><em>Web UI — settings page with service configuration and language selector</em></p>
+
 ## Workflow
 
 ```mermaid

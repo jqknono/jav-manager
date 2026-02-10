@@ -1,5 +1,4 @@
 {
-    "projectTranslator.debug": true,
     "projectTranslator.specifiedFiles": [
         {
             "sourceFile": {
@@ -38,6 +37,54 @@
                 {
                     "path": "src\\localization\\ko.json",
                     "lang": "ko-kr"
+                }
+            ]
+        },
+        {
+            "sourceFile": {
+                "path": "telemetry-worker\\src\\locales\\en.json",
+                "lang": "en-us"
+            },
+            "targetFiles": [
+                // 繁体中文
+                {
+                    "path": "telemetry-worker\\src\\locales\\zh.json",
+                    "lang": "zh-tw"
+                },
+                // 日语
+                {
+                    "path": "telemetry-worker\\src\\locales\\ja.json",
+                    "lang": "ja-jp"
+                },
+                // 韩语
+                {
+                    "path": "telemetry-worker\\src\\locales\\ko.json",
+                    "lang": "ko-kr"
+                },
+                // 泰语
+                {
+                    "path": "telemetry-worker\\src\\locales\\th.json",
+                    "lang": "th-th"
+                },
+                // 越南语
+                {
+                    "path": "telemetry-worker\\src\\locales\\vi.json",
+                    "lang": "vi-vn"
+                },
+                // 马来语
+                {
+                    "path": "telemetry-worker\\src\\locales\\ms.json",
+                    "lang": "ms-my"
+                },
+                // 菲律宾语
+                {
+                    "path": "telemetry-worker\\src\\locales\\fil.json",
+                    "lang": "fil-ph"
+                },
+                // 印度尼西亚语
+                {
+                    "path": "telemetry-worker\\src\\locales\\id.json",
+                    "lang": "id-id"
                 }
             ]
         }
