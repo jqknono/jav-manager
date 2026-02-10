@@ -1,4 +1,5 @@
 {
+    "projectTranslator.debug": true,
     "projectTranslator.specifiedFiles": [
         {
             "sourceFile": {
@@ -22,20 +23,20 @@
         },
         {
             "sourceFile": {
-                "path": "JavManager\\Localization\\Strings.resx",
+                "path": "src\\localization\\en.json",
                 "lang": "en-us"
             },
             "targetFiles": [
                 {
-                    "path": "JavManager\\Localization\\Strings.zh.resx",
+                    "path": "src\\localization\\zh.json",
                     "lang": "zh-tw"
                 },
                 {
-                    "path": "JavManager\\Localization\\Strings.ja.resx",
+                    "path": "src\\localization\\ja.json",
                     "lang": "ja-jp"
                 },
                 {
-                    "path": "JavManager\\Localization\\Strings.ko.resx",
+                    "path": "src\\localization\\ko.json",
                     "lang": "ko-kr"
                 }
             ]

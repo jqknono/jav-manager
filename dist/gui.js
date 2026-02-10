@@ -185,16 +185,19 @@ function startGuiServer(context, port = defaultPort, host = defaultHost) {
         const next = javId ? `/?q=${encodeURIComponent(javId)}` : "/";
         res.redirect(next);
     });
-    app.get("/downloads", async (_, res) => {
-        let torrents = [];
-        let status = "";
+    // Render downloads page immediately, then load qBittorrent data asynchronously on the client.
+    // This avoids UI jank when switching to the "Downloads" tab.
+    app.get("/downloads", (_, res) => {
+        res.send(renderDownloadsPage(context.loc, externalLinks));
+    });
+    app.get("/api/downloads", async (_, res) => {
         try {
-            torrents = await context.services.downloadService.getDownloads();
+            const torrents = await context.services.downloadService.getDownloads();
+            res.json({ ok: true, torrents });
         }
         catch (error) {
-            status = formatDownloadsError(context.loc, error);
+            res.json({ ok: false, torrents: [], error: formatDownloadsError(context.loc, error) });
         }
-        res.send(renderDownloadsPage(context.loc, externalLinks, torrents, status));
     });
     app.get("/settings", (_, res) => {
         res.send(renderSettingsPage(context.loc, externalLinks, context));
@@ -462,23 +465,24 @@ function renderDetailPage(loc, links, data) {
       ${torrentSection}
     `, "/", links);
 }
-function renderDownloadsPage(loc, links, torrents, status) {
-    const rows = torrents
-        .map((torrent) => `<tr>
-        <td class="td-title">${escapeHtml(torrent.name ?? torrent.title)}</td>
-        <td><code>${escapeHtml(torrent.state ?? "-")}</code></td>
-        <td class="td-size"><code>${formatSize(torrent.size)}</code></td>
-      </tr>`)
-        .join("");
-    const dlCount = torrents.length ? `<span class="count">${torrents.length}</span>` : "";
+function renderDownloadsPage(loc, links, status) {
     const statusHtml = status ? renderStatus(loc, status) : "";
     const content = `
-    ${statusHtml}
-    ${renderCard(`${loc.get("gui_nav_downloads")} ${dlCount}`, `<div class="table-wrap"><table>${tableHeader([
+    <div id="downloadsRoot">
+      <div id="downloadsStatus" aria-live="polite">${statusHtml}</div>
+      ${renderCard(`${loc.get("gui_nav_downloads")} <span id="downloadsCount" class="count" style="display:none;"></span>`, `
+          <div id="downloadsLoading" class="spinner-wrap" aria-hidden="true">
+            <div class="spinner" title="Loading"></div>
+          </div>
+          <div class="table-wrap" id="downloadsTableWrap" style="display:none;">
+            <table>${tableHeader([
         loc.get("gui_table_name"),
         loc.get("gui_table_state"),
         loc.get("gui_table_size"),
-    ])}<tbody>${rows}</tbody></table></div>`, false)}
+    ])}<tbody id="downloadsTbody"></tbody></table>
+          </div>
+        `, false)}
+    </div>
   `;
     return renderLayout(loc, loc.get("gui_nav_downloads"), content, "/downloads", links);
 }
@@ -601,6 +605,9 @@ function renderLayout(loc, title, content, activePath = "/", links) {
     <main class="container">
       ${content}
     </main>
+    <nav class="tabbar" aria-label="Tabs">
+      ${navLinks}
+    </nav>
     <script>${clientScript(loc)}</script>
   </body>
   </html>`;
@@ -702,6 +709,7 @@ function formatSize(bytes) {
 function clientScript(loc) {
     const themeDark = escapeJs(loc.get("gui_theme_dark"));
     const themeLight = escapeJs(loc.get("gui_theme_light"));
+    const downloadFailed = escapeJs(loc.get("gui_status_download_failed"));
     return `
     function ready(fn) {
       if (document.readyState !== 'loading') fn();
@@ -711,6 +719,7 @@ function clientScript(loc) {
     // Theme
     var THEME_LABEL_DARK = '${themeDark}';
     var THEME_LABEL_LIGHT = '${themeLight}';
+    var DL_FAILED = '${downloadFailed}';
     function updateThemeToggle(theme) {
       var btn = document.getElementById('themeToggle');
       if (!btn) return;
@@ -759,6 +768,87 @@ function clientScript(loc) {
       });
     }
 
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatSize(bytes) {
+      bytes = Number(bytes) || 0;
+      if (bytes <= 0) return '-';
+      if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+      if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+      return (bytes / 1024).toFixed(2) + ' KB';
+    }
+
+    function showDownloadsError(message) {
+      var container = document.getElementById('downloadsStatus');
+      if (!container) return;
+      container.innerHTML = '<div class=\"status status-warn\">' + escapeHtml(message) + '</div>';
+    }
+
+    function clearDownloadsStatus() {
+      var container = document.getElementById('downloadsStatus');
+      if (!container) return;
+      container.innerHTML = '';
+    }
+
+    function loadDownloads() {
+      var root = document.getElementById('downloadsRoot');
+      if (!root) return;
+
+      var loading = document.getElementById('downloadsLoading');
+      var tableWrap = document.getElementById('downloadsTableWrap');
+      if (loading) loading.style.display = 'flex';
+      if (tableWrap) tableWrap.style.display = 'none';
+
+      fetch('/api/downloads', { cache: 'no-store' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data || !data.ok) {
+            showDownloadsError((data && data.error) ? data.error : DL_FAILED);
+            return;
+          }
+
+          clearDownloadsStatus();
+
+          var torrents = data.torrents || [];
+          var countEl = document.getElementById('downloadsCount');
+          if (countEl) {
+            countEl.textContent = String(torrents.length || 0);
+            countEl.style.display = torrents.length ? 'inline-flex' : 'none';
+          }
+
+          var body = document.getElementById('downloadsTbody');
+          if (body) {
+            var html = '';
+            for (var i = 0; i < torrents.length; i++) {
+              var t = torrents[i] || {};
+              var name = t.name || t.title || '';
+              var state = t.state || '-';
+              html += '<tr>'
+                + '<td class=\"td-title\">' + escapeHtml(name) + '</td>'
+                + '<td><code>' + escapeHtml(state) + '</code></td>'
+                + '<td class=\"td-size\"><code>' + escapeHtml(formatSize(t.size)) + '</code></td>'
+                + '</tr>';
+            }
+            body.innerHTML = html;
+          }
+
+          if (tableWrap) tableWrap.style.display = 'block';
+        })
+        .catch(function() {
+          showDownloadsError(DL_FAILED);
+        })
+        .finally(function() {
+          if (loading) loading.style.display = 'none';
+        });
+    }
+
     // Search spinner + init hooks
     ready(function() {
       initTheme();
@@ -771,6 +861,11 @@ function clientScript(loc) {
           var spinner = document.getElementById('searchSpinner');
           if (spinner) spinner.style.display = 'flex';
         });
+      }
+
+      // Defer downloads loading so the tab/page can render first.
+      if (document.getElementById('downloadsRoot')) {
+        setTimeout(loadDownloads, 0);
       }
     });
 
@@ -945,6 +1040,9 @@ function baseStyles() {
     .nav-link.active { color: var(--c-text-bright); background: var(--c-accent-dim); }
     .nav-icon { font-size: 0.95rem; line-height: 1; }
 
+    /* — Mobile tabbar (hidden on desktop) — */
+    .tabbar { display: none; }
+
     .nav-actions {
       margin-left: auto;
       display: flex;
@@ -1078,6 +1176,7 @@ function baseStyles() {
       color: var(--c-text-bright);
       font-family: var(--font-body);
       font-size: 0.875rem;
+      width: 100%;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
@@ -1472,23 +1571,57 @@ function baseStyles() {
 
     /* — Responsive — */
     @media (max-width: 640px) {
-      .container { padding: 0.75rem; }
+      .container {
+        padding: 0.75rem;
+        padding-bottom: calc(0.75rem + 4.25rem); /* room for bottom tabbar */
+      }
       .nav {
         padding: 0.6rem 0.75rem;
         height: auto;
-        flex-wrap: wrap;
         gap: 0.4rem;
       }
       .nav-brand { margin-right: 0.75rem; }
-      .nav-links { flex-wrap: wrap; }
+      .nav-links { display: none; }
       .nav-actions {
-        margin-left: 0;
-        width: 100%;
-        justify-content: flex-start;
+        margin-left: auto;
+        width: auto;
+        justify-content: flex-end;
         flex-wrap: wrap;
       }
-      .search-form .search-row { flex-direction: column; }
+
+      /* Put tabs at the bottom on mobile */
+      .tabbar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60;
+        padding: 0.35rem 0.5rem 0.35rem;
+        padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
+        background: var(--c-surface);
+        border-top: 1px solid var(--c-border);
+        justify-content: space-around;
+        gap: 0.25rem;
+      }
+      .tabbar .nav-link {
+        flex: 1;
+        justify-content: center;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.4rem 0.35rem;
+        font-size: 0.7rem;
+        text-align: center;
+      }
+      .tabbar .nav-icon { font-size: 1.05rem; }
+
+      /* Search form: left align JAV ID label + input on mobile */
+      .search-form .search-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
       .search-form .search-row .button { align-self: stretch; }
+      .search-form .field-label { text-align: left; }
       .settings-grid { grid-template-columns: 1fr; }
       .detail-layout { flex-direction: column; }
       .detail-cover { width: 100%; max-height: 16rem; }

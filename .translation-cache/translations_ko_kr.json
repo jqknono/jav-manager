@@ -10,5 +10,17 @@
     "src_hash": "5fe0f6a65b03617dbf9dc58410f77772",
     "src_size": 26182,
     "src_mtime_ms": 1769886766986.5203
+  },
+  "src/localization/en.ts": {
+    "translate_datetime": "2026-02-09:16:28",
+    "src_hash": "596508fec337406fe3822ae04d0d210d",
+    "src_size": 4151,
+    "src_mtime_ms": 1770619178609.8894
+  },
+  "src/localization/en.json": {
+    "translate_datetime": "2026-02-10:09:51",
+    "src_hash": "b02e12ad68bd5d32d3bb4fac7264a2a8",
+    "src_size": 4312,
+    "src_mtime_ms": 1770626077543.425
   }
 }

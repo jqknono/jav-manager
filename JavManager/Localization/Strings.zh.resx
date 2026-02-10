@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -41,22 +42,22 @@
 
   <!-- General -->
   <data name="AppTitle" xml:space="preserve">
-    <value>JAV下载管理器</value>
+    <value>JAV 下載管理員</value>
   </data>
   <data name="AppSubtitle" xml:space="preserve">
-    <value>JAV下载管理器</value>
+    <value>JAV 下載管理員</value>
   </data>
   <data name="Version" xml:space="preserve">
     <value>版本</value>
   </data>
   <data name="Error" xml:space="preserve">
-    <value>错误</value>
+    <value>錯誤</value>
   </data>
   <data name="Warning" xml:space="preserve">
     <value>警告</value>
   </data>
   <data name="Info" xml:space="preserve">
-    <value>信息</value>
+    <value>資訊</value>
   </data>
   <data name="Success" xml:space="preserve">
     <value>成功</value>
@@ -65,10 +66,10 @@
     <value>已取消。</value>
   </data>
   <data name="Goodbye" xml:space="preserve">
-    <value>再见！</value>
+    <value>再見！</value>
   </data>
   <data name="PressAnyKey" xml:space="preserve">
-    <value>按任意键继续...</value>
+    <value>請按任意鍵繼續...</value>
   </data>
 
   <!-- Features -->
@@ -76,145 +77,145 @@
     <value>功能：</value>
   </data>
   <data name="FeatureSearchJavDb" xml:space="preserve">
-    <value>从JavDB搜索JAV ID</value>
+    <value>從 JavDB 搜尋 JAV ID</value>
   </data>
   <data name="FeatureSmartSelection" xml:space="preserve">
-    <value>智能源选择（无码/字幕/大小）</value>
+    <value>智慧來源選擇 (無碼/字幕/大小)</value>
   </data>
   <data name="FeatureLocalCheck" xml:space="preserve">
-    <value>本地文件检查（使用Everything）</value>
+    <value>本地檔案檢查 (使用 Everything)</value>
   </data>
   <data name="FeatureAutoDownload" xml:space="preserve">
-    <value>自动添加到qBittorrent</value>
+    <value>自動新增至 qBittorrent</value>
   </data>
 
   <!-- Commands -->
   <data name="Commands" xml:space="preserve">
-    <value>命令：</value>
+    <value>指令：</value>
   </data>
   <data name="CmdSearchDownload" xml:space="preserve">
-    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        搜索并下载（例如 IPZZ-408）</value>
+    <value>&lt;JAV-ID&gt; / s &lt;JAV-ID&gt;        搜尋並下載 (例如 IPZZ-408)</value>
   </data>
   <data name="CmdLocalSearch" xml:space="preserve">
-    <value>l &lt;JAV-ID&gt; [-m 100MB]       本地搜索（Everything，默认 >=100MB）</value>
+    <value>l &lt;JAV-ID&gt; [-m 100MB]       本地搜尋 (Everything，預設 &gt;=100MB)</value>
   </data>
   <data name="CmdRemoteSearch" xml:space="preserve">
-    <value>r &lt;JAV-ID&gt;                 远程搜索（JavDB）</value>
+    <value>r &lt;JAV-ID&gt;                  遠端搜尋</value>
   </data>
   <data name="CmdDownloading" xml:space="preserve">
-    <value>d                        下载列表（qBittorrent）</value>
+    <value>d                         下載中列表</value>
   </data>
   <data name="CmdDownloads" xml:space="preserve">
-    <value>t                        下载任务（qBittorrent）</value>
+    <value>t                         下載任務</value>
   </data>
   <data name="CmdHealthCheck" xml:space="preserve">
-    <value>hc                       检查服务状态</value>
+    <value>hc                        檢查服務狀態</value>
   </data>
   <data name="CmdVersion" xml:space="preserve">
-    <value>v                        显示版本</value>
+    <value>v                         顯示版本</value>
   </data>
   <data name="CmdHelp" xml:space="preserve">
-    <value>h                        显示帮助</value>
+    <value>h                         顯示說明</value>
   </data>
   <data name="CmdLang" xml:space="preserve">
-    <value>lang &lt;auto|en|zh&gt;         更改界面语言</value>
+    <value>lang &lt;auto|en|zh&gt;          變更介面語言</value>
   </data>
   <data name="CmdConfig" xml:space="preserve">
-    <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  配置服务连接</value>
+    <value>cfg show / cfg &lt;svc&gt; &lt;key&gt; &lt;value&gt;  設定服務連線</value>
   </data>
   <data name="CmdQuit" xml:space="preserve">
-    <value>q                        退出</value>
+    <value>q                         離開</value>
   </data>
   <data name="CmdCacheStats" xml:space="preserve">
-    <value>c            显示本地缓存统计</value>
+    <value>c             顯示本地快取統計</value>
   </data>
   <data name="CmdTestCurl" xml:space="preserve">
-    <value>--test-curl   运行curl测试</value>
+    <value>--test-curl    執行 curl 測試</value>
   </data>
   <data name="HelpTitle" xml:space="preserve">
-    <value>{0} {1} - 命令：</value>
+    <value>{0} {1} - 指令：</value>
   </data>
   <data name="HelpOptionsTitle" xml:space="preserve">
-    <value>选项：</value>
+    <value>選項：</value>
   </data>
   <data name="OptLanguage" xml:space="preserve">
-    <value>--lang &lt;auto|en|zh&gt;         设置界面语言</value>
+    <value>--lang &lt;auto|en|zh&gt;         設定介面語言</value>
   </data>
   <data name="OptJavDbUrl" xml:space="preserve">
-    <value>--javdb-url &lt;url&gt;           JavDB基础URL</value>
+    <value>--javdb-url &lt;url&gt;            JavDB 基礎 URL</value>
   </data>
   <data name="OptEverythingUrl" xml:space="preserve">
-    <value>--everything-url &lt;url&gt;      Everything基础URL</value>
+    <value>--everything-url &lt;url&gt;       Everything 基礎 URL</value>
   </data>
   <data name="OptEverythingUser" xml:space="preserve">
-    <value>--everything-user &lt;username&gt; Everything用户名</value>
+    <value>--everything-user &lt;username&gt; Everything 使用者名稱</value>
   </data>
   <data name="OptEverythingPass" xml:space="preserve">
-    <value>--everything-pass &lt;password&gt; Everything密码</value>
+    <value>--everything-pass &lt;password&gt; Everything 密碼</value>
   </data>
   <data name="OptQBittorrentUrl" xml:space="preserve">
-    <value>--qb-url &lt;url&gt;              qBittorrent基础URL</value>
+    <value>--qb-url &lt;url&gt;               qBittorrent 基礎 URL</value>
   </data>
   <data name="OptQBittorrentUser" xml:space="preserve">
-    <value>--qb-user &lt;username&gt;        qBittorrent用户名</value>
+    <value>--qb-user &lt;username&gt;         qBittorrent 使用者名稱</value>
   </data>
   <data name="OptQBittorrentPass" xml:space="preserve">
-    <value>--qb-pass &lt;password&gt;        qBittorrent密码</value>
+    <value>--qb-pass &lt;password&gt;         qBittorrent 密碼</value>
   </data>
   <data name="UsageLang" xml:space="preserve">
-    <value>用法: lang &lt;auto|en|zh&gt;</value>
+    <value>用法：lang &lt;auto|en|zh&gt;</value>
   </data>
   <data name="LangSwitched" xml:space="preserve">
-    <value>语言已切换为: {0}</value>
+    <value>語言已切換為：{0}</value>
   </data>
   <data name="UsageConfig" xml:space="preserve">
-    <value>用法: cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
+    <value>用法：cfg show | cfg &lt;everything|qb|javdb&gt; &lt;url|user|pass&gt; &lt;value&gt;</value>
   </data>
   <data name="ConfigUpdated" xml:space="preserve">
-    <value>配置已更新。</value>
+    <value>設定已更新。</value>
   </data>
 
   <!-- Prompts -->
   <data name="PromptInput" xml:space="preserve">
-    <value>输入命令或JAV-ID（h显示帮助，q退出）： </value>
+    <value>輸入指令或 JAV-ID (h 取得說明，q 離開)： </value>
   </data>
   <data name="PromptTorrentSelection" xml:space="preserve">
-    <value>选择要下载的种子（1-{0}，回车选择第一个，0取消）： </value>
+    <value>選擇要下載的種子 (1-{0}，Enter 選第一個，0 取消)： </value>
   </data>
   <data name="PromptSearchResultSelection" xml:space="preserve">
-    <value>选择搜索结果（1-{0}，回车选择第一个，0取消）： </value>
+    <value>選擇搜尋結果 (1-{0}，Enter 選第一個，0 取消)： </value>
   </data>
   <data name="PromptLocalFileSelection" xml:space="preserve">
-    <value>输入选项（1-3）： </value>
+    <value>輸入選項 (1-3)： </value>
   </data>
   <data name="PromptInvalidInput" xml:space="preserve">
-    <value>无效输入。</value>
+    <value>輸入無效。</value>
   </data>
   <data name="PromptInvalidInputRange" xml:space="preserve">
-    <value>无效输入，请输入1-{0}，或按回车选择第一个。</value>
+    <value>輸入無效，請輸入 1-{0}，或按 Enter 鍵選擇第一個。</value>
   </data>
 
   <!-- Local File Selection -->
   <data name="LocalFileExists" xml:space="preserve">
-    <value>本地文件已存在，请选择选项：</value>
+    <value>本地檔案已存在，請選擇一個選項：</value>
   </data>
   <data name="LocalFileOption1Skip" xml:space="preserve">
-    <value>1. 跳过下载</value>
+    <value>1. 跳過下載</value>
   </data>
   <data name="LocalFileOption2Force" xml:space="preserve">
-    <value>2. 强制下载</value>
+    <value>2. 強制下載</value>
   </data>
   <data name="LocalFileOption3Details" xml:space="preserve">
-    <value>3. 显示文件详情</value>
+    <value>3. 顯示檔案詳細資訊</value>
   </data>
   <data name="LocalFileSkipped" xml:space="preserve">
-    <value>下载已跳过。</value>
+    <value>已跳過下載。</value>
   </data>
   <data name="LocalFileForceDownload" xml:space="preserve">
-    <value>正在强制下载...</value>
+    <value>正在強制下載...</value>
   </data>
   <data name="LocalFileExistsSkip" xml:space="preserve">
-    <value>本地文件已存在，跳过下载。</value>
+    <value>本地檔案已存在，跳過下載。</value>
   </data>
 
   <!-- Table Headers -->
@@ -222,115 +223,115 @@
     <value>#</value>
   </data>
   <data name="TableTitle" xml:space="preserve">
-    <value>标题</value>
+    <value>標題</value>
   </data>
   <data name="TableUncensored" xml:space="preserve">
-    <value>无码</value>
+    <value>無碼</value>
   </data>
   <data name="TableSubtitle" xml:space="preserve">
     <value>字幕</value>
   </data>
   <data name="TableHD" xml:space="preserve">
-    <value>高清</value>
+    <value>HD</value>
   </data>
   <data name="TableSize" xml:space="preserve">
     <value>大小</value>
   </data>
   <data name="TableFileName" xml:space="preserve">
-    <value>文件名</value>
+    <value>檔名</value>
   </data>
   <data name="TablePath" xml:space="preserve">
-    <value>路径</value>
+    <value>路徑</value>
   </data>
   <data name="TableProgress" xml:space="preserve">
-    <value>进度</value>
+    <value>進度</value>
   </data>
   <data name="TableState" xml:space="preserve">
-    <value>状态</value>
+    <value>狀態</value>
   </data>
   <data name="TableJavId" xml:space="preserve">
     <value>JAV-ID</value>
   </data>
   <data name="TableService" xml:space="preserve">
-    <value>服务</value>
+    <value>服務</value>
   </data>
   <data name="TableStatus" xml:space="preserve">
-    <value>状态</value>
+    <value>狀態</value>
   </data>
   <data name="TableMessage" xml:space="preserve">
-    <value>消息</value>
+    <value>訊息</value>
   </data>
   <data name="TableUrl" xml:space="preserve">
     <value>URL</value>
   </data>
   <data name="TableItem" xml:space="preserve">
-    <value>项目</value>
+    <value>項目</value>
   </data>
   <data name="TableValue" xml:space="preserve">
-    <value>值</value>
+    <value>數值</value>
   </data>
 
   <!-- Search Results -->
   <data name="NoTorrentsFound" xml:space="preserve">
-    <value>未找到种子文件</value>
+    <value>未找到種子</value>
   </data>
   <data name="NoSearchResults" xml:space="preserve">
-    <value>未找到搜索结果</value>
+    <value>未找到搜尋結果</value>
   </data>
   <data name="NoDownloads" xml:space="preserve">
-    <value>无下载任务</value>
+    <value>沒有下載任務</value>
   </data>
   <data name="NoLocalFiles" xml:space="preserve">
-    <value>未找到本地文件。</value>
+    <value>未找到本地檔案。</value>
   </data>
   <data name="Searching" xml:space="preserve">
-    <value>正在搜索 {0}...</value>
+    <value>正在搜尋 {0}...</value>
   </data>
   <data name="SearchFailed" xml:space="preserve">
-    <value>远程搜索失败 (JavDB): {0}</value>
+    <value>遠端搜尋失敗： {0}</value>
   </data>
 
   <!-- Process Results -->
   <data name="LocalFilesExist" xml:space="preserve">
-    <value>本地文件已存在</value>
+    <value>本地檔案已存在</value>
   </data>
   <data name="DownloadAdded" xml:space="preserve">
-    <value>下载任务已添加</value>
+    <value>已新增下載任務</value>
   </data>
   <data name="DownloadSkipped" xml:space="preserve">
-    <value>未添加到下载队列</value>
+    <value>未加入下載佇列</value>
   </data>
   <data name="MagnetLinkManual" xml:space="preserve">
-    <value>磁力链接 (手动下载):</value>
+    <value>磁力連結 (手動下載)：</value>
   </data>
   <data name="ProcessFailed" xml:space="preserve">
-    <value>处理失败</value>
+    <value>處理失敗</value>
   </data>
   <data name="LocalDedupSkipped" xml:space="preserve">
-    <value>注意: 本地去重已跳过 (Everything 不可用)</value>
+    <value>注意：已跳過本地去重 (Everything 無法使用)</value>
   </data>
   <data name="MarkerHD" xml:space="preserve">
-    <value>高清</value>
+    <value>HD</value>
   </data>
   <data name="MarkerUncensored" xml:space="preserve">
-    <value>无码</value>
+    <value>無碼</value>
   </data>
   <data name="MarkerSubtitle" xml:space="preserve">
     <value>字幕</value>
   </data>
   <data name="MarkerNone" xml:space="preserve">
-    <value>无</value>
+    <value>無</value>
   </data>
   <data name="Markers" xml:space="preserve">
-    <value>标记</value>
+    <value>標記</value>
   </data>
 
   <!-- Health Check -->
   <data name="HealthCheckTitle" xml:space="preserve">
-    <value>服务状态检查</value>
+    <value>服務狀態檢查</value>
   </data>
   <data name="HealthCheckNoCheckers" xml:space="preserve">
-    <value>没有注册的健康检查器，无法显示服务状态。</value>
+    <value>未註冊健康檢查器，無法顯示服務狀態。</value>
   </data>
   <data name="StatusHealthy" xml:space="preserve">
     <value>健康</value>
@@ -339,112 +340,112 @@
     <value>不健康</value>
   </data>
   <data name="UnhealthyWarning" xml:space="preserve">
-    <value>警告: {0} 个服务不可用，请检查配置文件 appsettings.json</value>
+    <value>警告：{0} 個服務無法使用，請檢查設定檔 appsettings.json</value>
   </data>
   <data name="AllServicesHealthy" xml:space="preserve">
-    <value>所有服务运行正常</value>
+    <value>所有服務運作正常</value>
   </data>
   <data name="HealthCheckException" xml:space="preserve">
-    <value>健康检查异常: {0}</value>
+    <value>健康檢查異常：{0}</value>
   </data>
   <data name="HealthCheckStarted" xml:space="preserve">
-    <value>服务状态检查已在后台启动。输入 'hc' 随时查看结果。</value>
+    <value>服務狀態檢查已在背景啟動。隨時輸入 'hc' 查看結果。</value>
   </data>
 
   <!-- Service Setup Hints -->
   <data name="EverythingSetupHint" xml:space="preserve">
-    <value>未检测到 Everything 本地搜索服务，请安装并启用 HTTP API:</value>
+    <value>未偵測到 Everything 本地搜尋服務，請安裝並啟用 HTTP API：</value>
   </data>
   <data name="EverythingDownload" xml:space="preserve">
     <value>Everything 1.5a: https://www.voidtools.com/everything-1.5a/</value>
   </data>
   <data name="EverythingPlugin" xml:space="preserve">
-    <value>Everything HTTP 插件: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
+    <value>Everything HTTP plugin: https://www.voidtools.com/forum/viewtopic.php?f=12&amp;t=9799</value>
   </data>
   <data name="EverythingConfig" xml:space="preserve">
-    <value>配置: 在 appsettings.json 中将 Everything.BaseUrl 设置为 HTTP 服务地址 (包含端口，例如 http://127.0.0.1:1234)</value>
+    <value>設定：在 appsettings.json 中將 Everything.BaseUrl 設為 HTTP 服務位址 (含通訊埠，例如 http://127.0.0.1:1234)</value>
   </data>
   <data name="QBittorrentSetupHint" xml:space="preserve">
-    <value>未检测到 qBittorrent 下载器 WebUI，请安装并启用 WebUI:</value>
+    <value>未偵測到 qBittorrent 下載器 WebUI，請安裝並啟用 WebUI：</value>
   </data>
   <data name="QBittorrentDownload" xml:space="preserve">
     <value>qBittorrent: https://github.com/qbittorrent/qBittorrent</value>
   </data>
   <data name="QBittorrentEnhanced" xml:space="preserve">
-    <value>增强版: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
+    <value>Enhanced Edition: https://github.com/c0re100/qBittorrent-Enhanced-Edition</value>
   </data>
   <data name="QBittorrentConfig" xml:space="preserve">
-    <value>配置: 启用 WebUI 后，在 appsettings.json 中将 QBittorrent.BaseUrl 设置为 WebUI 地址 (包含端口，例如 http://127.0.0.1:8080)，并设置正确的用户名/密码</value>
+    <value>設定：啟用 WebUI 後，在 appsettings.json 中將 QBittorrent.BaseUrl 設為 WebUI 位址 (含通訊埠，例如 http://127.0.0.1:8080)，並設定正確的使用者名稱/密碼</value>
   </data>
   <data name="ConfigHint" xml:space="preserve">
-    <value>提示: 输入 'quit' 退出并修改配置</value>
+    <value>提示：輸入 'quit' 離開並修改設定</value>
   </data>
 
   <!-- Service Errors -->
   <data name="JavDbUnavailable" xml:space="preserve">
-    <value>JavDB 服务错误: 远程搜索功能不可用。</value>
+    <value>JavDB 服務錯誤：遠端搜尋功能無法使用。</value>
   </data>
   <data name="EverythingUnavailable" xml:space="preserve">
-    <value>Everything 服务错误: 不支持本地搜索。</value>
+    <value>Everything 服務錯誤：不支援本地搜尋。</value>
   </data>
   <data name="QBittorrentUnavailable" xml:space="preserve">
-    <value>qBittorrent 服务错误: 不支持下载队列操作。</value>
+    <value>qBittorrent 服務錯誤：不支援下載佇列操作。</value>
   </data>
 
   <!-- Service Names -->
   <data name="ServiceNameEverything" xml:space="preserve">
-    <value>Everything (本地搜索)</value>
+    <value>Everything (本地搜尋)</value>
   </data>
   <data name="ServiceNameQBittorrent" xml:space="preserve">
-    <value>qBittorrent (下载器)</value>
+    <value>qBittorrent (下載器)</value>
   </data>
   <data name="ServiceNameJavDb" xml:space="preserve">
-    <value>JavDB (远程数据库)</value>
+    <value>JavDB (遠端資料庫)</value>
   </data>
 
   <!-- Health Check Messages -->
   <data name="HealthServiceOk" xml:space="preserve">
-    <value>服务正常</value>
+    <value>服務正常</value>
   </data>
   <data name="HealthConnectionFailed" xml:space="preserve">
-    <value>连接失败: {0}</value>
+    <value>連線失敗：{0}</value>
   </data>
   <data name="HealthAllUrlsFailed" xml:space="preserve">
-    <value>所有 URL 均不可达</value>
+    <value>所有 URL 無法連線</value>
   </data>
 
   <!-- JavSearchService Messages -->
   <data name="LocalDedupUnavailableSkipped" xml:space="preserve">
-    <value>本地去重不可用 (Everything 服务错误)，已跳过本地检查。</value>
+    <value>本地去重功能無法使用 (Everything 服務錯誤)，已跳過本地檢查。</value>
   </data>
   <data name="LocalDedupException" xml:space="preserve">
-    <value>本地去重不可用 (Everything 错误): {0}</value>
+    <value>本地去重功能無法使用 (Everything 錯誤)：{0}</value>
   </data>
   <data name="DownloaderUnavailableSkipped" xml:space="preserve">
-    <value>下载器不可用 (qBittorrent 服务错误)，未添加到下载队列。</value>
+    <value>下載器無法使用 (qBittorrent 服務錯誤)，未加入下載佇列。</value>
   </data>
   <data name="DownloaderException" xml:space="preserve">
-    <value>下载器错误，无法添加到下载队列: {0}</value>
+    <value>下載器錯誤，無法加入下載佇列：{0}</value>
   </data>
 
   <!-- Cache -->
   <data name="CacheStatsTitle" xml:space="preserve">
-    <value>本地缓存统计</value>
+    <value>本地快取統計</value>
   </data>
   <data name="CacheDisabled" xml:space="preserve">
-    <value>本地缓存未启用。</value>
+    <value>未啟用本地快取。</value>
   </data>
   <data name="CacheJavCount" xml:space="preserve">
-    <value>缓存的 JAV 数量</value>
+    <value>已快取 JAV 計數</value>
   </data>
   <data name="CacheTorrentCount" xml:space="preserve">
-    <value>缓存的种子数量</value>
+    <value>已快取種子計數</value>
   </data>
   <data name="CacheDbSize" xml:space="preserve">
-    <value>数据库大小</value>
+    <value>資料庫大小</value>
   </data>
   <data name="CacheLastUpdated" xml:space="preserve">
-    <value>最后更新时间</value>
+    <value>最後更新</value>
   </data>
 
   <!-- JAV Details -->
@@ -452,185 +453,185 @@
     <value>JAV-ID</value>
   </data>
   <data name="DetailTitle" xml:space="preserve">
-    <value>标题</value>
+    <value>標題</value>
   </data>
   <data name="DetailReleaseDate" xml:space="preserve">
-    <value>发行日期</value>
+    <value>發行日期</value>
   </data>
   <data name="DetailDuration" xml:space="preserve">
-    <value>时长</value>
+    <value>片長</value>
   </data>
   <data name="DetailDirector" xml:space="preserve">
-    <value>导演</value>
+    <value>導演</value>
   </data>
   <data name="DetailMaker" xml:space="preserve">
-    <value>制作商</value>
+    <value>製作商</value>
   </data>
   <data name="DetailPublisher" xml:space="preserve">
-    <value>发行商</value>
+    <value>發行商</value>
   </data>
   <data name="DetailSeries" xml:space="preserve">
     <value>系列</value>
   </data>
   <data name="DetailActors" xml:space="preserve">
-    <value>演员</value>
+    <value>演員</value>
   </data>
   <data name="DetailCategories" xml:space="preserve">
-    <value>类别</value>
+    <value>類別</value>
   </data>
   <data name="DetailDataSource" xml:space="preserve">
-    <value>数据源</value>
+    <value>資料來源</value>
   </data>
   <data name="DetailCachedAt" xml:space="preserve">
-    <value>缓存时间</value>
+    <value>快取時間</value>
   </data>
   <data name="DetailTorrentCount" xml:space="preserve">
-    <value>种子数</value>
+    <value>種子數量</value>
   </data>
   <data name="DurationMinutes" xml:space="preserve">
-    <value>{0} 分钟</value>
+    <value>{0} 分鐘</value>
   </data>
 
   <!-- Usage Hints -->
   <data name="UsageLocalSearch" xml:space="preserve">
-    <value>用法: l &lt;JAV-ID&gt; [-m 100MB]</value>
+    <value>用法：l &lt;JAV-ID&gt; [-m 100MB]</value>
   </data>
   <data name="UsageRemoteSearch" xml:space="preserve">
-    <value>用法: r &lt;JAV-ID&gt;</value>
+    <value>用法：r &lt;JAV-ID&gt;</value>
   </data>
   <data name="UsageSearch" xml:space="preserve">
-    <value>用法: s &lt;JAV-ID&gt;</value>
+    <value>用法：s &lt;JAV-ID&gt;</value>
   </data>
   <data name="InvalidJavId" xml:space="preserve">
-    <value>"{0}" 不是有效的 JAV-ID。JAV-ID 必须为 &lt;字母/数字&gt;-&lt;数字&gt; 格式。</value>
+    <value>"{0}" 不是有效的 JAV-ID。JAV-ID 格式須為 &lt;字母/數字&gt;-&lt;數字&gt;。</value>
   </data>
   <data name="NoFilesOverSize" xml:space="preserve">
-    <value>没有找到大于 {0:0.##} MB 的本地文件。</value>
+    <value>未找到大於 {0:0.##} MB 的本地檔案。</value>
   </data>
 
   <!-- Error Messages -->
   <data name="ErrorOccurred" xml:space="preserve">
-    <value>发生错误: {0}</value>
+    <value>發生錯誤：{0}</value>
   </data>
 
   <!-- GUI -->
   <data name="Gui_Tab_Search" xml:space="preserve">
-    <value>搜索</value>
+    <value>搜尋</value>
   </data>
   <data name="Gui_Tab_Downloads" xml:space="preserve">
-    <value>下载</value>
+    <value>下載</value>
   </data>
   <data name="Gui_Tab_Settings" xml:space="preserve">
-    <value>设置</value>
+    <value>設定</value>
   </data>
 
   <data name="Gui_Common_BaseUrl" xml:space="preserve">
-    <value>基础 URL</value>
+    <value>基礎 URL</value>
   </data>
   <data name="Gui_Common_Username" xml:space="preserve">
-    <value>用户名</value>
+    <value>使用者名稱</value>
   </data>
   <data name="Gui_Common_Password" xml:space="preserve">
-    <value>密码</value>
+    <value>密碼</value>
   </data>
   <data name="Gui_Common_Optional" xml:space="preserve">
-    <value>(可选)</value>
+    <value>(選填)</value>
   </data>
   <data name="Gui_Common_Apply" xml:space="preserve">
-    <value>应用</value>
+    <value>套用</value>
   </data>
   <data name="Gui_Common_OpenFolder" xml:space="preserve">
-    <value>打开文件夹</value>
+    <value>開啟資料夾</value>
   </data>
   <data name="Gui_Common_Back" xml:space="preserve">
     <value>返回</value>
   </data>
 
   <data name="Gui_Search_Watermark" xml:space="preserve">
-    <value>输入 JAV ID (例如: STARS-001)</value>
+    <value>輸入 JAV ID (例如：STARS-001)</value>
   </data>
   <data name="Gui_Search_ButtonSearch" xml:space="preserve">
-    <value>搜索</value>
+    <value>搜尋</value>
   </data>
   <data name="Gui_Search_OptionLocal" xml:space="preserve">
-    <value>搜索本地文件</value>
+    <value>搜尋本地檔案</value>
   </data>
   <data name="Gui_Search_OptionRemote" xml:space="preserve">
-    <value>搜索远程 (JavDB)</value>
+    <value>搜尋遠端</value>
   </data>
   <data name="Gui_Search_SectionRemoteResults" xml:space="preserve">
-    <value>搜索结果</value>
+    <value>搜尋結果</value>
   </data>
   <data name="Gui_Search_SectionTorrents" xml:space="preserve">
-    <value>种子</value>
+    <value>種子</value>
   </data>
   <data name="Gui_Search_SectionLocalFiles" xml:space="preserve">
-    <value>本地文件</value>
+    <value>本地檔案</value>
   </data>
   <data name="Gui_Search_TorrentMarkersHint" xml:space="preserve">
-    <value>UC = 无码, SUB = 字幕, HD = 高清</value>
+    <value>UC = 無碼，SUB = 字幕，HD = 高畫質</value>
   </data>
   <data name="Gui_Search_StatusSelectRemoteResult" xml:space="preserve">
-    <value>选择一个结果以加载种子</value>
+    <value>選擇一個結果以載入種子</value>
   </data>
   <data name="Gui_Search_StatusLoadingTorrents" xml:space="preserve">
-    <value>正在加载种子...</value>
+    <value>正在載入種子…</value>
   </data>
   <data name="Gui_Search_StatusCountRemoteResults" xml:space="preserve">
-    <value>{0} 个远程结果</value>
+    <value>{0} 個遠端結果</value>
   </data>
   <data name="Gui_Search_StatusCountLocalFiles" xml:space="preserve">
-    <value>{0} 个本地文件</value>
+    <value>{0} 個本地檔案</value>
   </data>
   <data name="Gui_Search_StatusCountTorrents" xml:space="preserve">
-    <value>{0} 个种子</value>
+    <value>{0} 個種子</value>
   </data>
   <data name="Gui_Search_ButtonCopyMagnet" xml:space="preserve">
-    <value>复制磁力链接</value>
+    <value>複製磁力連結</value>
   </data>
   <data name="Gui_Search_ButtonDownload" xml:space="preserve">
-    <value>下载</value>
+    <value>下載</value>
   </data>
   <data name="Gui_Search_StatusMagnetCopied" xml:space="preserve">
-    <value>磁力链接已复制</value>
+    <value>磁力連結已複製</value>
   </data>
 
   <data name="Gui_Downloads_OptionDownloadingOnly" xml:space="preserve">
-    <value>仅显示正在下载的</value>
+    <value>僅顯示下載中</value>
   </data>
   <data name="Gui_Downloads_ButtonRefresh" xml:space="preserve">
-    <value>刷新</value>
+    <value>重新整理</value>
   </data>
   <data name="Gui_Downloads_StatusCount" xml:space="preserve">
-    <value>{0} 个下载</value>
+    <value>{0} 個下載</value>
   </data>
 
   <data name="Gui_Settings_Everything_Title" xml:space="preserve">
-    <value>Everything (本地文件搜索)</value>
+    <value>Everything (本地檔案搜尋)</value>
   </data>
   <data name="Gui_Settings_QBittorrent_Title" xml:space="preserve">
-    <value>qBittorrent (下载管理器)</value>
+    <value>qBittorrent (下載管理員)</value>
   </data>
   <data name="Gui_Settings_JavDb_Title" xml:space="preserve">
-    <value>JavDB (远程数据库)</value>
+    <value>JavDB (遠端資料庫)</value>
   </data>
   <data name="Gui_Settings_Download_Title" xml:space="preserve">
-    <value>下载设置</value>
+    <value>下載設定</value>
   </data>
   <data name="Gui_Settings_Download_SavePath" xml:space="preserve">
-    <value>保存路径</value>
+    <value>儲存路徑</value>
   </data>
   <data name="Gui_Settings_Download_Category" xml:space="preserve">
-    <value>类别</value>
+    <value>分類</value>
   </data>
   <data name="Gui_Settings_Download_Tags" xml:space="preserve">
-    <value>标签</value>
+    <value>標籤</value>
   </data>
   <data name="Gui_Settings_Language_Title" xml:space="preserve">
-    <value>语言</value>
+    <value>語言</value>
   </data>
   <data name="Gui_Settings_Language_Label" xml:space="preserve">
-    <value>语言</value>
+    <value>語言</value>
   </data>
   <data name="Gui_Settings_Language_English" xml:space="preserve">
     <value>English</value>
@@ -645,74 +646,74 @@
     <value>한국어</value>
   </data>
   <data name="Gui_Settings_ButtonTestConnections" xml:space="preserve">
-    <value>测试连接</value>
+    <value>測試連線</value>
   </data>
   <data name="Gui_Settings_TelemetryEndpoint" xml:space="preserve">
-    <value>遥测端点</value>
+    <value>遙測端點</value>
   </data>
   <data name="Gui_Settings_ButtonUpdateJavDbDomain" xml:space="preserve">
-    <value>更新 JavDB 域名</value>
+    <value>更新 JavDB 網域</value>
   </data>
   <data name="Gui_Settings_UpdatingJavDbDomain" xml:space="preserve">
-    <value>正在更新 JavDB 镜像 URL...</value>
+    <value>正在更新 JavDB 鏡像 URL...</value>
   </data>
   <data name="Gui_Settings_JavDbMirrorUrlsUpdated" xml:space="preserve">
-    <value>镜像 URL 已更新: {0}</value>
+    <value>鏡像 URL 已更新：{0}</value>
   </data>
   <data name="Gui_Settings_JavDbDomainUpdateFailed" xml:space="preserve">
-    <value>更新 JavDB 镜像 URL 失败: {0}</value>
+    <value>更新 JavDB 鏡像 URL 失敗：{0}</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls" xml:space="preserve">
-    <value>镜像 URL</value>
+    <value>鏡像 URL</value>
   </data>
   <data name="Gui_Settings_JavDb_MirrorUrls_Watermark" xml:space="preserve">
     <value>https://javdb565.com,https://javdb564.com</value>
   </data>
 
-<data name="Gui_Settings_Update_Title" xml:space="preserve">
-  <value>更新</value>
-</data>
-<data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
-  <value>启动时自动检查更新</value>
-</data>
-<data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
-  <value>检查更新</value>
-</data>
-<data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
-  <value>立即更新</value>
-</data>
-<data name="Gui_Settings_Update_Unknown" xml:space="preserve">
-  <value>未知</value>
-</data>
-<data name="Gui_Settings_Update_Disabled" xml:space="preserve">
-  <value>已禁用</value>
-</data>
-<data name="Gui_Settings_Update_Checking" xml:space="preserve">
-  <value>检查中...</value>
-</data>
-<data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
-  <value>检查失败</value>
-</data>
-<data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
-  <value>已是最新版本 ({0})</value>
-</data>
-<data name="Gui_Settings_Update_Available" xml:space="preserve">
-  <value>有可用更新 ({0})</value>
-</data>
-<data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
-  <value>没有可用更新。</value>
-</data>
-<data name="Gui_Settings_Update_Downloading" xml:space="preserve">
-  <value>正在下载更新...</value>
-</data>
-<data name="Gui_Settings_Update_Installing" xml:space="preserve">
-  <value>正在安装更新（重启中）...</value>
-</data>
-<data name="Gui_Settings_Update_Failed" xml:space="preserve">
-  <value>更新失败: {0}</value>
-</data>
-<data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
-  <value>不支持更新: {0}</value>
-</data>
+  <data name="Gui_Settings_Update_Title" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Gui_Settings_Update_AutoCheck" xml:space="preserve">
+    <value>啟動時自動檢查更新</value>
+  </data>
+  <data name="Gui_Settings_ButtonCheckUpdates" xml:space="preserve">
+    <value>檢查更新</value>
+  </data>
+  <data name="Gui_Settings_ButtonUpdateNow" xml:space="preserve">
+    <value>立即更新</value>
+  </data>
+  <data name="Gui_Settings_Update_Unknown" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="Gui_Settings_Update_Disabled" xml:space="preserve">
+    <value>已停用</value>
+  </data>
+  <data name="Gui_Settings_Update_Checking" xml:space="preserve">
+    <value>檢查中...</value>
+  </data>
+  <data name="Gui_Settings_Update_CheckFailed" xml:space="preserve">
+    <value>檢查失敗</value>
+  </data>
+  <data name="Gui_Settings_Update_UpToDate" xml:space="preserve">
+    <value>已是最新版本 ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_Available" xml:space="preserve">
+    <value>有可用更新 ({0})</value>
+  </data>
+  <data name="Gui_Settings_Update_NoUpdate" xml:space="preserve">
+    <value>沒有可用更新。</value>
+  </data>
+  <data name="Gui_Settings_Update_Downloading" xml:space="preserve">
+    <value>正在下載更新...</value>
+  </data>
+  <data name="Gui_Settings_Update_Installing" xml:space="preserve">
+    <value>正在安裝更新 (重新啟動中)...</value>
+  </data>
+  <data name="Gui_Settings_Update_Failed" xml:space="preserve">
+    <value>更新失敗：{0}</value>
+  </data>
+  <data name="Gui_Settings_Update_NotSupported" xml:space="preserve">
+    <value>不支援更新：{0}</value>
+  </data>
 
 </root>
