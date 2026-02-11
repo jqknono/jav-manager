@@ -6,6 +6,15 @@ export interface Env {
   DB: D1Database;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  // Optional build identifier (set via wrangler vars or dashboard).
+  // Suggested value: git SHA or YYYYMMDD-HHMM.
+  WORKER_VERSION?: string;
+  // Cloudflare version metadata binding (recommended).
+  WORKER_VERSION_METADATA?: {
+    id: string;
+    tag: string;
+    timestamp: string;
+  };
 }
 
 interface TelemetryPayload {
@@ -37,6 +46,7 @@ interface UserRecord {
 interface JavInfoRecord {
   jav_id: string;
   title: string | null;
+  title_zh: string | null;
   cover_url: string | null;
   release_date: string | null;
   duration: number | null;
@@ -113,12 +123,18 @@ let userIdBackfill: Promise<void> | null = null;
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers);
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  // Default to no-store unless the caller explicitly opts into caching.
+  // This avoids stale admin/public data when sitting behind CDN/browser caches.
+  if (!headers.has('Cache-Control')) headers.set('Cache-Control', 'no-store');
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
 function htmlResponse(body: string, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers);
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'text/html; charset=utf-8');
+  // Pages are dynamic (admin/public variants, language cookies, data tables).
+  // Prevent serving an old HTML shell due to intermediary caches.
+  if (!headers.has('Cache-Control')) headers.set('Cache-Control', 'private, no-store, max-age=0');
   return new Response(body, { ...init, headers });
 }
 
@@ -218,6 +234,29 @@ function htmlRedirect(url: string, setCookie?: string): Response {
   return new Response(null, { status: 302, headers });
 }
 
+function normalizeVersionLabel(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim();
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  if (lower === 'dev' || lower === 'unknown') return null;
+  return value;
+}
+
+function getWorkerVersion(env: Env): string | null {
+  // Prefer Cloudflare's actual deployed version metadata.
+  const metadata = env.WORKER_VERSION_METADATA;
+  if (metadata && typeof metadata.id === 'string' && metadata.id.trim()) {
+    const id = metadata.id.trim();
+    const tag = normalizeVersionLabel(metadata.tag);
+    if (tag) return `${tag} (${id.slice(0, 8)})`;
+    return id.slice(0, 8);
+  }
+
+  // Fallback to manually configured version variable.
+  return normalizeVersionLabel(env.WORKER_VERSION);
+}
+
 async function ensureSchema(env: Env): Promise<void> {
   if (schemaInit) return schemaInit;
 
@@ -281,6 +320,7 @@ async function ensureSchema(env: Env): Promise<void> {
         jav_id TEXT PRIMARY KEY,
         payload_json TEXT NOT NULL,
         title TEXT,
+        title_zh TEXT,
         cover_url TEXT,
         release_date TEXT,
         duration INTEGER,
@@ -297,6 +337,7 @@ async function ensureSchema(env: Env): Promise<void> {
       );
     `).run();
 
+    await ensureColumn('javinfo', 'title_zh', 'TEXT');
     await ensureColumn('javinfo', 'torrents_json', 'TEXT');
     await ensureColumn('javinfo', 'search_count', 'INTEGER NOT NULL DEFAULT 0');
 
@@ -500,6 +541,8 @@ type JavInfoPayload = {
   jav_id?: string;
   javId?: string;
   title?: string;
+  title_zh?: string;
+  titleZh?: string;
   cover_url?: string;
   coverUrl?: string;
   release_date?: string;
@@ -637,6 +680,11 @@ export default {
     // GET /api/javdb-domain - Get latest JavDB domain
     if (path === '/api/javdb-domain' && request.method === 'GET') {
       return respond(await this.getJavDbDomain(corsHeaders));
+    }
+
+    // GET /api/version - Get current deployed worker version (for debugging deployments)
+    if (path === '/api/version' && request.method === 'GET') {
+      return respond(jsonResponse({ version: getWorkerVersion(env) }, { headers: corsHeaders }));
     }
 
     // GET / - Home page
@@ -813,6 +861,7 @@ export default {
 
       // Idempotent insert: store only non-torrent metadata (avoid magnet distribution).
       const title = payload.title ?? null;
+      const titleZh = payload.title_zh ?? payload.titleZh ?? null;
       const coverUrl = payload.cover_url ?? payload.coverUrl ?? null;
       const releaseDate = payload.release_date ?? payload.releaseDate ?? null;
       const duration = typeof payload.duration === 'number' ? payload.duration : null;
@@ -828,6 +877,7 @@ export default {
       const payloadJson = JSON.stringify({
         jav_id: javId,
         title,
+        title_zh: titleZh,
         cover_url: coverUrl,
         release_date: releaseDate,
         duration,
@@ -843,14 +893,15 @@ export default {
 
       const result = await env.DB.prepare(`
         INSERT INTO javinfo (
-          jav_id, payload_json, title, cover_url, release_date, duration,
+          jav_id, payload_json, title, title_zh, cover_url, release_date, duration,
           director, maker, publisher, series, actors_json, categories_json,
           torrents_json, detail_url, search_count, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
         ON CONFLICT(jav_id) DO UPDATE SET
           payload_json = excluded.payload_json,
           title = excluded.title,
+          title_zh = excluded.title_zh,
           cover_url = excluded.cover_url,
           release_date = excluded.release_date,
           duration = excluded.duration,
@@ -868,6 +919,7 @@ export default {
         javId,
         payloadJson,
         title,
+        titleZh,
         coverUrl,
         releaseDate,
         duration,
@@ -1021,7 +1073,7 @@ export default {
 
       const dataResult = await env.DB.prepare(`
           SELECT
-            jav_id, title, cover_url, release_date, duration, director, maker, publisher, series,
+            jav_id, title, title_zh, cover_url, release_date, duration, director, maker, publisher, series,
             actors_json, categories_json, torrents_json, detail_url, search_count, created_at, updated_at
           FROM javinfo
           ${whereClause}
@@ -1037,6 +1089,7 @@ export default {
         return {
           jav_id: record.jav_id,
           title: record.title,
+          title_zh: record.title_zh,
           cover_url: record.cover_url,
           release_date: record.release_date,
           duration: record.duration,

@@ -265,8 +265,8 @@ async function handleSearch(context: AppContext, javId: string, autoConfirm: boo
   printSearchResultList(
     javId,
     candidates.map((item) => ({
-      javId: item.javId || normalizeJavId(item.title),
-      title: item.title,
+      javId: item.javId || normalizeJavId(item.titleZh ?? item.title),
+      title: (loc.currentLocale === "zh" ? (item.titleZh ?? item.title) : item.title),
       source: item.dataSource,
     }))
   );
@@ -286,7 +286,8 @@ async function handleSearch(context: AppContext, javId: string, autoConfirm: boo
     }
 
     try {
-      detail = await services.javDbProvider.getDetail(detail.detailUrl);
+      const fetchedDetail = await services.javDbProvider.getDetail(detail.detailUrl);
+      detail = mergeJavInfo(selectedCandidate, fetchedDetail, javId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       printError(message);
@@ -674,6 +675,7 @@ function mergeJavInfo(base: JavSearchResult, extra: JavSearchResult, fallbackJav
     ...base,
     javId: normalizeJavId(base.javId || extra.javId || fallbackJavId),
     title: normalizeText(base.title) ?? normalizeText(extra.title) ?? "",
+    titleZh: normalizeText(base.titleZh) ?? normalizeText(extra.titleZh) ?? undefined,
     coverUrl: normalizeText(base.coverUrl) ?? normalizeText(extra.coverUrl) ?? "",
     releaseDate: normalizeText(base.releaseDate) ?? normalizeText(extra.releaseDate) ?? undefined,
     duration: base.duration > 0 ? base.duration : (extra.duration > 0 ? extra.duration : 0),

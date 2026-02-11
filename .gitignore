@@ -28,3 +28,4 @@ Directory.Build.props.local
 *.db-wal
 
 src/jav_cache.json
+dist/jav_cache.json

@@ -37,6 +37,7 @@ exports.JavDbWebScraper = void 0;
 const cheerio = __importStar(require("cheerio"));
 const models_1 = require("../models");
 const torrentNameParser_1 = require("../utils/torrentNameParser");
+const titleVariants_1 = require("../utils/titleVariants");
 const curlImpersonateFetcher_1 = require("./curlImpersonateFetcher");
 const MaxAttemptsPerUrl = 4;
 const MaxUrlCycles = 2;
@@ -228,7 +229,8 @@ function parseSearchResults(html) {
         const detailUrl = link.attr("href") ?? "";
         const titleAttr = link.attr("title") ?? "";
         const titleText = normalizeInlineText(link.text());
-        const title = titleAttr || titleText;
+        const titleRaw = titleAttr || titleText;
+        const { title, titleZh } = (0, titleVariants_1.splitTitleVariants)(titleRaw);
         const coverNode = $(element).find("img.video-cover").first();
         const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
         const idNode = $(element).find(".uid, .video-id, .video-uid, .video_id").first();
@@ -239,6 +241,7 @@ function parseSearchResults(html) {
         results.push({
             javId,
             title,
+            titleZh,
             coverUrl,
             detailUrl,
             releaseDate: undefined,
@@ -258,7 +261,8 @@ function parseSearchResults(html) {
 }
 function parseDetailPage(html) {
     const $ = cheerio.load(html);
-    const title = normalizeInlineText($("h2.title").first().text());
+    const titleRaw = normalizeInlineText($("h2.title").first().text());
+    const { title, titleZh } = (0, titleVariants_1.splitTitleVariants)(titleRaw);
     let javId = normalizeInlineText($("span.current-title").first().text());
     if (!javId) {
         javId = extractJavIdFromText(title) ?? "";
@@ -301,6 +305,7 @@ function parseDetailPage(html) {
     return {
         javId,
         title,
+        titleZh,
         coverUrl,
         releaseDate: releaseDate || undefined,
         duration,

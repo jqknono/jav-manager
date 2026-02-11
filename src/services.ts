@@ -8,6 +8,7 @@ import { calculateAndSort } from "./utils/weightCalculator";
 import { normalizeJavId } from "./utils/torrentNameParser";
 import { getVersion } from "./utils/appInfo";
 import { getJavInfoPostUrl, getTelemetryPostUrl } from "./utils/telemetryEndpoints";
+import { splitTitleVariants } from "./utils/titleVariants";
 
 export class ServiceAvailability {
   private lock = new Object();
@@ -176,9 +177,24 @@ export class JavInfoTelemetryClient {
       return;
     }
 
+    let title = normalizeTelemetryText(result.title);
+    let titleZh = normalizeTelemetryText(result.titleZh);
+
+    // Backward-compatible fallback:
+    // if caller passed a combined title string (zh + marker + original),
+    // split it so storage can keep title/title_zh separately.
+    if (!titleZh && title) {
+      const split = splitTitleVariants(title);
+      const splitTitle = normalizeTelemetryText(split.title);
+      const splitTitleZh = normalizeTelemetryText(split.titleZh);
+      if (splitTitle) title = splitTitle;
+      if (splitTitleZh) titleZh = splitTitleZh;
+    }
+
     const payload = {
       jav_id: javId,
-      title: normalizeTelemetryText(result.title),
+      title,
+      title_zh: titleZh,
       cover_url: normalizeTelemetryText(result.coverUrl),
       release_date: normalizeTelemetryDate(result.releaseDate),
       duration: result.duration > 0 ? result.duration : null,

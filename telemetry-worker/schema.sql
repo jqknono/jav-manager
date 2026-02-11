@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS javinfo (
     jav_id TEXT PRIMARY KEY,
     payload_json TEXT NOT NULL,
     title TEXT,
+    title_zh TEXT,
     cover_url TEXT,
     release_date TEXT,
     duration INTEGER,

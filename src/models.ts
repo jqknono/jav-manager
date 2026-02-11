@@ -33,6 +33,7 @@ export interface TorrentInfo {
 export interface JavSearchResult {
   javId: string;
   title: string;
+  titleZh?: string;
   coverUrl: string;
   releaseDate?: string;
   duration: number;

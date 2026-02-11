@@ -126,6 +126,32 @@ function truncateText(s, width) {
     }
     return `${out}...`;
 }
+function wrapText(s, width) {
+    if (width <= 0)
+        return [""];
+    if (!s)
+        return [""];
+    if (visibleLength(s) <= width)
+        return [s];
+    const lines = [];
+    let line = "";
+    let used = 0;
+    for (const ch of Array.from(s)) {
+        const w = charWidth(ch);
+        // If the next character doesn't fit, start a new line.
+        // If the line is empty, still emit the char even if it exceeds width (avoids infinite loops).
+        if (line && used + w > width) {
+            lines.push(line);
+            line = "";
+            used = 0;
+        }
+        line += ch;
+        used += w;
+    }
+    if (line)
+        lines.push(line);
+    return lines.length > 0 ? lines : [""];
+}
 function charWidth(ch) {
     const codePoint = ch.codePointAt(0);
     if (!codePoint)
@@ -329,8 +355,15 @@ function printSearchResultList(query, items) {
         const idx = String(i + 1);
         const id = truncateText(item.javId || "-", javIdW);
         const source = truncateText(item.source || "-", sourceW);
-        const title = truncateText(item.title || "", titleW);
-        console.log(`  ${c(BOX.v, FG_GRAY)} ${padStart(c(idx, FG_GRAY), idxW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(id, FG_BRIGHT_CYAN, BOLD), javIdW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(source, FG_GRAY), sourceW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(title, FG_WHITE), titleW)} ${c(BOX.v, FG_GRAY)}`);
+        const titleLines = wrapText(item.title || "", titleW);
+        for (let lineIdx = 0; lineIdx < titleLines.length; lineIdx++) {
+            const showMeta = lineIdx === 0;
+            const idxCell = showMeta ? padStart(c(idx, FG_GRAY), idxW) : padStart("", idxW);
+            const idCell = showMeta ? padEnd(c(id, FG_BRIGHT_CYAN, BOLD), javIdW) : padEnd("", javIdW);
+            const sourceCell = showMeta ? padEnd(c(source, FG_GRAY), sourceW) : padEnd("", sourceW);
+            const titleCell = padEnd(c(titleLines[lineIdx] ?? "", FG_WHITE), titleW);
+            console.log(`  ${c(BOX.v, FG_GRAY)} ${idxCell} ${c(BOX.v, FG_GRAY)} ${idCell} ${c(BOX.v, FG_GRAY)} ${sourceCell} ${c(BOX.v, FG_GRAY)} ${titleCell} ${c(BOX.v, FG_GRAY)}`);
+        }
     }
     console.log(`  ${bot}`);
 }

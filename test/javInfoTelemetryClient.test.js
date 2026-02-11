@@ -20,6 +20,7 @@ test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
     client.tryReport({
       javId: "MIAA-710",
       title: "  MIAA-710 Title  ",
+      titleZh: "  中文标题  ",
       coverUrl: "https://img.example/cover.jpg",
       releaseDate: "2026-02-06T10:11:12.000Z",
       duration: 120,
@@ -61,6 +62,7 @@ test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
 
     assert.equal(payload.jav_id, "MIAA-710");
     assert.equal(payload.title, "MIAA-710 Title");
+    assert.equal(payload.title_zh, "中文标题");
     assert.equal(payload.cover_url, "https://img.example/cover.jpg");
     assert.equal(payload.release_date, "2026-02-06");
     assert.equal(payload.duration, 120);
@@ -71,6 +73,49 @@ test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
     assert.equal(payload.torrents[0].magnet_link, "magnet:?xt=urn:btih:deadbeef");
     assert.equal(payload.torrents[0].source_site, "JavDB");
     assert.equal(payload.torrents[0].weight_score, 9);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("JavInfoTelemetryClient extracts title_zh from combined title marker", async () => {
+  const calls = [];
+  const originalFetch = global.fetch;
+  global.fetch = async (url, init) => {
+    calls.push({ url, init });
+    return { ok: true };
+  };
+
+  try {
+    const client = new JavInfoTelemetryClient({
+      enabled: true,
+      endpoint: "https://example.com",
+    });
+
+    client.tryReport({
+      javId: "MIAA-710",
+      title: "中文标题 顯示原標題 【FANZA限定】性欲が強すぎる僕の彼女がまさかの浮気！？",
+      coverUrl: "",
+      releaseDate: undefined,
+      duration: 0,
+      director: "",
+      maker: "",
+      publisher: "",
+      series: "",
+      actors: [],
+      categories: [],
+      detailUrl: "",
+      dataSource: "Remote",
+      cachedAt: undefined,
+      torrents: [],
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(calls.length, 1);
+    const payload = JSON.parse(calls[0].init.body);
+    assert.equal(payload.title, "【FANZA限定】性欲が強すぎる僕の彼女がまさかの浮気！？");
+    assert.equal(payload.title_zh, "中文标题");
   } finally {
     global.fetch = originalFetch;
   }

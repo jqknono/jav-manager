@@ -212,8 +212,8 @@ async function handleSearch(context, javId, autoConfirm, forceRemote) {
         return;
     }
     (0, cliDisplay_1.printSearchResultList)(javId, candidates.map((item) => ({
-        javId: item.javId || (0, torrentNameParser_1.normalizeJavId)(item.title),
-        title: item.title,
+        javId: item.javId || (0, torrentNameParser_1.normalizeJavId)(item.titleZh ?? item.title),
+        title: (loc.currentLocale === "zh" ? (item.titleZh ?? item.title) : item.title),
         source: item.dataSource,
     })));
     const selectedCandidateIndex = autoConfirm ? 1 : await promptIndex(candidates.length);
@@ -228,7 +228,8 @@ async function handleSearch(context, javId, autoConfirm, forceRemote) {
             return;
         }
         try {
-            detail = await services.javDbProvider.getDetail(detail.detailUrl);
+            const fetchedDetail = await services.javDbProvider.getDetail(detail.detailUrl);
+            detail = mergeJavInfo(selectedCandidate, fetchedDetail, javId);
         }
         catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error";
@@ -558,6 +559,7 @@ function mergeJavInfo(base, extra, fallbackJavId) {
         ...base,
         javId: (0, torrentNameParser_1.normalizeJavId)(base.javId || extra.javId || fallbackJavId),
         title: normalizeText(base.title) ?? normalizeText(extra.title) ?? "",
+        titleZh: normalizeText(base.titleZh) ?? normalizeText(extra.titleZh) ?? undefined,
         coverUrl: normalizeText(base.coverUrl) ?? normalizeText(extra.coverUrl) ?? "",
         releaseDate: normalizeText(base.releaseDate) ?? normalizeText(extra.releaseDate) ?? undefined,
         duration: base.duration > 0 ? base.duration : (extra.duration > 0 ? extra.duration : 0),

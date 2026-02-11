@@ -2,76 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build (deprecated: legacy .NET)",
-            "detail": "DEPRECATED: legacy .NET task. Use npm run build for TypeScript.",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/JavManager/JavManager.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary;ForceNoAlign"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "publish (deprecated: legacy .NET)",
-            "detail": "DEPRECATED: legacy .NET task.",
-            "type": "process",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}/scripts/publish.ps1",
-                "win-x64"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "release (deprecated: legacy .NET)",
-            "detail": "DEPRECATED: legacy .NET task.",
-            "type": "process",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}/scripts/release.ps1"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "watch (deprecated: legacy .NET)",
-            "detail": "DEPRECATED: legacy .NET task. Use npm run dev:cli or npm run dev:gui.",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "watch",
-                "run",
-                "--project",
-                "${workspaceFolder}/JavManager/JavManager.csproj"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "run:net10.0 (deprecated: legacy .NET)",
-            "detail": "DEPRECATED: legacy .NET task. Use npm run cli.",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "run",
-                "--project",
-                "${workspaceFolder}/JavManager/JavManager.csproj",
-                "--framework",
-                "net10.0"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "deploy:cloudflare",
+            "label": "cloudflare:deploy",
             "type": "process",
             "command": "npm",
             "args": [
@@ -84,7 +15,7 @@
             "problemMatcher": []
         },
         {
-            "label": "dev:cloudflare",
+            "label": "cloudflare:dev",
             "detail": "Run Cloudflare Worker dev server on 0.0.0.0:34044",
             "type": "process",
             "command": "npm",

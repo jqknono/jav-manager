@@ -18,9 +18,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-localization.js",
     "postinstall": "node scripts/postinstall.js",
-    "start": "node dist/index.js --gui",
-    "cli": "node dist/index.js",
-    "gui": "node dist/index.js --gui",
+    "cli": "npm run build && node dist/index.js",
+    "gui": "npm run build && node dist/index.js --gui",
     "dev:cli": "ts-node src/index.ts",
     "dev:gui": "ts-node src/index.ts --gui",
     "lint": "tsc -p tsconfig.json --noEmit",

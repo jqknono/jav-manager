@@ -11,6 +11,7 @@ const weightCalculator_1 = require("./utils/weightCalculator");
 const torrentNameParser_1 = require("./utils/torrentNameParser");
 const appInfo_1 = require("./utils/appInfo");
 const telemetryEndpoints_1 = require("./utils/telemetryEndpoints");
+const titleVariants_1 = require("./utils/titleVariants");
 class ServiceAvailability {
     lock = new Object();
     everythingKnown = false;
@@ -143,9 +144,24 @@ class JavInfoTelemetryClient {
         if (!javId) {
             return;
         }
+        let title = normalizeTelemetryText(result.title);
+        let titleZh = normalizeTelemetryText(result.titleZh);
+        // Backward-compatible fallback:
+        // if caller passed a combined title string (zh + marker + original),
+        // split it so storage can keep title/title_zh separately.
+        if (!titleZh && title) {
+            const split = (0, titleVariants_1.splitTitleVariants)(title);
+            const splitTitle = normalizeTelemetryText(split.title);
+            const splitTitleZh = normalizeTelemetryText(split.titleZh);
+            if (splitTitle)
+                title = splitTitle;
+            if (splitTitleZh)
+                titleZh = splitTitleZh;
+        }
         const payload = {
             jav_id: javId,
-            title: normalizeTelemetryText(result.title),
+            title,
+            title_zh: titleZh,
             cover_url: normalizeTelemetryText(result.coverUrl),
             release_date: normalizeTelemetryDate(result.releaseDate),
             duration: result.duration > 0 ? result.duration : null,

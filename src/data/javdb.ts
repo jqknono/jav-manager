@@ -3,6 +3,7 @@ import { JavDbConfig } from "../config";
 import { IJavDbDataProvider, IHealthChecker } from "../interfaces";
 import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../models";
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../utils/torrentNameParser";
+import { splitTitleVariants } from "../utils/titleVariants";
 import { CurlImpersonateFetcher } from "./curlImpersonateFetcher";
 
 const MaxAttemptsPerUrl = 4;
@@ -226,7 +227,8 @@ function parseSearchResults(html: string): JavSearchResult[] {
     const detailUrl = link.attr("href") ?? "";
     const titleAttr = link.attr("title") ?? "";
     const titleText = normalizeInlineText(link.text());
-    const title = titleAttr || titleText;
+    const titleRaw = titleAttr || titleText;
+    const { title, titleZh } = splitTitleVariants(titleRaw);
 
     const coverNode = $(element).find("img.video-cover").first();
     const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
@@ -240,6 +242,7 @@ function parseSearchResults(html: string): JavSearchResult[] {
     results.push({
       javId,
       title,
+      titleZh,
       coverUrl,
       detailUrl,
       releaseDate: undefined,
@@ -261,7 +264,8 @@ function parseSearchResults(html: string): JavSearchResult[] {
 
 function parseDetailPage(html: string): JavSearchResult {
   const $ = cheerio.load(html);
-  const title = normalizeInlineText($("h2.title").first().text());
+  const titleRaw = normalizeInlineText($("h2.title").first().text());
+  const { title, titleZh } = splitTitleVariants(titleRaw);
   let javId = normalizeInlineText($("span.current-title").first().text());
   if (!javId) {
     javId = extractJavIdFromText(title) ?? "";
@@ -306,6 +310,7 @@ function parseDetailPage(html: string): JavSearchResult {
   return {
     javId,
     title,
+    titleZh,
     coverUrl,
     releaseDate: releaseDate || undefined,
     duration,
@@ -573,4 +578,3 @@ function emptySearchResult(javId: string): JavSearchResult {
     cachedAt: undefined,
   };
 }
-

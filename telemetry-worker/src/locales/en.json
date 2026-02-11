@@ -97,5 +97,6 @@
   "bestMagnetTitle": "Best Magnet",
   "copyMagnet": "Copy magnet",
   "copySuccess": "Copied",
-  "copyFailed": "Copy failed"
+  "copyFailed": "Copy failed",
+  "footerWorkerVersion": "Cloudflare Worker version"
 }

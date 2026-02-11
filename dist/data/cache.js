@@ -8,6 +8,7 @@ const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
 const appPaths_1 = require("../utils/appPaths");
 const torrentNameParser_1 = require("../utils/torrentNameParser");
+const titleVariants_1 = require("../utils/titleVariants");
 class JsonJavCacheProvider {
     config;
     cacheFilePath;
@@ -174,6 +175,16 @@ function sanitizeResult(result) {
     result.actors ??= [];
     result.categories ??= [];
     result.torrents ??= [];
+    // Back-compat: older cache entries stored a combined zh+original title string
+    // with a "show original title" marker. Split it into separate fields.
+    if (!result.titleZh && typeof result.title === "string") {
+        const { title, titleZh } = (0, titleVariants_1.splitTitleVariants)(result.title);
+        // Only treat it as a split if we actually extracted both.
+        if (titleZh && title && title !== result.title) {
+            result.title = title;
+            result.titleZh = titleZh;
+        }
+    }
 }
 function resolveCacheFilePath(baseDir, configuredPath) {
     const trimmed = (configuredPath ?? "").trim();

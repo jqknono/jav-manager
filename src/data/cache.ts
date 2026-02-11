@@ -5,6 +5,7 @@ import { IJavLocalCacheProvider } from "../interfaces";
 import { CacheStatistics, JavSearchResult, TorrentInfo } from "../models";
 import { getPreferredConfigDirectory } from "../utils/appPaths";
 import { normalizeJavId } from "../utils/torrentNameParser";
+import { splitTitleVariants } from "../utils/titleVariants";
 
 type CacheStore = {
   items: Record<string, JavSearchResult | null>;
@@ -201,6 +202,17 @@ function sanitizeResult(result: JavSearchResult): void {
   result.actors ??= [];
   result.categories ??= [];
   result.torrents ??= [];
+
+  // Back-compat: older cache entries stored a combined zh+original title string
+  // with a "show original title" marker. Split it into separate fields.
+  if (!result.titleZh && typeof result.title === "string") {
+    const { title, titleZh } = splitTitleVariants(result.title);
+    // Only treat it as a split if we actually extracted both.
+    if (titleZh && title && title !== result.title) {
+      result.title = title;
+      result.titleZh = titleZh;
+    }
+  }
 }
 
 function resolveCacheFilePath(baseDir: string, configuredPath: string): string {

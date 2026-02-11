@@ -501,7 +501,6 @@ const BASE_STYLES = `
 
   .jav-table { width: 100%; min-width: 100%; table-layout: auto; }
   .jav-table .col-time { white-space: nowrap; min-width: 9.5rem; width: 9.5rem; }
-  .jav-table .col-cover { white-space: nowrap; min-width: 10rem; width: 10rem; }
   .jav-table .col-jav-id { white-space: nowrap; min-width: 10rem; width: 10rem; max-width: 10rem; }
   .jav-table th.col-jav-id,
   .jav-table td.col-jav-id { font-variant-numeric: tabular-nums; }
@@ -754,6 +753,28 @@ const BASE_STYLES = `
   .link { color: var(--accent); word-break: break-all; }
   .link:hover { color: var(--accent-hover); }
 
+  .site-footer {
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
+    padding-bottom: 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+  .site-footer code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.375rem;
+  }
+
   .full-json {
     margin-top: 0.5rem;
     max-width: 36rem;
@@ -901,7 +922,6 @@ const BASE_STYLES = `
     .jav-card-body { padding: 0.625rem; }
     .jav-table th, .jav-table td { padding: 0.625rem 0.5rem; }
     .jav-table .col-time { min-width: 7.25rem; width: 7.25rem; }
-    .jav-table .col-cover { min-width: 7rem; width: 7rem; }
     .jav-table .col-jav-id { min-width: 9.75rem; width: 9.75rem; max-width: 9.75rem; }
     .jav-table .col-title { min-width: 7rem; width: 7rem; }
     .cover-thumb { width: 100%; }
@@ -963,8 +983,31 @@ function renderPage(params: {
         ? `<div class="nav-row">${renderNav(lang, active, { hideUser: hideUserNav })}${buildLangSwitch(requestUrl, lang)}</div>`
         : renderNav(lang, active, { hideUser: hideUserNav })}
       ${body}
+      <footer class="site-footer">
+        <span>${t.footerWorkerVersion}</span>
+        <code id="jm-worker-version">-</code>
+      </footer>
     </div>
   </div>
+  <script>
+    (async function loadWorkerVersion() {
+      var footer = document.querySelector('.site-footer');
+      try {
+        const el = document.getElementById('jm-worker-version');
+        if (!el || !footer) return;
+        const res = await fetch('/api/version', { cache: 'no-store' });
+        const json = await res.json();
+        const v = json && typeof json.version === 'string' ? json.version : '';
+        if (!v) {
+          footer.style.display = 'none';
+          return;
+        }
+        el.textContent = v;
+      } catch {
+        if (footer) footer.style.display = 'none';
+      }
+    })();
+  </script>
   ${script ? `<script>${script}</script>` : ''}
 </body>
 </html>`;
@@ -1467,7 +1510,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         grid.innerHTML = rows.map(function(row, idx) {
           var coverUrl = typeof row.cover_url === 'string' && row.cover_url.startsWith('http') ? row.cover_url : '';
           var javId = row.jav_id || '-';
-          var title = row.title || '';
+          var title = (lang === 'zh' && row.title_zh) ? row.title_zh : (row.title || row.title_zh || '');
           var actors = Array.isArray(row.actors) ? row.actors : [];
           var categories = Array.isArray(row.categories) ? row.categories : [];
           var searchCount = Number(row.search_count) || 0;
@@ -1642,7 +1685,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
   }
 
   /* ---------- Admin: dense data table ---------- */
-  const colSpan = 15;
+  const colSpan = 14;
   const body = `
     <section class="section">
       <div class="section-title">${t.javTitle}</div>
@@ -1666,7 +1709,6 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
             <th class="col-time">${t.tableTime}</th>
             <th class="col-jav-id">${t.tableJavId}</th>
             <th class="col-title">${t.tableTitle}</th>
-            <th class="col-cover">${t.tableCover}</th>
             <th class="col-duration">${t.tableDuration}</th>
             <th class="col-director">${t.tableDirector}</th>
             <th class="col-maker">${t.tableMaker}</th>
@@ -1829,7 +1871,6 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         const actors = formatList(row.actors);
         const categories = formatList(row.categories);
         const torrents = Number(row.torrents_count || 0);
-        const coverUrl = typeof row.cover_url === 'string' && row.cover_url.startsWith('http') ? row.cover_url : '';
         const detailUrl = typeof row.detail_url === 'string' && row.detail_url.startsWith('http') ? row.detail_url : '';
         const durationValue = Number(row.duration);
         const durationText = Number.isFinite(durationValue) && durationValue > 0 ? String(durationValue) : '-';
@@ -1839,9 +1880,16 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         const series = row.series || '-';
         const searchCountValue = Number(row.search_count);
         const searchCount = Number.isFinite(searchCountValue) ? searchCountValue : 0;
-        const coverCell = coverUrl
-          ? '<img class="cover-thumb" src="' + escapeHtmlAttr(coverUrl) + '" alt="' + escapeHtmlAttr(row.jav_id || row.title || "cover") + '" loading="lazy" />'
-          : '-';
+        const titleCell = (function() {
+          const t = row.title || '';
+          const tzh = row.title_zh || '';
+          if (lang === 'zh') {
+            if (tzh && t && tzh !== t) return escapeHtml(tzh) + '<div class="muted">' + escapeHtml(t) + '</div>';
+            return escapeHtml(tzh || t || '-');
+          }
+          if (t && tzh && t !== tzh) return escapeHtml(t) + '<div class="muted">' + escapeHtml(tzh) + '</div>';
+          return escapeHtml(t || tzh || '-');
+        })();
         const detailLink = detailUrl
           ? '<a class="link" href="' + escapeHtml(detailUrl) + '" target="_blank" rel="noopener">' + escapeHtml(detailUrl) + '</a>'
           : '-';
@@ -1849,8 +1897,7 @@ export function getJavPage(url: URL, lang: PageLang, options?: { adminMode?: boo
         return '<tr>' +
           '<td class="col-time">' + escapeHtml(time) + '</td>' +
           '<td class="col-jav-id">' + escapeHtml(row.jav_id || '-') + '</td>' +
-          '<td class="col-title">' + escapeHtml(row.title || '-') + '</td>' +
-          '<td class="col-cover">' + coverCell + '</td>' +
+          '<td class="col-title">' + titleCell + '</td>' +
           '<td class="col-duration">' + escapeHtml(durationText) + '</td>' +
           '<td class="col-director">' + escapeHtml(director) + '</td>' +
           '<td class="col-maker">' + escapeHtml(maker) + '</td>' +
