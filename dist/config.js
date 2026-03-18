@@ -34,6 +34,8 @@ const defaultConfig = {
             libraryPath: "",
             caBundlePath: "",
             defaultHeaders: true,
+            extraCookies: {},
+            extraHeaders: {},
         },
     },
     download: {
@@ -189,6 +191,8 @@ function normalizeFileConfig(raw) {
                 libraryPath: stringOrUndefined(curl?.LibraryPath),
                 caBundlePath: stringOrUndefined(curl?.CaBundlePath),
                 defaultHeaders: booleanOrUndefined(curl?.DefaultHeaders),
+                extraCookies: stringRecordOrUndefined(curl?.ExtraCookies),
+                extraHeaders: stringRecordOrUndefined(curl?.ExtraHeaders),
             },
         },
         download: {
@@ -233,6 +237,18 @@ function arrayStringOrUndefined(value) {
         return value.filter((item) => typeof item === "string");
     }
     return undefined;
+}
+function stringRecordOrUndefined(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+    const result = {};
+    for (const [k, v] of Object.entries(value)) {
+        if (typeof v === "string") {
+            result[k] = v;
+        }
+    }
+    return Object.keys(result).length > 0 ? result : undefined;
 }
 function applyOverrides(config, overrides) {
     const result = { ...config };
@@ -295,6 +311,8 @@ function toFileConfig(config) {
                 LibraryPath: config.javDb.curlImpersonate.libraryPath,
                 CaBundlePath: config.javDb.curlImpersonate.caBundlePath,
                 DefaultHeaders: config.javDb.curlImpersonate.defaultHeaders,
+                ExtraCookies: config.javDb.curlImpersonate.extraCookies,
+                ExtraHeaders: config.javDb.curlImpersonate.extraHeaders,
             },
         },
         Download: {

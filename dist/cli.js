@@ -11,7 +11,10 @@ const appInfo_1 = require("./utils/appInfo");
 const torrentNameParser_1 = require("./utils/torrentNameParser");
 const sizeParser_1 = require("./utils/sizeParser");
 const curlImpersonateFetcher_1 = require("./data/curlImpersonateFetcher");
+const curlImpersonateFetcher_2 = require("./data/curlImpersonateFetcher");
 const cliDisplay_1 = require("./utils/cliDisplay");
+const javDbMirrors_1 = require("./utils/javDbMirrors");
+const config_2 = require("./config");
 const LOCAL_PAGE_SIZE = 10;
 async function runCli(context, args) {
     const { loc, services } = context;
@@ -53,6 +56,10 @@ async function runCommand(context, args, autoConfirm) {
     }
     if (cmd === "--test-curl" || cmd === "tc") {
         await runTestCurl(context);
+        return;
+    }
+    if (cmd === "javdb-mirrors" || cmd === "jm") {
+        await runJavDbMirrors(context);
         return;
     }
     if (["help", "h", "--help", "-h"].includes(cmd)) {
@@ -328,6 +335,7 @@ function showHelp(loc) {
         { cmd: "cfg show / cs", desc: isZh ? "檢視設定" : "View current config", category: isZh ? "系統" : "System" },
         { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "設定服務連線 (支援互動)" : "Set service connection (interactive supported)", category: isZh ? "系統" : "System" },
         { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 診斷" : "curl-impersonate diagnostic", category: isZh ? "系統" : "System" },
+        { cmd: "javdb-mirrors / jm", desc: isZh ? "更新 JavDB 鏡像 (寫回設定)" : "Update JavDB mirrors (persist to config)", category: isZh ? "系統" : "System" },
         { cmd: "lang <en|zh|ja|ko> / lg", desc: isZh ? "切換語言" : "Switch language", category: isZh ? "其他" : "Other" },
         { cmd: "version / v", desc: isZh ? "版本資訊" : "Show version", category: isZh ? "其他" : "Other" },
         { cmd: "help / h", desc: isZh ? "說明" : "Show this help", category: isZh ? "其他" : "Other" },
@@ -752,7 +760,15 @@ async function runTestCurl(context) {
         (0, cliDisplay_1.printWarning)("JavDb.CurlImpersonate.Enabled is false in config.");
         (0, cliDisplay_1.printInfo)("This diagnostic still tries to call curl-impersonate directly.");
     }
-    const fetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(javDbCfg.curlImpersonate);
+    const fetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
+    const diag = await fetcher.getDiagnostics();
+    if (diag.available && diag.binaryPath) {
+        const mode = diag.useImpersonateFlag ? "main(curl-impersonate --impersonate)" : "wrapper(curl_<target>)";
+        (0, cliDisplay_1.printInfo)(`Binary: ${diag.binaryPath} (${mode}, target=${diag.target})`);
+    }
+    else {
+        (0, cliDisplay_1.printWarning)("curl-impersonate binary not available (auto-download may fail).");
+    }
     let anySuccess = false;
     const cookieHeader = "over18=1; locale=zh";
     const results = [];
@@ -763,8 +779,10 @@ async function runTestCurl(context) {
             results.push({ name: url, healthy: true, message: `HTTP ${result.status}` });
         }
         else {
+            const isChallenge = result.status === 403 && (0, curlImpersonateFetcher_2.isCloudflareChallengeHtml)(result.body);
             const error = result.error ? ` error=${result.error}` : "";
-            results.push({ name: url, healthy: false, message: `HTTP ${result.status}${error}` });
+            const hint = isChallenge ? " (Cloudflare challenge)" : "";
+            results.push({ name: url, healthy: false, message: `HTTP ${result.status}${hint}${error}` });
         }
     }
     (0, cliDisplay_1.printHealthResults)(results);
@@ -773,5 +791,57 @@ async function runTestCurl(context) {
     }
     else {
         (0, cliDisplay_1.printError)("All JavDB URLs failed via curl-impersonate.");
+        (0, cliDisplay_1.printWarning)("If you see 'Cloudflare challenge', it usually requires browser JavaScript verification; try a different network/IP or mirrors.");
+    }
+}
+async function runJavDbMirrors(context) {
+    const { config } = context;
+    const javDbCfg = config.javDb;
+    (0, cliDisplay_1.printHealthResults)([]); // header-like
+    console.log("");
+    (0, cliDisplay_1.printInfo)("JavDB Mirror Updater");
+    console.log("");
+    let domains = [];
+    let apiUrl = "";
+    try {
+        const latest = await (0, javDbMirrors_1.fetchLatestJavDbDomains)(config.telemetry.endpoint);
+        domains = latest.domains;
+        apiUrl = latest.apiUrl;
+        (0, cliDisplay_1.printInfo)(`Source: ${apiUrl}`);
+        (0, cliDisplay_1.printInfo)(`Latest domain: ${domains[0]}`);
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        (0, cliDisplay_1.printError)(`Failed to fetch latest JavDB domains: ${msg}`);
+        return;
+    }
+    const merged = (0, javDbMirrors_1.mergeMirrorUrls)(javDbCfg.mirrorUrls, domains);
+    if (merged.length === 0) {
+        (0, cliDisplay_1.printError)("No valid mirror URLs.");
+        return;
+    }
+    const fetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
+    const cookieHeader = "over18=1; locale=zh";
+    const timeoutMs = 10000;
+    const results = [];
+    for (const url of merged) {
+        const res = await fetcher.get(url, null, cookieHeader, timeoutMs);
+        const ok = res.status >= 200 && res.status < 300;
+        const isChallenge = res.status === 403 && (0, curlImpersonateFetcher_2.isCloudflareChallengeHtml)(res.body);
+        const hint = isChallenge ? " (Cloudflare challenge)" : "";
+        const error = res.error ? ` error=${res.error}` : "";
+        results.push({ name: url, healthy: ok, message: `HTTP ${res.status}${hint}${error}` });
+    }
+    (0, cliDisplay_1.printHealthResults)(results);
+    // Persist to config
+    try {
+        javDbCfg.mirrorUrls = merged;
+        (0, config_1.saveConfig)(config);
+        (0, cliDisplay_1.printSuccess)(`Updated JavDb.MirrorUrls (${merged.length})`);
+        (0, cliDisplay_1.printInfo)(`Saved to: ${(0, config_2.getConfigPath)()}`);
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        (0, cliDisplay_1.printError)(`Failed to write config: ${msg}`);
     }
 }

@@ -47,9 +47,11 @@ class JavDbWebScraper {
     config;
     cookieJar = new Map();
     curlFetcher;
-    constructor(config) {
+    onCfChallenge;
+    constructor(config, onCfChallenge) {
         this.config = config;
-        this.curlFetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(config.curlImpersonate);
+        this.curlFetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(config.curlImpersonate, config.userAgent);
+        this.onCfChallenge = onCfChallenge ?? null;
     }
     get serviceName() {
         return "JavDB";
@@ -135,6 +137,7 @@ class JavDbWebScraper {
     }
     async getWithRetry(url, referer, maxAttempts, timeoutMs) {
         let lastError = "";
+        let cfChallengeHandled = false;
         for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
             if (attempt > 0) {
                 await delay(getRetryDelay(attempt));
@@ -146,6 +149,21 @@ class JavDbWebScraper {
                 const result = await this.sendRequest(url, referer, attempt, timeoutMs);
                 if (isSuccessStatus(result.status)) {
                     return result;
+                }
+                if (result.status === 403 && (0, curlImpersonateFetcher_1.isCloudflareChallengeHtml)(result.body) && !cfChallengeHandled && this.onCfChallenge) {
+                    cfChallengeHandled = true;
+                    const cookies = await this.onCfChallenge(url);
+                    if (cookies && Object.keys(cookies).length > 0) {
+                        this.curlFetcher.injectExtraCookies(cookies);
+                        const host = new URL(url).host;
+                        const jar = this.cookieJar.get(host) ?? new Map();
+                        for (const [k, v] of Object.entries(cookies)) {
+                            jar.set(k, v);
+                        }
+                        this.cookieJar.set(host, jar);
+                        attempt -= 1;
+                        continue;
+                    }
                 }
                 lastError = result.error ?? `HTTP ${result.status}`;
                 if (!isRetryableStatus(result.status)) {

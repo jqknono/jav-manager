@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const config_1 = require("./config");
 const localization_1 = require("./localization");
@@ -6,6 +9,8 @@ const cache_1 = require("./data/cache");
 const everything_1 = require("./data/everything");
 const javdb_1 = require("./data/javdb");
 const qbittorrent_1 = require("./data/qbittorrent");
+const promises_1 = __importDefault(require("node:readline/promises"));
+const node_process_1 = require("node:process");
 const cli_1 = require("./cli");
 const gui_1 = require("./gui");
 const services_1 = require("./services");
@@ -13,10 +18,12 @@ const rawArgs = process.argv.slice(2);
 const { overrides, remaining } = (0, config_1.extractOverrides)(rawArgs);
 const config = (0, config_1.loadConfig)(overrides);
 const loc = new localization_1.LocalizationService(config.console.language);
-const context = createAppContext(config, loc);
+const isGui = shouldRunGui(remaining);
+const cfCallback = isGui ? undefined : createCliCfChallengeHandler(loc);
+const context = createAppContext(config, loc, cfCallback);
 const cliArgs = filterGuiArgs(remaining);
 context.services.telemetryService.trackStartup();
-if (shouldRunGui(remaining)) {
+if (isGui) {
     const gui = parseGuiArgs(remaining);
     (0, gui_1.startGuiServer)(context, gui.port, gui.host);
 }
@@ -61,8 +68,8 @@ function parseGuiArgs(args) {
     }
     return { host, port };
 }
-function createAppContext(config, loc) {
-    const javDbProvider = new javdb_1.JavDbWebScraper(config.javDb);
+function createAppContext(config, loc, onCfChallenge) {
+    const javDbProvider = new javdb_1.JavDbWebScraper(config.javDb, onCfChallenge);
     const everythingProvider = new everything_1.EverythingHttpClient(config.everything);
     const qbClient = new qbittorrent_1.QBittorrentApiClient(config.qBittorrent);
     const cacheProvider = config.localCache.enabled ? new cache_1.JsonJavCacheProvider(config.localCache) : null;
@@ -121,6 +128,59 @@ function shouldRunGui(args) {
         return true;
     }
     return false;
+}
+function createCliCfChallengeHandler(loc) {
+    return async (url) => {
+        const isZh = loc.currentLocale === "zh";
+        const host = (() => { try {
+            return new URL(url).host;
+        }
+        catch {
+            return url;
+        } })();
+        console.log("");
+        console.log(isZh
+            ? `⚠  Cloudflare 挑戰攔截 (${host})`
+            : `⚠  Cloudflare challenge detected (${host})`);
+        console.log(isZh
+            ? "   請在瀏覽器中打開該網站, 通過驗證後, 從瀏覽器開發者工具 (F12) 中複製 Cookie."
+            : "   Open this site in a browser, pass the challenge, then copy cookies from DevTools (F12).");
+        console.log(isZh
+            ? "   需要的 Cookie: cf_clearance (必需), 其他可選."
+            : "   Required cookie: cf_clearance (required), others optional.");
+        console.log(isZh
+            ? "   格式: cf_clearance=xxx 或 cf_clearance=xxx; __cf_bm=yyy"
+            : "   Format: cf_clearance=xxx or cf_clearance=xxx; __cf_bm=yyy");
+        console.log("");
+        const rl = promises_1.default.createInterface({ input: node_process_1.stdin, output: node_process_1.stdout });
+        try {
+            const answer = await rl.question(isZh
+                ? "  ▸ 粘貼 Cookie (留空跳過): "
+                : "  ▸ Paste cookie (empty to skip): ");
+            const trimmed = answer.trim();
+            if (!trimmed) {
+                return null;
+            }
+            return parseCookieString(trimmed);
+        }
+        finally {
+            rl.close();
+        }
+    };
+}
+function parseCookieString(raw) {
+    const result = {};
+    for (const part of raw.split(";")) {
+        const idx = part.indexOf("=");
+        if (idx < 1)
+            continue;
+        const key = part.slice(0, idx).trim();
+        const value = part.slice(idx + 1).trim();
+        if (key) {
+            result[key] = value;
+        }
+    }
+    return result;
 }
 function filterGuiArgs(args) {
     const result = [];

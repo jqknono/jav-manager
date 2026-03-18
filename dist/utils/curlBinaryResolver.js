@@ -10,6 +10,7 @@ exports.checkCurlImpersonateAvailable = checkCurlImpersonateAvailable;
 exports.getAvailableTargets = getAvailableTargets;
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const os_1 = __importDefault(require("os"));
 /**
  * Package root directory (works for both src/ and dist/ layouts).
  * __dirname is either src/utils/ or dist/utils/ – two levels up is the package root.
@@ -41,6 +42,70 @@ function isExecutableFile(filePath) {
     catch {
         return false;
     }
+}
+function detectLinuxLibc() {
+    const explicit = (process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC ?? "").trim().toLowerCase();
+    if (explicit === "musl" || explicit === "gnu") {
+        return explicit;
+    }
+    if (fs_1.default.existsSync("/etc/alpine-release")) {
+        return "musl";
+    }
+    return "gnu";
+}
+function getInstallKey() {
+    const platform = process.platform;
+    const arch = process.arch;
+    if (platform === "linux") {
+        return `${platform}-${arch}-${detectLinuxLibc()}`;
+    }
+    return `${platform}-${arch}`;
+}
+function getArtifactsBinDir() {
+    return path_1.default.join(packageRoot, "artifacts", "curl-impersonate", getInstallKey(), "bin");
+}
+function getUserCacheRoot() {
+    const envOverride = (process.env.JAVMANAGER_CURL_IMPERSONATE_DIR ?? "").trim();
+    if (envOverride) {
+        return envOverride;
+    }
+    if (process.platform === "win32") {
+        const base = process.env.LOCALAPPDATA ||
+            process.env.APPDATA ||
+            path_1.default.join(os_1.default.homedir(), "AppData", "Local");
+        return path_1.default.join(base, "jav-manager", "curl-impersonate");
+    }
+    if (process.platform === "darwin") {
+        return path_1.default.join(os_1.default.homedir(), "Library", "Caches", "jav-manager", "curl-impersonate");
+    }
+    const xdg = (process.env.XDG_CACHE_HOME ?? "").trim();
+    const base = xdg || path_1.default.join(os_1.default.homedir(), ".cache");
+    return path_1.default.join(base, "jav-manager", "curl-impersonate");
+}
+function getUserCacheBinDir() {
+    return path_1.default.join(getUserCacheRoot(), getInstallKey(), "bin");
+}
+function getMainBinaryFromBinDir(binDir) {
+    const candidates = process.platform === "win32"
+        ? [path_1.default.join(binDir, "curl-impersonate.exe"), path_1.default.join(binDir, "curl-impersonate")]
+        : [path_1.default.join(binDir, "curl-impersonate")];
+    for (const c of candidates) {
+        if (isExecutableFile(c)) {
+            return c;
+        }
+    }
+    return null;
+}
+function getWrapperBinaryFromBinDir(binDir, target) {
+    const candidates = process.platform === "win32"
+        ? [path_1.default.join(binDir, `curl_${target}.exe`), path_1.default.join(binDir, `curl_${target}`)]
+        : [path_1.default.join(binDir, `curl_${target}`)];
+    for (const c of candidates) {
+        if (isExecutableFile(c)) {
+            return c;
+        }
+    }
+    return null;
 }
 function findOnPath(fileName) {
     const envPath = process.env.PATH ?? "";
@@ -175,12 +240,22 @@ function checkCurlImpersonateAvailable(target = "chrome116", configuredPath = nu
             return { path: binaryPath, exists: true, target, useImpersonateFlag: false };
         }
     }
+    const artifactsBin = getArtifactsBinDir();
     // On non-Windows, prefer the main binary (standalone ELF, no bash dependency).
     if (process.platform !== "win32") {
+        const artifactsMain = getMainBinaryFromBinDir(artifactsBin);
+        if (artifactsMain) {
+            return { path: artifactsMain, exists: true, target, useImpersonateFlag: true };
+        }
         const mainBinary = getCurlImpersonateMainBinaryPath();
         if (mainBinary) {
             return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
         }
+    }
+    // Artifacts wrapper lookup (downloaded releases).
+    const artifactsWrapper = getWrapperBinaryFromBinDir(artifactsBin, target);
+    if (artifactsWrapper) {
+        return { path: artifactsWrapper, exists: true, target, useImpersonateFlag: false };
     }
     // Vendored wrapper script lookup.
     const binaryPath = getCurlImpersonateBinaryPath(target, null);
@@ -208,6 +283,17 @@ function checkCurlImpersonateAvailable(target = "chrome116", configuredPath = nu
         if (mainBinary) {
             return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
         }
+    }
+    // Final fallback: user cache directory (used when package dir isn't writable).
+    // Keep this at the end so unit tests depending on PATH behavior remain stable.
+    const cacheBin = getUserCacheBinDir();
+    const cacheMain = getMainBinaryFromBinDir(cacheBin);
+    if (cacheMain) {
+        return { path: cacheMain, exists: true, target, useImpersonateFlag: true };
+    }
+    const cacheWrapper = getWrapperBinaryFromBinDir(cacheBin, target);
+    if (cacheWrapper) {
+        return { path: cacheWrapper, exists: true, target, useImpersonateFlag: false };
     }
     return {
         path: binaryPath ?? "",

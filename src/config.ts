@@ -20,6 +20,8 @@ export interface JavDbCurlImpersonateConfig {
   libraryPath: string;
   caBundlePath: string;
   defaultHeaders: boolean;
+  extraCookies: Record<string, string>;
+  extraHeaders: Record<string, string>;
 }
 
 export interface JavDbConfig {
@@ -94,6 +96,8 @@ const defaultConfig: AppConfig = {
       libraryPath: "",
       caBundlePath: "",
       defaultHeaders: true,
+      extraCookies: {},
+      extraHeaders: {},
     },
   },
   download: {
@@ -273,6 +277,8 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
         libraryPath: stringOrUndefined(curl?.LibraryPath),
         caBundlePath: stringOrUndefined(curl?.CaBundlePath),
         defaultHeaders: booleanOrUndefined(curl?.DefaultHeaders),
+        extraCookies: stringRecordOrUndefined(curl?.ExtraCookies),
+        extraHeaders: stringRecordOrUndefined(curl?.ExtraHeaders),
       },
     },
     download: {
@@ -322,6 +328,19 @@ function arrayStringOrUndefined(value: unknown): string[] | undefined {
     return value.filter((item) => typeof item === "string") as string[];
   }
   return undefined;
+}
+
+function stringRecordOrUndefined(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof v === "string") {
+      result[k] = v;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function applyOverrides(config: AppConfig, overrides: Record<string, string>): AppConfig {
@@ -391,6 +410,8 @@ function toFileConfig(config: AppConfig): Record<string, unknown> {
         LibraryPath: config.javDb.curlImpersonate.libraryPath,
         CaBundlePath: config.javDb.curlImpersonate.caBundlePath,
         DefaultHeaders: config.javDb.curlImpersonate.defaultHeaders,
+        ExtraCookies: config.javDb.curlImpersonate.extraCookies,
+        ExtraHeaders: config.javDb.curlImpersonate.extraHeaders,
       },
     },
     Download: {

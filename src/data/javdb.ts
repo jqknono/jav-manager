@@ -4,7 +4,7 @@ import { IJavDbDataProvider, IHealthChecker } from "../interfaces";
 import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../models";
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../utils/torrentNameParser";
 import { splitTitleVariants } from "../utils/titleVariants";
-import { CurlImpersonateFetcher } from "./curlImpersonateFetcher";
+import { CurlImpersonateFetcher, isCloudflareChallengeHtml } from "./curlImpersonateFetcher";
 
 const MaxAttemptsPerUrl = 4;
 const MaxUrlCycles = 2;
@@ -13,14 +13,18 @@ const PreferredLocale = "zh";
 
 type FetchResult = { status: number; body: string; error?: string };
 
+export type CloudflareChallengeCallback = (url: string) => Promise<Record<string, string> | null>;
+
 export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
   private config: JavDbConfig;
   private cookieJar = new Map<string, Map<string, string>>();
   private curlFetcher: CurlImpersonateFetcher;
+  private onCfChallenge: CloudflareChallengeCallback | null;
 
-  constructor(config: JavDbConfig) {
+  constructor(config: JavDbConfig, onCfChallenge?: CloudflareChallengeCallback) {
     this.config = config;
-    this.curlFetcher = new CurlImpersonateFetcher(config.curlImpersonate);
+    this.curlFetcher = new CurlImpersonateFetcher(config.curlImpersonate, config.userAgent);
+    this.onCfChallenge = onCfChallenge ?? null;
   }
 
   get serviceName(): string {
@@ -123,6 +127,8 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
 
   private async getWithRetry(url: string, referer: string | null, maxAttempts: number, timeoutMs?: number): Promise<FetchResult> {
     let lastError = "";
+    let cfChallengeHandled = false;
+
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) {
         await delay(getRetryDelay(attempt));
@@ -135,6 +141,23 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
         if (isSuccessStatus(result.status)) {
           return result;
         }
+
+        if (result.status === 403 && isCloudflareChallengeHtml(result.body) && !cfChallengeHandled && this.onCfChallenge) {
+          cfChallengeHandled = true;
+          const cookies = await this.onCfChallenge(url);
+          if (cookies && Object.keys(cookies).length > 0) {
+            this.curlFetcher.injectExtraCookies(cookies);
+            const host = new URL(url).host;
+            const jar = this.cookieJar.get(host) ?? new Map<string, string>();
+            for (const [k, v] of Object.entries(cookies)) {
+              jar.set(k, v);
+            }
+            this.cookieJar.set(host, jar);
+            attempt -= 1;
+            continue;
+          }
+        }
+
         lastError = result.error ?? `HTTP ${result.status}`;
         if (!isRetryableStatus(result.status)) {
           return { ...result, error: lastError };

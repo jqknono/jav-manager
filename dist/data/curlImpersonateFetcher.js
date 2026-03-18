@@ -4,15 +4,39 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CurlImpersonateFetcher = void 0;
+exports.isCloudflareChallengeHtml = isCloudflareChallengeHtml;
 exports.parseCurlWriteOutOutput = parseCurlWriteOutOutput;
 exports.toWslPath = toWslPath;
 exports.buildCurlSpawnCommand = buildCurlSpawnCommand;
+exports.buildCurlRequestArgs = buildCurlRequestArgs;
 const curlBinaryResolver_1 = require("../utils/curlBinaryResolver");
+const curlImpersonateInstaller_1 = require("../utils/curlImpersonateInstaller");
 const child_process_1 = require("child_process");
 const os_1 = __importDefault(require("os"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const CurlWriteOutPrefix = "__JAV_MANAGER_HTTP_CODE__:";
+function isCloudflareChallengeHtml(body) {
+    if (!body)
+        return false;
+    const s = body.toLowerCase();
+    return (s.includes("just a moment") ||
+        s.includes("_cf_chl_opt") ||
+        s.includes("cdn-cgi/challenge-platform"));
+}
+function normalizeWhitespace(input) {
+    return (input ?? "").replace(/\s+/g, " ").trim();
+}
+function getDefaultUserAgentForTarget(target) {
+    const normalized = String(target ?? "").trim().toLowerCase();
+    const chromeMatch = normalized.match(/^chrome(\d{2,3})/);
+    if (chromeMatch) {
+        const major = chromeMatch[1];
+        return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+    }
+    // Fallback: a reasonable modern Chrome UA.
+    return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+}
 function parseCurlWriteOutOutput(stdout) {
     if (!stdout) {
         return { status: 0, body: "" };
@@ -68,20 +92,123 @@ function stripCacertArgs(args) {
     }
     return result;
 }
+function buildCurlRequestArgs(options) {
+    const { url, referer, cookieHeader, timeoutMs, caBundlePath, defaultHeaders, userAgent, target, extraCookies, extraHeaders, } = options;
+    const args = [];
+    // Basic options
+    args.push("--silent");
+    args.push("--show-error");
+    args.push("--location");
+    args.push("--compressed");
+    // Avoid backslash escapes here: WSL may strip backslashes when forwarding args from Windows to Linux,
+    // which can make parsing brittle.
+    args.push("--write-out", `${CurlWriteOutPrefix}%{http_code}`);
+    // Timeout (convert ms to seconds)
+    const timeoutSec = Math.max(1, Math.floor(timeoutMs / 1000));
+    args.push("--max-time", timeoutSec.toString());
+    args.push("--connect-timeout", Math.min(timeoutSec, 10).toString());
+    // CA bundle
+    const caBundleResolved = (0, curlBinaryResolver_1.getCurlCaBundlePath)(caBundlePath || null);
+    if (caBundleResolved) {
+        args.push("--cacert", caBundleResolved);
+    }
+    // HTTP/2
+    args.push("--http2");
+    // Browser-like defaults (best-effort; not a Cloudflare bypass guarantee).
+    if (defaultHeaders) {
+        const ua = normalizeWhitespace(userAgent || "") || getDefaultUserAgentForTarget(target);
+        args.push("--user-agent", ua);
+        args.push("--header", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        args.push("--header", "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8");
+        args.push("--header", "Upgrade-Insecure-Requests: 1");
+    }
+    // Headers
+    if (referer) {
+        args.push("--referer", referer);
+    }
+    const cookieParts = [];
+    if (cookieHeader) {
+        cookieParts.push(cookieHeader);
+    }
+    if (extraCookies && Object.keys(extraCookies).length > 0) {
+        const extra = Object.entries(extraCookies)
+            .map(([k, v]) => `${k}=${v}`)
+            .join("; ");
+        cookieParts.push(extra);
+    }
+    if (cookieParts.length > 0) {
+        args.push("--cookie", cookieParts.join("; "));
+    }
+    if (extraHeaders && Object.keys(extraHeaders).length > 0) {
+        for (const [name, value] of Object.entries(extraHeaders)) {
+            args.push("--header", `${name}: ${value}`);
+        }
+    }
+    // URL
+    args.push(url);
+    return args;
+}
 /**
  * HTTP fetcher using curl-impersonate to bypass Cloudflare protection.
  * curl-impersonate is the only supported request method.
  */
 class CurlImpersonateFetcher {
     config;
+    userAgent;
     available = null;
     binaryPath = null;
     /** When true the resolved binary is the main `curl-impersonate` executable
      *  and we must pass `--impersonate <target>` to select the TLS profile. */
     useImpersonateFlag = false;
     cookieJarFiles = new Map();
-    constructor(config) {
+    constructor(config, userAgent) {
         this.config = config;
+        this.userAgent = userAgent ? String(userAgent) : null;
+    }
+    injectExtraCookies(cookies) {
+        this.config = {
+            ...this.config,
+            extraCookies: { ...this.config.extraCookies, ...cookies },
+        };
+    }
+    resetAvailabilityCache() {
+        this.available = null;
+        this.binaryPath = null;
+        this.useImpersonateFlag = false;
+    }
+    async ensureAvailable() {
+        if (this.isAvailable()) {
+            return { ok: true };
+        }
+        if (!this.config.enabled) {
+            return { ok: false, error: "curl-impersonate is disabled in config" };
+        }
+        // If the user explicitly configured a path, do not auto-install.
+        if (this.config.libraryPath && this.config.libraryPath.trim()) {
+            return { ok: false, error: "curl-impersonate binary not found (configured path missing)" };
+        }
+        const install = await (0, curlImpersonateInstaller_1.ensureCurlImpersonateInstalled)();
+        if (!install.ok) {
+            return { ok: false, error: `curl-impersonate binary not found; auto-download failed: ${install.error}` };
+        }
+        this.resetAvailabilityCache();
+        if (this.isAvailable()) {
+            return { ok: true };
+        }
+        return { ok: false, error: "curl-impersonate binary not found (auto-download completed but not detected)" };
+    }
+    async getDiagnostics() {
+        const ensured = await this.ensureAvailable();
+        const target = this.config.target || "chrome116";
+        if (!ensured.ok) {
+            return { available: false, binaryPath: null, target, useImpersonateFlag: false };
+        }
+        return {
+            available: true,
+            binaryPath: this.binaryPath,
+            target,
+            useImpersonateFlag: this.useImpersonateFlag,
+        };
     }
     /**
      * Check if curl-impersonate is available
@@ -106,12 +233,12 @@ class CurlImpersonateFetcher {
      * This is the only supported request method – no fallback.
      */
     async get(url, referer, cookieHeader, timeoutMs) {
-        // Ensure binary path is resolved (isAvailable caches the result).
-        if (!this.isAvailable()) {
+        const ensured = await this.ensureAvailable();
+        if (!ensured.ok) {
             return {
                 status: 0,
                 body: "",
-                error: "curl-impersonate binary not found",
+                error: ensured.error,
             };
         }
         return this.getCurlImpersonate(url, referer, cookieHeader, timeoutMs);
@@ -148,10 +275,21 @@ class CurlImpersonateFetcher {
      */
     async getCurlImpersonate(url, referer, cookieHeader, timeoutMs) {
         const binaryPath = this.binaryPath;
-        const rawArgs = this.buildCurlArgs(url, referer, cookieHeader, timeoutMs);
+        const target = this.config.target || "chrome116";
+        const rawArgs = buildCurlRequestArgs({
+            url,
+            referer,
+            cookieHeader,
+            timeoutMs,
+            caBundlePath: this.config.caBundlePath || null,
+            defaultHeaders: !!this.config.defaultHeaders,
+            userAgent: this.userAgent,
+            target,
+            extraCookies: this.config.extraCookies,
+            extraHeaders: this.config.extraHeaders,
+        });
         // When using the main `curl-impersonate` binary directly, prepend the
         // --impersonate flag so it selects the correct TLS profile.
-        const target = this.config.target || "chrome116";
         const impersonatePrefix = this.useImpersonateFlag
             ? ["--impersonate", target]
             : [];
@@ -212,7 +350,15 @@ class CurlImpersonateFetcher {
                     resolved = true;
                     if (code === 0) {
                         const parsed = parseCurlWriteOutOutput(stdout);
-                        const error = this.isSuccessStatus(parsed.status) ? undefined : `HTTP ${parsed.status}`;
+                        const error = (() => {
+                            if (this.isSuccessStatus(parsed.status)) {
+                                return undefined;
+                            }
+                            if (parsed.status === 403 && isCloudflareChallengeHtml(parsed.body)) {
+                                return "HTTP 403 (Cloudflare challenge)";
+                            }
+                            return `HTTP ${parsed.status}`;
+                        })();
                         resolve({ status: parsed.status, body: parsed.body, error });
                     }
                     else {
@@ -250,41 +396,6 @@ class CurlImpersonateFetcher {
                 });
             }
         });
-    }
-    /**
-     * Build curl command line arguments
-     */
-    buildCurlArgs(url, referer, cookieHeader, timeoutMs) {
-        const args = [];
-        // Basic options
-        args.push("--silent");
-        args.push("--show-error");
-        args.push("--location");
-        args.push("--compressed");
-        // Avoid backslash escapes here: WSL may strip backslashes when forwarding args from Windows to Linux,
-        // which can make parsing brittle.
-        args.push("--write-out", `${CurlWriteOutPrefix}%{http_code}`);
-        // Timeout (convert ms to seconds)
-        const timeoutSec = Math.max(1, Math.floor(timeoutMs / 1000));
-        args.push("--max-time", timeoutSec.toString());
-        args.push("--connect-timeout", Math.min(timeoutSec, 10).toString());
-        // CA bundle
-        const caBundlePath = (0, curlBinaryResolver_1.getCurlCaBundlePath)(this.config.caBundlePath || null);
-        if (caBundlePath) {
-            args.push("--cacert", caBundlePath);
-        }
-        // HTTP/2
-        args.push("--http2");
-        // Headers
-        if (referer) {
-            args.push("--referer", referer);
-        }
-        if (cookieHeader) {
-            args.push("--cookie", cookieHeader);
-        }
-        // URL
-        args.push(url);
-        return args;
     }
     /**
      * Check if status is successful

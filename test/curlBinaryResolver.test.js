@@ -26,11 +26,17 @@ test("checkCurlImpersonateAvailable finds curl_<target> on PATH", () => {
   fs.writeFileSync(bin, "fake");
 
   const oldPath = process.env.PATH ?? "";
+  const oldLibc = process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC;
   const oldCwd = process.cwd();
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jav-manager-cwdpath-"));
   try {
     const sep = process.platform === "win32" ? ";" : ":";
     process.env.PATH = `${dir}${sep}${oldPath}`;
+    // Prefer testing PATH wrapper resolution without being shadowed by a downloaded artifacts main binary.
+    // On Linux, forcing musl makes artifacts path mismatch the usual linux-x64-gnu install key.
+    if (process.platform === "linux") {
+      process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC = "musl";
+    }
     process.chdir(cwd);
     const info = checkCurlImpersonateAvailable(target, null);
     assert.equal(info.exists, true);
@@ -38,6 +44,11 @@ test("checkCurlImpersonateAvailable finds curl_<target> on PATH", () => {
     assert.equal(info.useImpersonateFlag, false);
   } finally {
     process.env.PATH = oldPath;
+    if (oldLibc === undefined) {
+      delete process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC;
+    } else {
+      process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC = oldLibc;
+    }
     process.chdir(oldCwd);
   }
 });

@@ -8,6 +8,7 @@ import { AppName, getVersion } from "./utils/appInfo";
 import { isValidJavId, normalizeJavId } from "./utils/torrentNameParser";
 import { tryParseToBytes } from "./utils/sizeParser";
 import { CurlImpersonateFetcher } from "./data/curlImpersonateFetcher";
+import { isCloudflareChallengeHtml } from "./data/curlImpersonateFetcher";
 import {
   printBanner,
   printHelp,
@@ -27,6 +28,8 @@ import {
   getPrompt,
   formatSize,
 } from "./utils/cliDisplay";
+import { fetchLatestJavDbDomains, mergeMirrorUrls } from "./utils/javDbMirrors";
+import { getConfigPath } from "./config";
 
 const LOCAL_PAGE_SIZE = 10;
 
@@ -78,6 +81,11 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
 
   if (cmd === "--test-curl" || cmd === "tc") {
     await runTestCurl(context);
+    return;
+  }
+
+  if (cmd === "javdb-mirrors" || cmd === "jm") {
+    await runJavDbMirrors(context);
     return;
   }
 
@@ -410,6 +418,7 @@ function showHelp(loc: LocalizationService): void {
     { cmd: "cfg show / cs", desc: isZh ? "檢視設定" : "View current config", category: isZh ? "系統" : "System" },
     { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "設定服務連線 (支援互動)" : "Set service connection (interactive supported)", category: isZh ? "系統" : "System" },
     { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 診斷" : "curl-impersonate diagnostic", category: isZh ? "系統" : "System" },
+    { cmd: "javdb-mirrors / jm", desc: isZh ? "更新 JavDB 鏡像 (寫回設定)" : "Update JavDB mirrors (persist to config)", category: isZh ? "系統" : "System" },
 
     { cmd: "lang <en|zh|ja|ko> / lg", desc: isZh ? "切換語言" : "Switch language", category: isZh ? "其他" : "Other" },
     { cmd: "version / v", desc: isZh ? "版本資訊" : "Show version", category: isZh ? "其他" : "Other" },
@@ -886,7 +895,14 @@ async function runTestCurl(context: AppContext): Promise<void> {
     printInfo("This diagnostic still tries to call curl-impersonate directly.");
   }
 
-  const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate);
+  const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
+  const diag = await fetcher.getDiagnostics();
+  if (diag.available && diag.binaryPath) {
+    const mode = diag.useImpersonateFlag ? "main(curl-impersonate --impersonate)" : "wrapper(curl_<target>)";
+    printInfo(`Binary: ${diag.binaryPath} (${mode}, target=${diag.target})`);
+  } else {
+    printWarning("curl-impersonate binary not available (auto-download may fail).");
+  }
   let anySuccess = false;
   const cookieHeader = "over18=1; locale=zh";
 
@@ -898,8 +914,10 @@ async function runTestCurl(context: AppContext): Promise<void> {
       anySuccess = true;
       results.push({ name: url, healthy: true, message: `HTTP ${result.status}` });
     } else {
+      const isChallenge = result.status === 403 && isCloudflareChallengeHtml(result.body);
       const error = result.error ? ` error=${result.error}` : "";
-      results.push({ name: url, healthy: false, message: `HTTP ${result.status}${error}` });
+      const hint = isChallenge ? " (Cloudflare challenge)" : "";
+      results.push({ name: url, healthy: false, message: `HTTP ${result.status}${hint}${error}` });
     }
   }
 
@@ -909,5 +927,63 @@ async function runTestCurl(context: AppContext): Promise<void> {
     printSuccess("At least one JavDB URL is accessible via curl-impersonate.");
   } else {
     printError("All JavDB URLs failed via curl-impersonate.");
+    printWarning("If you see 'Cloudflare challenge', it usually requires browser JavaScript verification; try a different network/IP or mirrors.");
+  }
+}
+
+async function runJavDbMirrors(context: AppContext): Promise<void> {
+  const { config } = context;
+  const javDbCfg = config.javDb;
+
+  printHealthResults([]); // header-like
+  console.log("");
+  printInfo("JavDB Mirror Updater");
+  console.log("");
+
+  let domains: string[] = [];
+  let apiUrl = "";
+  try {
+    const latest = await fetchLatestJavDbDomains(config.telemetry.endpoint);
+    domains = latest.domains;
+    apiUrl = latest.apiUrl;
+    printInfo(`Source: ${apiUrl}`);
+    printInfo(`Latest domain: ${domains[0]}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    printError(`Failed to fetch latest JavDB domains: ${msg}`);
+    return;
+  }
+
+  const merged = mergeMirrorUrls(javDbCfg.mirrorUrls, domains);
+  if (merged.length === 0) {
+    printError("No valid mirror URLs.");
+    return;
+  }
+
+  const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
+  const cookieHeader = "over18=1; locale=zh";
+  const timeoutMs = 10000;
+
+  const results: Array<{ name: string; healthy: boolean; message: string }> = [];
+  for (const url of merged) {
+    const res = await fetcher.get(url, null, cookieHeader, timeoutMs);
+    const ok = res.status >= 200 && res.status < 300;
+    const isChallenge = res.status === 403 && isCloudflareChallengeHtml(res.body);
+    const hint = isChallenge ? " (Cloudflare challenge)" : "";
+    const error = res.error ? ` error=${res.error}` : "";
+    results.push({ name: url, healthy: ok, message: `HTTP ${res.status}${hint}${error}` });
+  }
+
+  printHealthResults(results);
+
+  // Persist to config
+  try {
+    javDbCfg.mirrorUrls = merged;
+    saveConfig(config);
+    printSuccess(`Updated JavDb.MirrorUrls (${merged.length})`);
+    printInfo(`Saved to: ${getConfigPath()}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    printError(`Failed to write config: ${msg}`);
   }
 }

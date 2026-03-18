@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import os from "os";
 
 export interface CurlBinaryInfo {
   path: string;
@@ -43,6 +44,85 @@ function isExecutableFile(filePath: string): boolean {
   } catch {
     return false;
   }
+}
+
+function detectLinuxLibc(): "gnu" | "musl" {
+  const explicit = (process.env.JAVMANAGER_CURL_IMPERSONATE_LIBC ?? "").trim().toLowerCase();
+  if (explicit === "musl" || explicit === "gnu") {
+    return explicit;
+  }
+
+  if (fs.existsSync("/etc/alpine-release")) {
+    return "musl";
+  }
+
+  return "gnu";
+}
+
+function getInstallKey(): string {
+  const platform = process.platform;
+  const arch = process.arch;
+  if (platform === "linux") {
+    return `${platform}-${arch}-${detectLinuxLibc()}`;
+  }
+  return `${platform}-${arch}`;
+}
+
+function getArtifactsBinDir(): string {
+  return path.join(packageRoot, "artifacts", "curl-impersonate", getInstallKey(), "bin");
+}
+
+function getUserCacheRoot(): string {
+  const envOverride = (process.env.JAVMANAGER_CURL_IMPERSONATE_DIR ?? "").trim();
+  if (envOverride) {
+    return envOverride;
+  }
+
+  if (process.platform === "win32") {
+    const base =
+      process.env.LOCALAPPDATA ||
+      process.env.APPDATA ||
+      path.join(os.homedir(), "AppData", "Local");
+    return path.join(base, "jav-manager", "curl-impersonate");
+  }
+
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Caches", "jav-manager", "curl-impersonate");
+  }
+
+  const xdg = (process.env.XDG_CACHE_HOME ?? "").trim();
+  const base = xdg || path.join(os.homedir(), ".cache");
+  return path.join(base, "jav-manager", "curl-impersonate");
+}
+
+function getUserCacheBinDir(): string {
+  return path.join(getUserCacheRoot(), getInstallKey(), "bin");
+}
+
+function getMainBinaryFromBinDir(binDir: string): string | null {
+  const candidates =
+    process.platform === "win32"
+      ? [path.join(binDir, "curl-impersonate.exe"), path.join(binDir, "curl-impersonate")]
+      : [path.join(binDir, "curl-impersonate")];
+  for (const c of candidates) {
+    if (isExecutableFile(c)) {
+      return c;
+    }
+  }
+  return null;
+}
+
+function getWrapperBinaryFromBinDir(binDir: string, target: string): string | null {
+  const candidates =
+    process.platform === "win32"
+      ? [path.join(binDir, `curl_${target}.exe`), path.join(binDir, `curl_${target}`)]
+      : [path.join(binDir, `curl_${target}`)];
+  for (const c of candidates) {
+    if (isExecutableFile(c)) {
+      return c;
+    }
+  }
+  return null;
 }
 
 function findOnPath(fileName: string): string | null {
@@ -206,12 +286,24 @@ export function checkCurlImpersonateAvailable(
     }
   }
 
+  const artifactsBin = getArtifactsBinDir();
+
   // On non-Windows, prefer the main binary (standalone ELF, no bash dependency).
   if (process.platform !== "win32") {
+    const artifactsMain = getMainBinaryFromBinDir(artifactsBin);
+    if (artifactsMain) {
+      return { path: artifactsMain, exists: true, target, useImpersonateFlag: true };
+    }
     const mainBinary = getCurlImpersonateMainBinaryPath();
     if (mainBinary) {
       return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
     }
+  }
+
+  // Artifacts wrapper lookup (downloaded releases).
+  const artifactsWrapper = getWrapperBinaryFromBinDir(artifactsBin, target);
+  if (artifactsWrapper) {
+    return { path: artifactsWrapper, exists: true, target, useImpersonateFlag: false };
   }
 
   // Vendored wrapper script lookup.
@@ -243,6 +335,18 @@ export function checkCurlImpersonateAvailable(
     if (mainBinary) {
       return { path: mainBinary, exists: true, target, useImpersonateFlag: true };
     }
+  }
+
+  // Final fallback: user cache directory (used when package dir isn't writable).
+  // Keep this at the end so unit tests depending on PATH behavior remain stable.
+  const cacheBin = getUserCacheBinDir();
+  const cacheMain = getMainBinaryFromBinDir(cacheBin);
+  if (cacheMain) {
+    return { path: cacheMain, exists: true, target, useImpersonateFlag: true };
+  }
+  const cacheWrapper = getWrapperBinaryFromBinDir(cacheBin, target);
+  if (cacheWrapper) {
+    return { path: cacheWrapper, exists: true, target, useImpersonateFlag: false };
   }
 
   return {

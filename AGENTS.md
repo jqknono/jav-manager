@@ -9,7 +9,7 @@
   - `services.ts`, `context.ts`, `interfaces.ts`, `models.ts`, `config.ts`
 - `dist/`: compiled JavaScript output from `tsc` (runtime entry is `dist/index.js`).
 - `test/`: Node test files (`*.test.js`).
-- `telemetry-worker/`: optional Cloudflare Worker for telemetry/JavInfo APIs.
+- `jav-worker/`: optional Cloudflare Worker for telemetry/JavInfo APIs.
 - `JavManager/` **(deprecated)**: legacy .NET implementation.
 - `JavManager.Tests/` **(deprecated)**: legacy xUnit tests for the .NET implementation.
 - `doc/`: reference docs for external service APIs.
@@ -31,8 +31,8 @@ Requires Node.js (for the primary TypeScript project).
 - Tests: `npm test` (build + `node --test test/*.test.js`)
 - Dev CLI/GUI (ts-node): `npm run dev:cli` / `npm run dev:gui`
 
-Optional telemetry worker (`telemetry-worker/`):
-- Install deps: `cd telemetry-worker && npm install`
+Optional telemetry worker (`jav-worker/`):
+- Install deps: `cd jav-worker && npm install`
 - Local dev: `npm run dev`
 - Deploy: `npm run deploy`
 
@@ -51,8 +51,8 @@ Legacy .NET commands (deprecated):
 - When updating UI text, update English strings first (`en` section) and `README.md` when needed.
 - Do **not** update non-English docs/readmes (`README.zh-CN.md`, `README.ja.md`, `README.ko.md`) unless explicitly requested.
 - Chinese strings in `src/localization.ts` should only be changed when explicitly requested.
-- Telemetry worker UI strings are stored as JSON in `telemetry-worker/src/locales/*.json`.
-  - Only `telemetry-worker/src/locales/en.json` is maintained in code changes.
+- Telemetry worker UI strings are stored as JSON in `jav-worker/src/locales/*.json`.
+  - Only `jav-worker/src/locales/en.json` is maintained in code changes.
   - Other locale files are translator-owned and may be partial; the worker falls back to English for missing keys.
 
 ## Coding Style & Naming Conventions
@@ -82,3 +82,4 @@ Legacy .NET commands (deprecated):
 - CLI arg overrides are supported for selected keys (see `src/config.ts` `extractOverrides`).
 - Do not commit secrets (qBittorrent/Everything credentials, API keys, local URLs); prefer local `appsettings.Development.json`.
 - JavDB access is implemented via HTTP + HTML parsing; avoid introducing browser automation (e.g., Playwright) unless explicitly required.
+- JavDB 的 `curl-impersonate` 依赖来源于 https://github.com/lexiforest/curl-impersonate
