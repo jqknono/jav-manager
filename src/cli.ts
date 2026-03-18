@@ -7,8 +7,7 @@ import { saveConfig } from "./config";
 import { AppName, getVersion } from "./utils/appInfo";
 import { isValidJavId, normalizeJavId } from "./utils/torrentNameParser";
 import { tryParseToBytes } from "./utils/sizeParser";
-import { CurlImpersonateFetcher } from "./data/curlImpersonateFetcher";
-import { isCloudflareChallengeHtml } from "./data/curlImpersonateFetcher";
+import { isCloudflareChallengeHtml } from "./utils/cloudflare";
 import {
   printBanner,
   printHelp,
@@ -76,11 +75,6 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
   if (cmd === "--id") {
     const javId = normalizeJavId(args[1] ?? "");
     await handleSearch(context, javId, autoConfirm, false);
-    return;
-  }
-
-  if (cmd === "--test-curl" || cmd === "tc") {
-    await runTestCurl(context);
     return;
   }
 
@@ -417,7 +411,6 @@ function showHelp(loc: LocalizationService): void {
     { cmd: "health / hc", desc: isZh ? "健康檢查" : "Check service health", category: isZh ? "系統" : "System" },
     { cmd: "cfg show / cs", desc: isZh ? "檢視設定" : "View current config", category: isZh ? "系統" : "System" },
     { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "設定服務連線 (支援互動)" : "Set service connection (interactive supported)", category: isZh ? "系統" : "System" },
-    { cmd: "--test-curl / tc", desc: isZh ? "curl-impersonate 診斷" : "curl-impersonate diagnostic", category: isZh ? "系統" : "System" },
     { cmd: "javdb-mirrors / jm", desc: isZh ? "更新 JavDB 鏡像 (寫回設定)" : "Update JavDB mirrors (persist to config)", category: isZh ? "系統" : "System" },
 
     { cmd: "lang <en|zh|ja|ko> / lg", desc: isZh ? "切換語言" : "Switch language", category: isZh ? "其他" : "Other" },
@@ -877,60 +870,6 @@ function getConfigKeysForService(service: ConfigService): Array<{ key: ConfigKey
   ];
 }
 
-async function runTestCurl(context: AppContext): Promise<void> {
-  const { config } = context;
-  const javDbCfg = config.javDb;
-  const urls = Array.from(new Set([javDbCfg.baseUrl, ...javDbCfg.mirrorUrls]
-    .map((u) => (u ?? "").trim().replace(/\/+$/, ""))
-    .filter((u) => u.length > 0)));
-
-  printHealthResults([]);  // header-like
-
-  console.log("");
-  printInfo("JavDB curl-impersonate Diagnostic");
-  console.log("");
-
-  if (!javDbCfg.curlImpersonate.enabled) {
-    printWarning("JavDb.CurlImpersonate.Enabled is false in config.");
-    printInfo("This diagnostic still tries to call curl-impersonate directly.");
-  }
-
-  const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
-  const diag = await fetcher.getDiagnostics();
-  if (diag.available && diag.binaryPath) {
-    const mode = diag.useImpersonateFlag ? "main(curl-impersonate --impersonate)" : "wrapper(curl_<target>)";
-    printInfo(`Binary: ${diag.binaryPath} (${mode}, target=${diag.target})`);
-  } else {
-    printWarning("curl-impersonate binary not available (auto-download may fail).");
-  }
-  let anySuccess = false;
-  const cookieHeader = "over18=1; locale=zh";
-
-  const results: Array<{ name: string; healthy: boolean; message: string }> = [];
-
-  for (const url of urls) {
-    const result = await fetcher.get(url, null, cookieHeader, 15000);
-    if (result.status >= 200 && result.status < 300) {
-      anySuccess = true;
-      results.push({ name: url, healthy: true, message: `HTTP ${result.status}` });
-    } else {
-      const isChallenge = result.status === 403 && isCloudflareChallengeHtml(result.body);
-      const error = result.error ? ` error=${result.error}` : "";
-      const hint = isChallenge ? " (Cloudflare challenge)" : "";
-      results.push({ name: url, healthy: false, message: `HTTP ${result.status}${hint}${error}` });
-    }
-  }
-
-  printHealthResults(results);
-
-  if (anySuccess) {
-    printSuccess("At least one JavDB URL is accessible via curl-impersonate.");
-  } else {
-    printError("All JavDB URLs failed via curl-impersonate.");
-    printWarning("If you see 'Cloudflare challenge', it usually requires browser JavaScript verification; try a different network/IP or mirrors.");
-  }
-}
-
 async function runJavDbMirrors(context: AppContext): Promise<void> {
   const { config } = context;
   const javDbCfg = config.javDb;
@@ -960,13 +899,12 @@ async function runJavDbMirrors(context: AppContext): Promise<void> {
     return;
   }
 
-  const fetcher = new CurlImpersonateFetcher(javDbCfg.curlImpersonate, javDbCfg.userAgent);
   const cookieHeader = "over18=1; locale=zh";
   const timeoutMs = 10000;
 
   const results: Array<{ name: string; healthy: boolean; message: string }> = [];
   for (const url of merged) {
-    const res = await fetcher.get(url, null, cookieHeader, timeoutMs);
+    const res = await httpGet(url, null, cookieHeader, javDbCfg.userAgent, timeoutMs);
     const ok = res.status >= 200 && res.status < 300;
     const isChallenge = res.status === 403 && isCloudflareChallengeHtml(res.body);
     const hint = isChallenge ? " (Cloudflare challenge)" : "";
@@ -985,5 +923,47 @@ async function runJavDbMirrors(context: AppContext): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     printError(`Failed to write config: ${msg}`);
+  }
+}
+
+async function httpGet(
+  url: string,
+  referer: string | null,
+  cookieHeader: string | null,
+  userAgent: string,
+  timeoutMs: number,
+): Promise<{ status: number; body: string; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
+
+  try {
+    const headers: Record<string, string> = {
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+      "Upgrade-Insecure-Requests": "1",
+    };
+    const ua = String(userAgent ?? "").trim();
+    if (ua) headers["User-Agent"] = ua;
+    if (referer) headers["Referer"] = referer;
+    if (cookieHeader) headers["Cookie"] = cookieHeader;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers,
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    const body = await res.text();
+    return { status: res.status, body };
+  } catch (err) {
+    const msg =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? `Request timeout after ${timeoutMs}ms`
+          : err.message
+        : String(err);
+    return { status: 0, body: "", error: msg };
+  } finally {
+    clearTimeout(timer);
   }
 }

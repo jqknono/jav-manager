@@ -4,7 +4,7 @@ import { IJavDbDataProvider, IHealthChecker } from "../interfaces";
 import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../models";
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../utils/torrentNameParser";
 import { splitTitleVariants } from "../utils/titleVariants";
-import { CurlImpersonateFetcher, isCloudflareChallengeHtml } from "./curlImpersonateFetcher";
+import { isCloudflareChallengeHtml } from "../utils/cloudflare";
 
 const MaxAttemptsPerUrl = 4;
 const MaxUrlCycles = 2;
@@ -18,12 +18,10 @@ export type CloudflareChallengeCallback = (url: string) => Promise<Record<string
 export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
   private config: JavDbConfig;
   private cookieJar = new Map<string, Map<string, string>>();
-  private curlFetcher: CurlImpersonateFetcher;
   private onCfChallenge: CloudflareChallengeCallback | null;
 
   constructor(config: JavDbConfig, onCfChallenge?: CloudflareChallengeCallback) {
     this.config = config;
-    this.curlFetcher = new CurlImpersonateFetcher(config.curlImpersonate, config.userAgent);
     this.onCfChallenge = onCfChallenge ?? null;
   }
 
@@ -146,7 +144,6 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
           cfChallengeHandled = true;
           const cookies = await this.onCfChallenge(url);
           if (cookies && Object.keys(cookies).length > 0) {
-            this.curlFetcher.injectExtraCookies(cookies);
             const host = new URL(url).host;
             const jar = this.cookieJar.get(host) ?? new Map<string, string>();
             for (const [k, v] of Object.entries(cookies)) {
@@ -172,7 +169,75 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
   private async sendRequest(url: string, referer: string | null, _attemptIndex: number, timeoutMs?: number): Promise<FetchResult> {
     const cookieHeader = this.getCookieHeader(url);
     const timeout = timeoutMs ?? this.config.requestTimeout;
-    return this.curlFetcher.get(url, referer, cookieHeader, timeout);
+    return this.httpGet(url, referer, cookieHeader, timeout);
+  }
+
+  private async httpGet(
+    url: string,
+    referer: string | null,
+    cookieHeader: string | null,
+    timeoutMs: number,
+  ): Promise<FetchResult> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
+
+    try {
+      const headers: Record<string, string> = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Upgrade-Insecure-Requests": "1",
+      };
+      const ua = String(this.config.userAgent ?? "").trim();
+      if (ua) {
+        headers["User-Agent"] = ua;
+      }
+      if (referer) {
+        headers["Referer"] = referer;
+      }
+      if (cookieHeader) {
+        headers["Cookie"] = cookieHeader;
+      }
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers,
+        redirect: "follow",
+        signal: controller.signal,
+      });
+
+      const body = await res.text();
+      this.mergeSetCookies(url, res);
+      return { status: res.status, body };
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.name === "AbortError"
+            ? `Request timeout after ${timeoutMs}ms`
+            : err.message
+          : String(err);
+      return { status: 0, body: "", error: msg };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private mergeSetCookies(url: string, res: Response): void {
+    const host = (() => {
+      try { return new URL(url).host; } catch { return ""; }
+    })();
+    if (!host) return;
+
+    const jar = this.cookieJar.get(host) ?? new Map<string, string>();
+    const setCookieValues = getSetCookieValues(res);
+    for (const raw of setCookieValues) {
+      const pair = raw.split(";")[0] ?? "";
+      const idx = pair.indexOf("=");
+      if (idx < 1) continue;
+      const key = pair.slice(0, idx).trim();
+      const value = pair.slice(idx + 1).trim();
+      if (key) jar.set(key, value);
+    }
+    this.cookieJar.set(host, jar);
   }
 
   private seedCookiesForUrl(baseUrl: string): void {
@@ -197,6 +262,21 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
       .join("; ");
   }
 
+}
+
+function getSetCookieValues(res: Response): string[] {
+  const headers = res.headers as unknown as { getSetCookie?: () => string[]; get?: (name: string) => string | null };
+  if (headers && typeof headers.getSetCookie === "function") {
+    try {
+      const values = headers.getSetCookie();
+      if (Array.isArray(values)) return values.filter((v) => typeof v === "string");
+    } catch {
+      // ignore
+    }
+  }
+
+  const single = res.headers.get("set-cookie");
+  return single ? [single] : [];
 }
 
 function buildBaseUrls(config: JavDbConfig): string[] {

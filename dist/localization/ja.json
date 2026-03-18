@@ -14,7 +14,6 @@
   "help_help": "help             ヘルプ表示",
   "help_quit": "quit             対話モード終了",
   "help_config": "cfg show|set     設定の表示/変更（セッション）",
-  "help_test_curl": "--test-curl       JavDB curl-impersonate診断",
   "prompt_input": "コマンドまたはJAV IDを入力",
   "invalid_jav_id": "無効なJAV ID: {0}",
   "searching": "検索中: {0}",

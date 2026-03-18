@@ -10,14 +10,11 @@
   "files": [
     "bin",
     "dist",
-    "scripts/postinstall.js",
-    "third_party",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-localization.js",
-    "postinstall": "node scripts/postinstall.js",
     "cli": "npm run build && node dist/index.js",
     "gui": "npm run build && node dist/index.js --gui",
     "dev:cli": "ts-node src/index.ts",

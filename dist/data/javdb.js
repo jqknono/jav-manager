@@ -38,7 +38,7 @@ const cheerio = __importStar(require("cheerio"));
 const models_1 = require("../models");
 const torrentNameParser_1 = require("../utils/torrentNameParser");
 const titleVariants_1 = require("../utils/titleVariants");
-const curlImpersonateFetcher_1 = require("./curlImpersonateFetcher");
+const cloudflare_1 = require("../utils/cloudflare");
 const MaxAttemptsPerUrl = 4;
 const MaxUrlCycles = 2;
 const RetryBaseDelayMs = 1000;
@@ -46,11 +46,9 @@ const PreferredLocale = "zh";
 class JavDbWebScraper {
     config;
     cookieJar = new Map();
-    curlFetcher;
     onCfChallenge;
     constructor(config, onCfChallenge) {
         this.config = config;
-        this.curlFetcher = new curlImpersonateFetcher_1.CurlImpersonateFetcher(config.curlImpersonate, config.userAgent);
         this.onCfChallenge = onCfChallenge ?? null;
     }
     get serviceName() {
@@ -150,11 +148,10 @@ class JavDbWebScraper {
                 if (isSuccessStatus(result.status)) {
                     return result;
                 }
-                if (result.status === 403 && (0, curlImpersonateFetcher_1.isCloudflareChallengeHtml)(result.body) && !cfChallengeHandled && this.onCfChallenge) {
+                if (result.status === 403 && (0, cloudflare_1.isCloudflareChallengeHtml)(result.body) && !cfChallengeHandled && this.onCfChallenge) {
                     cfChallengeHandled = true;
                     const cookies = await this.onCfChallenge(url);
                     if (cookies && Object.keys(cookies).length > 0) {
-                        this.curlFetcher.injectExtraCookies(cookies);
                         const host = new URL(url).host;
                         const jar = this.cookieJar.get(host) ?? new Map();
                         for (const [k, v] of Object.entries(cookies)) {
@@ -179,7 +176,73 @@ class JavDbWebScraper {
     async sendRequest(url, referer, _attemptIndex, timeoutMs) {
         const cookieHeader = this.getCookieHeader(url);
         const timeout = timeoutMs ?? this.config.requestTimeout;
-        return this.curlFetcher.get(url, referer, cookieHeader, timeout);
+        return this.httpGet(url, referer, cookieHeader, timeout);
+    }
+    async httpGet(url, referer, cookieHeader, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
+        try {
+            const headers = {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "Upgrade-Insecure-Requests": "1",
+            };
+            const ua = String(this.config.userAgent ?? "").trim();
+            if (ua) {
+                headers["User-Agent"] = ua;
+            }
+            if (referer) {
+                headers["Referer"] = referer;
+            }
+            if (cookieHeader) {
+                headers["Cookie"] = cookieHeader;
+            }
+            const res = await fetch(url, {
+                method: "GET",
+                headers,
+                redirect: "follow",
+                signal: controller.signal,
+            });
+            const body = await res.text();
+            this.mergeSetCookies(url, res);
+            return { status: res.status, body };
+        }
+        catch (err) {
+            const msg = err instanceof Error
+                ? err.name === "AbortError"
+                    ? `Request timeout after ${timeoutMs}ms`
+                    : err.message
+                : String(err);
+            return { status: 0, body: "", error: msg };
+        }
+        finally {
+            clearTimeout(timer);
+        }
+    }
+    mergeSetCookies(url, res) {
+        const host = (() => {
+            try {
+                return new URL(url).host;
+            }
+            catch {
+                return "";
+            }
+        })();
+        if (!host)
+            return;
+        const jar = this.cookieJar.get(host) ?? new Map();
+        const setCookieValues = getSetCookieValues(res);
+        for (const raw of setCookieValues) {
+            const pair = raw.split(";")[0] ?? "";
+            const idx = pair.indexOf("=");
+            if (idx < 1)
+                continue;
+            const key = pair.slice(0, idx).trim();
+            const value = pair.slice(idx + 1).trim();
+            if (key)
+                jar.set(key, value);
+        }
+        this.cookieJar.set(host, jar);
     }
     seedCookiesForUrl(baseUrl) {
         if (!baseUrl) {
@@ -203,6 +266,21 @@ class JavDbWebScraper {
     }
 }
 exports.JavDbWebScraper = JavDbWebScraper;
+function getSetCookieValues(res) {
+    const headers = res.headers;
+    if (headers && typeof headers.getSetCookie === "function") {
+        try {
+            const values = headers.getSetCookie();
+            if (Array.isArray(values))
+                return values.filter((v) => typeof v === "string");
+        }
+        catch {
+            // ignore
+        }
+    }
+    const single = res.headers.get("set-cookie");
+    return single ? [single] : [];
+}
 function buildBaseUrls(config) {
     const urls = [config.baseUrl, ...config.mirrorUrls]
         .map((url) => url.trim())

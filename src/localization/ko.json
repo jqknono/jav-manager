@@ -14,7 +14,6 @@
   "help_help": "help             도움말",
   "help_quit": "quit             대화형 모드 종료",
   "help_config": "cfg show|set     설정 보기 또는 변경 (세션)",
-  "help_test_curl": "--test-curl       JavDB curl-impersonate 진단",
   "prompt_input": "명령어 또는 JAV ID 입력",
   "invalid_jav_id": "잘못된 JAV ID: {0}",
   "searching": "검색 중: {0}",

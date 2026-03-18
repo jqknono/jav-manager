@@ -14,7 +14,6 @@
   "help_help": "help             顯示說明",
   "help_quit": "quit             退出互動模式",
   "help_config": "cfg show|set     檢視或變更設定(工作階段)",
-  "help_test_curl": "--test-curl       JavDB curl-impersonate診斷",
   "prompt_input": "輸入指令或JAV ID",
   "invalid_jav_id": "無效的JAV ID: {0}",
   "searching": "搜尋中: {0}",

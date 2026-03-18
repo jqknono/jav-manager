@@ -28,15 +28,6 @@ const defaultConfig = {
         mirrorUrls: [],
         requestTimeout: 30000,
         userAgent: "",
-        curlImpersonate: {
-            enabled: true,
-            target: "chrome116",
-            libraryPath: "",
-            caBundlePath: "",
-            defaultHeaders: true,
-            extraCookies: {},
-            extraHeaders: {},
-        },
     },
     download: {
         defaultSavePath: "",
@@ -168,7 +159,6 @@ function normalizeFileConfig(raw) {
     const consoleConfig = raw.Console;
     const telemetry = raw.Telemetry;
     const update = raw.Update;
-    const curl = javDb?.CurlImpersonate ?? undefined;
     return {
         everything: {
             baseUrl: stringOrUndefined(everything?.BaseUrl),
@@ -185,15 +175,6 @@ function normalizeFileConfig(raw) {
             mirrorUrls: arrayStringOrUndefined(javDb?.MirrorUrls),
             requestTimeout: numberOrUndefined(javDb?.RequestTimeout),
             userAgent: stringOrUndefined(javDb?.UserAgent),
-            curlImpersonate: {
-                enabled: booleanOrUndefined(curl?.Enabled),
-                target: stringOrUndefined(curl?.Target),
-                libraryPath: stringOrUndefined(curl?.LibraryPath),
-                caBundlePath: stringOrUndefined(curl?.CaBundlePath),
-                defaultHeaders: booleanOrUndefined(curl?.DefaultHeaders),
-                extraCookies: stringRecordOrUndefined(curl?.ExtraCookies),
-                extraHeaders: stringRecordOrUndefined(curl?.ExtraHeaders),
-            },
         },
         download: {
             defaultSavePath: stringOrUndefined(download?.DefaultSavePath),
@@ -305,15 +286,6 @@ function toFileConfig(config) {
             MirrorUrls: config.javDb.mirrorUrls,
             RequestTimeout: config.javDb.requestTimeout,
             UserAgent: config.javDb.userAgent,
-            CurlImpersonate: {
-                Enabled: config.javDb.curlImpersonate.enabled,
-                Target: config.javDb.curlImpersonate.target,
-                LibraryPath: config.javDb.curlImpersonate.libraryPath,
-                CaBundlePath: config.javDb.curlImpersonate.caBundlePath,
-                DefaultHeaders: config.javDb.curlImpersonate.defaultHeaders,
-                ExtraCookies: config.javDb.curlImpersonate.extraCookies,
-                ExtraHeaders: config.javDb.curlImpersonate.extraHeaders,
-            },
         },
         Download: {
             DefaultSavePath: config.download.defaultSavePath,

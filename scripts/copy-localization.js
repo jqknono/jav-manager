@@ -10,6 +10,8 @@ const path = require("path");
 const projectRoot = path.resolve(__dirname, "..");
 const srcDir = path.join(projectRoot, "src", "localization");
 const outDir = path.join(projectRoot, "dist", "localization");
+const appsettingsSrc = path.join(projectRoot, "src", "appsettings.json");
+const appsettingsOut = path.join(projectRoot, "dist", "appsettings.json");
 
 if (!fs.existsSync(srcDir)) {
   process.exit(0);
@@ -36,3 +38,11 @@ for (const entry of entries) {
   fs.copyFileSync(path.join(srcDir, entry.name), path.join(outDir, entry.name));
 }
 
+// Keep a sample config next to compiled output.
+try {
+  if (fs.existsSync(appsettingsSrc)) {
+    fs.copyFileSync(appsettingsSrc, appsettingsOut);
+  }
+} catch {
+  // ignore
+}

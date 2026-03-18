@@ -14,22 +14,11 @@ export interface QBittorrentConfig {
   password: string | null;
 }
 
-export interface JavDbCurlImpersonateConfig {
-  enabled: boolean;
-  target: string;
-  libraryPath: string;
-  caBundlePath: string;
-  defaultHeaders: boolean;
-  extraCookies: Record<string, string>;
-  extraHeaders: Record<string, string>;
-}
-
 export interface JavDbConfig {
   baseUrl: string;
   mirrorUrls: string[];
   requestTimeout: number;
   userAgent: string;
-  curlImpersonate: JavDbCurlImpersonateConfig;
 }
 
 export interface DownloadConfig {
@@ -90,15 +79,6 @@ const defaultConfig: AppConfig = {
     mirrorUrls: [],
     requestTimeout: 30000,
     userAgent: "",
-    curlImpersonate: {
-      enabled: true,
-      target: "chrome116",
-      libraryPath: "",
-      caBundlePath: "",
-      defaultHeaders: true,
-      extraCookies: {},
-      extraHeaders: {},
-    },
   },
   download: {
     defaultSavePath: "",
@@ -253,8 +233,6 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
   const consoleConfig = raw.Console as Record<string, unknown> | undefined;
   const telemetry = raw.Telemetry as Record<string, unknown> | undefined;
   const update = raw.Update as Record<string, unknown> | undefined;
-  const curl = (javDb?.CurlImpersonate as Record<string, unknown> | undefined) ?? undefined;
-
   return {
     everything: {
       baseUrl: stringOrUndefined(everything?.BaseUrl),
@@ -271,15 +249,6 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
       mirrorUrls: arrayStringOrUndefined(javDb?.MirrorUrls),
       requestTimeout: numberOrUndefined(javDb?.RequestTimeout),
       userAgent: stringOrUndefined(javDb?.UserAgent),
-      curlImpersonate: {
-        enabled: booleanOrUndefined(curl?.Enabled),
-        target: stringOrUndefined(curl?.Target),
-        libraryPath: stringOrUndefined(curl?.LibraryPath),
-        caBundlePath: stringOrUndefined(curl?.CaBundlePath),
-        defaultHeaders: booleanOrUndefined(curl?.DefaultHeaders),
-        extraCookies: stringRecordOrUndefined(curl?.ExtraCookies),
-        extraHeaders: stringRecordOrUndefined(curl?.ExtraHeaders),
-      },
     },
     download: {
       defaultSavePath: stringOrUndefined(download?.DefaultSavePath),
@@ -404,15 +373,6 @@ function toFileConfig(config: AppConfig): Record<string, unknown> {
       MirrorUrls: config.javDb.mirrorUrls,
       RequestTimeout: config.javDb.requestTimeout,
       UserAgent: config.javDb.userAgent,
-      CurlImpersonate: {
-        Enabled: config.javDb.curlImpersonate.enabled,
-        Target: config.javDb.curlImpersonate.target,
-        LibraryPath: config.javDb.curlImpersonate.libraryPath,
-        CaBundlePath: config.javDb.curlImpersonate.caBundlePath,
-        DefaultHeaders: config.javDb.curlImpersonate.defaultHeaders,
-        ExtraCookies: config.javDb.curlImpersonate.extraCookies,
-        ExtraHeaders: config.javDb.curlImpersonate.extraHeaders,
-      },
     },
     Download: {
       DefaultSavePath: config.download.defaultSavePath,

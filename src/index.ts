@@ -121,7 +121,7 @@ function shouldRunGui(args: string[]): boolean {
 
   // CLI takes precedence for these common commands.
   for (const arg of args) {
-    if (["help", "h", "--help", "-h", "version", "v", "--version", "-v", "--test-curl", "--id"].includes(arg)) {
+    if (["help", "h", "--help", "-h", "version", "v", "--version", "-v", "--id"].includes(arg)) {
       return false;
     }
   }

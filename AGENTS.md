@@ -13,7 +13,7 @@
 - `JavManager/` **(deprecated)**: legacy .NET implementation.
 - `JavManager.Tests/` **(deprecated)**: legacy xUnit tests for the .NET implementation.
 - `doc/`: reference docs for external service APIs.
-- `scripts/`: release/build helpers (mostly legacy .NET publish and curl-impersonate tooling).
+- `scripts/`: release/build helpers (mostly legacy .NET publish tooling).
 - `artifacts/`: build outputs (gitignored).
 
 ## Build, Test, and Development Commands
@@ -82,4 +82,3 @@ Legacy .NET commands (deprecated):
 - CLI arg overrides are supported for selected keys (see `src/config.ts` `extractOverrides`).
 - Do not commit secrets (qBittorrent/Everything credentials, API keys, local URLs); prefer local `appsettings.Development.json`.
 - JavDB access is implemented via HTTP + HTML parsing; avoid introducing browser automation (e.g., Playwright) unless explicitly required.
-- JavDB 的 `curl-impersonate` 依赖来源于 https://github.com/lexiforest/curl-impersonate

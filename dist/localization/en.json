@@ -13,7 +13,6 @@
   "help_help": "help             Show help",
   "help_quit": "quit             Exit interactive mode",
   "help_config": "cfg show|set     View or change config (session)",
-  "help_test_curl": "--test-curl       JavDB curl-impersonate diagnostic",
   "prompt_input": "Input command or JAV ID",
   "invalid_jav_id": "Invalid JAV ID: {0}",
   "searching": "Searching: {0}",
