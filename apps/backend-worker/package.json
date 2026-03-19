@@ -1,0 +1,22 @@
+{
+  "name": "jav-manager-backend-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "gen:locales": "node scripts/gen-locales.cjs",
+    "predev": "npm run gen:locales",
+    "predeploy": "npm run gen:locales",
+    "build": "npm run gen:locales && node ./node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "it:local": "node scripts/integration-test-local.mjs",
+    "db:create": "wrangler d1 create jav-manager-telemetry",
+    "db:init": "wrangler d1 execute jav-manager-telemetry --file=./schema.sql",
+    "db:init-local": "wrangler d1 execute jav-manager-telemetry --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.64.0"
+  }
+}

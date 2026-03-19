@@ -1,2 +1,0 @@
-F:\code\jav-manager\artifacts\publish\win-x64\appsettings.json
-F:\code\jav-manager\artifacts\publish\win-x64\JavManager.exe

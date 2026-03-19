@@ -1,11 +1,3 @@
-JavManager/obj/
-JavManager/bin/Debug/
-JavManager/bin/Release/
-JavManager/dist/
-JavManager/.tsbuildinfo
-JavManager.Tests/obj/
-JavManager.Tests/bin/Debug/
-JavManager.Tests/bin/Release/
 **/artifacts/
 **/node_modules/
 **/.wrangler/
@@ -19,13 +11,10 @@ JavManager.Tests/bin/Release/
 appsettings.Development.json
 appsettings.*.local.json
 
-# Local machine build overrides
-Directory.Build.props.local
-
 # Database files
 *.db
 *.db-shm
 *.db-wal
 
 src/jav_cache.json
-dist/jav_cache.json
+dist/

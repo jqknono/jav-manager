@@ -3,23 +3,30 @@
   "version": "0.1.5",
   "private": false,
   "description": "TypeScript rewrite of JavManager",
-  "main": "dist/index.js",
+  "main": "apps/cli/dist/apps/cli/src/main.js",
   "bin": {
     "jav-manager": "bin/jav-manager.js"
   },
   "files": [
+    "apps",
     "bin",
     "dist",
+    "packages",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-localization.js",
-    "cli": "npm run build && node dist/index.js",
-    "gui": "npm run build && node dist/index.js --gui",
-    "dev:cli": "ts-node src/index.ts",
-    "dev:gui": "ts-node src/index.ts --gui",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "build:shared": "npm --prefix packages/shared run build",
+    "build:cli": "npm --prefix apps/cli run build",
+    "build:gui": "npm --prefix apps/gui run build",
+    "build:backend": "npm --prefix apps/backend-worker run build",
+    "build": "npm run build:shared && npm run build:cli && npm run build:gui && npm run build:backend && node scripts/sync-root-dist.js",
+    "cli": "npm run build && node apps/cli/dist/apps/cli/src/main.js",
+    "gui": "npm run build && node apps/gui/dist/apps/gui/src/main.js",
+    "dev:cli": "JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788 node scripts/dev-cli.js",
+    "dev:gui": "JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788 node scripts/dev-gui.js",
+    "dev:backend": "JAV_WORKER_PORT=8788 node scripts/worker-dev.js",
+    "lint": "npm --prefix packages/shared run lint && npm --prefix apps/cli run lint && npm --prefix apps/gui run lint && npm --prefix apps/backend-worker run build",
     "test": "npm run build && node --test test/*.test.js"
   },
   "keywords": [],

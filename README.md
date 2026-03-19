@@ -21,6 +21,22 @@ npx jav-manager help
 npx jav-manager version
 ```
 
+## Repository Layout
+
+```text
+apps/
+  backend-worker/   Cloudflare backend worker
+  cli/              CLI entrypoint
+  client/           Shared client runtime used by CLI / GUI
+  gui/              GUI entrypoint
+packages/
+  shared/           Cross-runtime shared types and pure utilities
+scripts/            Repo-level dev/build helpers
+bin/                Published CLI launcher
+doc/                External API notes
+test/               Node test suite
+```
+
 Notes:
 - Everything (local search) and qBittorrent (download) are optional integrations. JavManager works without them (it can still search JavDB and output magnet links).
 - Replace `npx jav-manager` with `jav-manager` if you installed it globally (`npm install -g jav-manager`).
@@ -132,14 +148,14 @@ curl https://your-worker-url/api/javdb-domain
 
 This API fetches the latest JavDB domain from `https://javdb.com/` in real-time. The API includes a 10-second timeout and proper error handling.
 
-### Telemetry + "Jav Trends" (Optional)
+### Backend Worker APIs (Optional)
 
-If `Telemetry:Enabled` is true, JavManager can post:
+If `Telemetry:Enabled` is true, JavManager can post compatibility events to the backend worker:
 
 - A startup event to `POST /api/telemetry`
 - JAV metadata to `POST /api/javinfo` (used by the worker UI; repeated reports increment the per-ID search counter)
 
-The worker also serves a small UI:
+The backend worker also serves a small UI:
 
 - `/` overview
 - `/jav` "Jav Trends" (recent JavInfo records + search counts)
@@ -191,16 +207,31 @@ Notes:
 # Install deps
 npm install
 
-# Build
+# Build all subprojects
 npm run build
 
-# Run (GUI / CLI)
+# Run compiled CLI / GUI
 npm run gui
 npm run cli
 
-# Run (compiled default entry)
-npm run start
+# Local development
+npm run backend:dev
+npm run dev:cli
+npm run dev:gui
 
 # Tests
 npm test
 ```
+
+### Local Backend Wiring
+
+- `npm run backend:dev` starts the Cloudflare Worker locally on `http://127.0.0.1:8788`
+- `npm run dev:cli` and `npm run dev:gui` default to `JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788`
+- Override the backend explicitly with `JAVMANAGER_BACKEND_ENDPOINT` or `JAVMANAGER_BACKEND_URL`
+
+### Build Boundaries
+
+- `npm run build:shared` builds `packages/shared`
+- `npm run build:cli` builds `apps/cli` and the shared client runtime it imports
+- `npm run build:gui` builds `apps/gui` and the shared client runtime it imports
+- `npm run build:backend` builds `apps/backend-worker`

@@ -1,0 +1,8 @@
+{
+  "name": "jav-manager-gui",
+  "private": true,
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json && node ../../scripts/copy-client-assets.js gui",
+    "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  }
+}
