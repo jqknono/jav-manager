@@ -3,10 +3,8 @@ import { AppContext } from "./context";
 import { LocalizationService } from "./localization";
 import { JsonJavCacheProvider } from "./data/cache";
 import { EverythingHttpClient } from "./data/everything";
-import { JavDbWebScraper, CloudflareChallengeCallback } from "./data/javdb";
+import { JavDbApiClient } from "./data/javdb";
 import { QBittorrentApiClient } from "./data/qbittorrent";
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
 import { isLightweightCliCommand, runCli } from "./cli";
 import { startGuiServer } from "./gui";
 import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, TelemetryService, TorrentSelectionService } from "./services";
@@ -16,8 +14,7 @@ export async function runAutoEntry(rawArgs: string[] = process.argv.slice(2)): P
   const config = loadConfig(overrides);
   const loc = new LocalizationService(config.console.language);
   const isGui = shouldRunGui(remaining);
-  const cfCallback: CloudflareChallengeCallback | undefined = isGui ? undefined : createCliCfChallengeHandler(loc);
-  const context = createAppContext(config, loc, cfCallback);
+  const context = createAppContext(config, loc);
   const cliArgs = filterGuiArgs(remaining);
 
   if (isGui) {
@@ -37,7 +34,7 @@ export async function runCliEntry(rawArgs: string[] = process.argv.slice(2)): Pr
   const { overrides, remaining } = extractOverrides(rawArgs);
   const config = loadConfig(overrides);
   const loc = new LocalizationService(config.console.language);
-  const context = createAppContext(config, loc, createCliCfChallengeHandler(loc));
+  const context = createAppContext(config, loc);
   const cliArgs = filterGuiArgs(remaining);
 
   if (!isLightweightCliCommand(cliArgs)) {
@@ -99,8 +96,8 @@ function parseGuiArgs(args: string[]): { host: string; port: number } {
   return { host, port };
 }
 
-export function createAppContext(config: AppConfig, loc: LocalizationService, onCfChallenge?: CloudflareChallengeCallback): AppContext {
-  const javDbProvider = new JavDbWebScraper(config.javDb, onCfChallenge);
+export function createAppContext(config: AppConfig, loc: LocalizationService): AppContext {
+  const javDbProvider = new JavDbApiClient(config.javDb);
   const everythingProvider = new EverythingHttpClient(config.everything);
   const qbClient = new QBittorrentApiClient(config.qBittorrent);
   const cacheProvider = config.localCache.enabled ? new JsonJavCacheProvider(config.localCache) : null;
@@ -173,56 +170,6 @@ function shouldRunGui(args: string[]): boolean {
   }
 
   return false;
-}
-
-function createCliCfChallengeHandler(loc: LocalizationService): CloudflareChallengeCallback {
-  return async (url: string): Promise<Record<string, string> | null> => {
-    const isZh = loc.currentLocale === "zh";
-    const host = (() => { try { return new URL(url).host; } catch { return url; } })();
-
-    console.log("");
-    console.log(isZh
-      ? `⚠  Cloudflare 挑戰攔截 (${host})`
-      : `⚠  Cloudflare challenge detected (${host})`);
-    console.log(isZh
-      ? "   請在瀏覽器中打開該網站, 通過驗證後, 從瀏覽器開發者工具 (F12) 中複製 Cookie."
-      : "   Open this site in a browser, pass the challenge, then copy cookies from DevTools (F12).");
-    console.log(isZh
-      ? "   需要的 Cookie: cf_clearance (必需), 其他可選."
-      : "   Required cookie: cf_clearance (required), others optional.");
-    console.log(isZh
-      ? "   格式: cf_clearance=xxx 或 cf_clearance=xxx; __cf_bm=yyy"
-      : "   Format: cf_clearance=xxx or cf_clearance=xxx; __cf_bm=yyy");
-    console.log("");
-
-    const rl = readline.createInterface({ input, output });
-    try {
-      const answer = await rl.question(isZh
-        ? "  ▸ 粘貼 Cookie (留空跳過): "
-        : "  ▸ Paste cookie (empty to skip): ");
-      const trimmed = answer.trim();
-      if (!trimmed) {
-        return null;
-      }
-      return parseCookieString(trimmed);
-    } finally {
-      rl.close();
-    }
-  };
-}
-
-function parseCookieString(raw: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  for (const part of raw.split(";")) {
-    const idx = part.indexOf("=");
-    if (idx < 1) continue;
-    const key = part.slice(0, idx).trim();
-    const value = part.slice(idx + 1).trim();
-    if (key) {
-      result[key] = value;
-    }
-  }
-  return result;
 }
 
 function filterGuiArgs(args: string[]): string[] {

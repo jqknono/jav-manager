@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getPreferredConfigDirectory } from "./utils/appPaths";
+import { getBaseEndpoint } from "../../../packages/shared/src/utils/backendEndpoints";
 
 export interface EverythingConfig {
   baseUrl: string;
@@ -60,7 +61,7 @@ export interface AppConfig {
   update: UpdateConfig;
 }
 
-const defaultJavDbBaseUrl = "https://javdb.com";
+const defaultJavDbBaseUrl = "";
 const defaultTelemetryEndpoint = "https://jav-manager.techfetch.dev";
 
 const defaultConfig: AppConfig = {
@@ -227,7 +228,8 @@ function mergeRecord(target: Record<string, unknown>, source: Record<string, unk
 function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unknown> {
   const everything = raw.Everything as Record<string, unknown> | undefined;
   const qb = raw.QBittorrent as Record<string, unknown> | undefined;
-  const javDb = raw.JavDb as Record<string, unknown> | undefined;
+  const javBackend = (raw.JavBackend as Record<string, unknown> | undefined)
+    ?? (raw.JavDb as Record<string, unknown> | undefined);
   const download = raw.Download as Record<string, unknown> | undefined;
   const localCache = raw.LocalCache as Record<string, unknown> | undefined;
   const consoleConfig = raw.Console as Record<string, unknown> | undefined;
@@ -245,10 +247,10 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
       password: nullableStringOrUndefined(qb?.Password),
     },
     javDb: {
-      baseUrl: stringOrUndefined(javDb?.BaseUrl),
-      mirrorUrls: arrayStringOrUndefined(javDb?.MirrorUrls),
-      requestTimeout: numberOrUndefined(javDb?.RequestTimeout),
-      userAgent: stringOrUndefined(javDb?.UserAgent),
+      baseUrl: stringOrUndefined(javBackend?.BaseUrl),
+      mirrorUrls: arrayStringOrUndefined(javBackend?.MirrorUrls),
+      requestTimeout: numberOrUndefined(javBackend?.RequestTimeout),
+      userAgent: stringOrUndefined(javBackend?.UserAgent),
     },
     download: {
       defaultSavePath: stringOrUndefined(download?.DefaultSavePath),
@@ -323,7 +325,8 @@ function applyOverrides(config: AppConfig, overrides: Record<string, string>): A
 function sanitizeConfig(config: AppConfig): AppConfig {
   config.javDb = {
     ...config.javDb,
-    baseUrl: nonEmptyOrDefault(config.javDb.baseUrl, defaultJavDbBaseUrl),
+    baseUrl: normalizeJavDbApiBaseUrl(getBaseEndpoint(config.javDb.baseUrl)) ?? getBaseEndpoint(),
+    mirrorUrls: normalizeJavDbApiBaseUrls(config.javDb.mirrorUrls),
   };
 
   config.telemetry = {
@@ -340,6 +343,37 @@ function sanitizeConfig(config: AppConfig): AppConfig {
 function nonEmptyOrDefault(value: string, fallback: string): string {
   const trimmed = String(value ?? "").trim();
   return trimmed || fallback;
+}
+
+function normalizeJavDbApiBaseUrls(values: string[]): string[] {
+  const result: string[] = [];
+  for (const value of values ?? []) {
+    const normalized = normalizeJavDbApiBaseUrl(value);
+    if (normalized && !result.includes(normalized)) {
+      result.push(normalized);
+    }
+  }
+  return result;
+}
+
+function normalizeJavDbApiBaseUrl(value: string): string | null {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (/(^|\.)(javdb\d*\.com)$/i.test(url.host)) {
+      return null;
+    }
+    url.pathname = url.pathname.replace(/\/api\/?$/i, "/").replace(/\/+$/, "");
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
 }
 
 function setConfigValue(config: AppConfig, key: string, value: string): void {
@@ -368,7 +402,7 @@ function toFileConfig(config: AppConfig): Record<string, unknown> {
       UserName: config.qBittorrent.userName,
       Password: config.qBittorrent.password,
     },
-    JavDb: {
+    JavBackend: {
       BaseUrl: config.javDb.baseUrl,
       MirrorUrls: config.javDb.mirrorUrls,
       RequestTimeout: config.javDb.requestTimeout,

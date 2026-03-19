@@ -26,7 +26,6 @@ writeWrapper("services.js", "../apps/cli/dist/apps/client/src/services.js");
 writeWrapper("models.js", "../packages/shared/dist/models.js");
 writeWrapper("data/everything.js", "../../apps/cli/dist/apps/client/src/data/everything.js");
 writeWrapper("utils/cliDisplay.js", "../../apps/cli/dist/apps/client/src/utils/cliDisplay.js");
-writeWrapper("utils/javDbMirrors.js", "../../packages/shared/dist/utils/javDbMirrors.js");
 writeWrapper("utils/telemetryEndpoints.js", "../../packages/shared/dist/utils/backendEndpoints.js");
 writeWrapper("utils/titleVariants.js", "../../packages/shared/dist/utils/titleVariants.js");
 writeWrapper("utils/torrentNameParser.js", "../../packages/shared/dist/utils/torrentNameParser.js");

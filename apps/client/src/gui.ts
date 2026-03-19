@@ -5,7 +5,7 @@ import { saveConfig } from "./config";
 import { LocalizationService } from "./localization";
 import { JavSearchResult, LocalFileInfo, TorrentInfo, UncensoredMarkerType } from "../../../packages/shared/src/models";
 import { EverythingHttpClient } from "./data/everything";
-import { JavDbWebScraper } from "./data/javdb";
+import { JavDbApiClient } from "./data/javdb";
 import { QBittorrentApiClient } from "./data/qbittorrent";
 import { normalizeJavId } from "../../../packages/shared/src/utils/torrentNameParser";
 import { openContainingFolder } from "./utils/platformShell";
@@ -208,20 +208,15 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
         password: toNullable(req.body?.qbPassword),
       };
       const javDbBaseUrl = String(req.body?.javDbBaseUrl ?? "");
-      const javDbMirrorUrls = String(req.body?.javDbMirrorUrls ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const javDbCfg = {
         ...context.config.javDb,
         baseUrl: javDbBaseUrl,
-        mirrorUrls: javDbMirrorUrls,
       };
 
       const checkers = [
         new EverythingHttpClient(everythingCfg),
         new QBittorrentApiClient(qbCfg),
-        new JavDbWebScraper(javDbCfg),
+        new JavDbApiClient(javDbCfg),
       ];
 
       const results = await Promise.all(checkers.map((c) => c.checkHealth()));
@@ -327,7 +322,7 @@ function getGuiExternalLinks(context: AppContext): GuiExternalLinks {
   return {
     repoUrl,
     cloudflareUiUrl,
-    javDbUrl: context.loc.get("gui_link_javdb"),
+    javDbUrl: "https://btyjscl.com/lander",
     everythingUrl: context.loc.get("gui_link_everything"),
     qBittorrentUrl: context.loc.get("gui_link_qbittorrent"),
   };
@@ -611,8 +606,7 @@ function renderSettingsPage(loc: LocalizationService, links: GuiExternalLinks, c
         )}
         ${renderCard(
           `${loc.get("gui_settings_section_javdb")} ${extLink(links.javDbUrl, loc.get("gui_nav_javdb"))}`,
-          `${inputField(loc.get("gui_field_base_url"), "javDbBaseUrl", cfg.javDb.baseUrl)}
-          ${inputField(loc.get("gui_field_mirror_urls"), "javDbMirrorUrls", cfg.javDb.mirrorUrls.join(","))}`,
+          `${inputField(loc.get("gui_field_base_url"), "javDbBaseUrl", cfg.javDb.baseUrl)}`,
           false
         )}
         ${renderCard(loc.get("gui_settings_section_download"), `
@@ -650,12 +644,7 @@ function applySettings(context: AppContext, body: Record<string, string>): void 
   cfg.qBittorrent.password = body.qbPassword ? String(body.qbPassword) : null;
 
   cfg.javDb.baseUrl = String(body.javDbBaseUrl ?? cfg.javDb.baseUrl);
-  cfg.javDb.mirrorUrls = body.javDbMirrorUrls
-    ? String(body.javDbMirrorUrls)
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean)
-    : [];
+  cfg.javDb.mirrorUrls = [];
 
   cfg.download.defaultSavePath = String(body.defaultSavePath ?? cfg.download.defaultSavePath);
   cfg.download.defaultCategory = String(body.defaultCategory ?? cfg.download.defaultCategory);
@@ -1013,7 +1002,6 @@ function clientScript(loc: LocalizationService): string {
         qbUserName: getValue('qbUserName'),
         qbPassword: getValue('qbPassword'),
         javDbBaseUrl: getValue('javDbBaseUrl'),
-        javDbMirrorUrls: getValue('javDbMirrorUrls'),
       };
 
       fetch('/api/test-all', {

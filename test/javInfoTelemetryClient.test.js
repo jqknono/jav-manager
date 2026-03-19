@@ -30,7 +30,7 @@ test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
       series: "Series A",
       actors: ["A", "A", " ", "B"],
       categories: ["Tag1", "", "Tag2"],
-      detailUrl: "https://javdb.com/v/abc",
+      detailUrl: "https://apidd.btyjscl.com/api/v4/movies/abc",
       dataSource: "Remote",
       cachedAt: undefined,
       torrents: [
@@ -69,7 +69,7 @@ test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
     assert.equal(payload.director, null);
     assert.deepEqual(payload.actors, ["A", "B"]);
     assert.deepEqual(payload.categories, ["Tag1", "Tag2"]);
-    assert.equal(payload.detail_url, "https://javdb.com/v/abc");
+    assert.equal(payload.detail_url, "https://apidd.btyjscl.com/api/v4/movies/abc");
     assert.equal(payload.torrents[0].magnet_link, "magnet:?xt=urn:btih:deadbeef");
     assert.equal(payload.torrents[0].source_site, "JavDB");
     assert.equal(payload.torrents[0].weight_score, 9);

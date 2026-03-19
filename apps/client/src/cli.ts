@@ -7,7 +7,6 @@ import { saveConfig } from "./config";
 import { AppName, getVersion } from "./utils/appInfo";
 import { isValidJavId, normalizeJavId } from "../../../packages/shared/src/utils/torrentNameParser";
 import { tryParseToBytes } from "../../../packages/shared/src/utils/sizeParser";
-import { isCloudflareChallengeHtml } from "../../../packages/shared/src/utils/cloudflare";
 import {
   printBanner,
   printHelp,
@@ -27,8 +26,6 @@ import {
   getPrompt,
   formatSize,
 } from "./utils/cliDisplay";
-import { fetchLatestJavDbDomains, mergeMirrorUrls } from "../../../packages/shared/src/utils/javDbMirrors";
-import { getConfigPath } from "./config";
 
 const LOCAL_PAGE_SIZE = 10;
 
@@ -103,11 +100,6 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
   if (cmd === "--id") {
     const javId = normalizeJavId(args[1] ?? "");
     await handleSearch(context, javId, autoConfirm, false);
-    return;
-  }
-
-  if (cmd === "javdb-mirrors" || cmd === "jm") {
-    await runJavDbMirrors(context);
     return;
   }
 
@@ -439,7 +431,6 @@ function showHelp(loc: LocalizationService): void {
     { cmd: "health / hc", desc: isZh ? "健康檢查" : "Check service health", category: isZh ? "系統" : "System" },
     { cmd: "cfg show / cs", desc: isZh ? "檢視設定" : "View current config", category: isZh ? "系統" : "System" },
     { cmd: "cfg set [svc] [key] [value]", desc: isZh ? "設定服務連線 (支援互動)" : "Set service connection (interactive supported)", category: isZh ? "系統" : "System" },
-    { cmd: "javdb-mirrors / jm", desc: isZh ? "更新 JavDB 鏡像 (寫回設定)" : "Update JavDB mirrors (persist to config)", category: isZh ? "系統" : "System" },
 
     { cmd: "lang <en|zh|ja|ko> / lg", desc: isZh ? "切換語言" : "Switch language", category: isZh ? "其他" : "Other" },
     { cmd: "version / v", desc: isZh ? "版本資訊" : "Show version", category: isZh ? "其他" : "Other" },
@@ -622,7 +613,7 @@ async function handleConfigCommand(context: AppContext, args: string[]): Promise
       { section: "qBittorrent", key: "BaseUrl", value: config.qBittorrent.baseUrl || "-" },
       { section: "qBittorrent", key: "UserName", value: config.qBittorrent.userName ?? "-" },
       { section: "qBittorrent", key: "Password", value: maskSecret(config.qBittorrent.password), masked: true },
-      { section: "JavDb", key: "BaseUrl", value: config.javDb.baseUrl || "-" },
+      { section: "JavBackend", key: "BaseUrl", value: config.javDb.baseUrl || "-" },
     ]);
     return;
   }
@@ -751,7 +742,7 @@ function normalizeConfigService(raw?: string): ConfigService | null {
   const value = (raw ?? "").toLowerCase();
   if (value === "everything" || value === "ev") return "everything";
   if (value === "qb" || value === "qbittorrent") return "qbittorrent";
-  if (value === "javdb") return "javdb";
+  if (value === "javdb" || value === "javbackend" || value === "jb") return "javdb";
   return null;
 }
 
@@ -820,7 +811,7 @@ async function runInteractiveConfigSet(context: AppContext, serviceArg?: string,
   const services: Array<{ id: ConfigService; label: string }> = [
     { id: "everything", label: "Everything" },
     { id: "qbittorrent", label: "qBittorrent" },
-    { id: "javdb", label: "JavDb" },
+    { id: "javdb", label: "JavBackend" },
   ];
 
   let service = normalizeConfigService(serviceArg);
@@ -896,102 +887,4 @@ function getConfigKeysForService(service: ConfigService): Array<{ key: ConfigKey
     { key: "username", label: "UserName" },
     { key: "password", label: "Password" },
   ];
-}
-
-async function runJavDbMirrors(context: AppContext): Promise<void> {
-  const { config } = context;
-  const javDbCfg = config.javDb;
-
-  printHealthResults([]); // header-like
-  console.log("");
-  printInfo("JavDB Mirror Updater");
-  console.log("");
-
-  let domains: string[] = [];
-  let apiUrl = "";
-  try {
-    const latest = await fetchLatestJavDbDomains(config.telemetry.endpoint);
-    domains = latest.domains;
-    apiUrl = latest.apiUrl;
-    printInfo(`Source: ${apiUrl}`);
-    printInfo(`Latest domain: ${domains[0]}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    printError(`Failed to fetch latest JavDB domains: ${msg}`);
-    return;
-  }
-
-  const merged = mergeMirrorUrls(javDbCfg.mirrorUrls, domains);
-  if (merged.length === 0) {
-    printError("No valid mirror URLs.");
-    return;
-  }
-
-  const cookieHeader = "over18=1; locale=zh";
-  const timeoutMs = 10000;
-
-  const results: Array<{ name: string; healthy: boolean; message: string }> = [];
-  for (const url of merged) {
-    const res = await httpGet(url, null, cookieHeader, javDbCfg.userAgent, timeoutMs);
-    const ok = res.status >= 200 && res.status < 300;
-    const isChallenge = res.status === 403 && isCloudflareChallengeHtml(res.body);
-    const hint = isChallenge ? " (Cloudflare challenge)" : "";
-    const error = res.error ? ` error=${res.error}` : "";
-    results.push({ name: url, healthy: ok, message: `HTTP ${res.status}${hint}${error}` });
-  }
-
-  printHealthResults(results);
-
-  // Persist to config
-  try {
-    javDbCfg.mirrorUrls = merged;
-    saveConfig(config);
-    printSuccess(`Updated JavDb.MirrorUrls (${merged.length})`);
-    printInfo(`Saved to: ${getConfigPath()}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    printError(`Failed to write config: ${msg}`);
-  }
-}
-
-async function httpGet(
-  url: string,
-  referer: string | null,
-  cookieHeader: string | null,
-  userAgent: string,
-  timeoutMs: number,
-): Promise<{ status: number; body: string; error?: string }> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
-
-  try {
-    const headers: Record<string, string> = {
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-      "Upgrade-Insecure-Requests": "1",
-    };
-    const ua = String(userAgent ?? "").trim();
-    if (ua) headers["User-Agent"] = ua;
-    if (referer) headers["Referer"] = referer;
-    if (cookieHeader) headers["Cookie"] = cookieHeader;
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers,
-      redirect: "follow",
-      signal: controller.signal,
-    });
-    const body = await res.text();
-    return { status: res.status, body };
-  } catch (err) {
-    const msg =
-      err instanceof Error
-        ? err.name === "AbortError"
-          ? `Request timeout after ${timeoutMs}ms`
-          : err.message
-        : String(err);
-    return { status: 0, body: "", error: msg };
-  } finally {
-    clearTimeout(timer);
-  }
 }

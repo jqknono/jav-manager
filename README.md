@@ -110,43 +110,9 @@ flowchart TD
 
 | Service | Required | Purpose | Link |
 |---------|----------|---------|------|
-| JavDB | Yes | Metadata & magnet links | [javdb.com](https://javdb.com/) |
+| JavDB App API | Yes | Metadata & magnet links | [`doc/javdb-app-api/README.md`](doc/javdb-app-api/README.md) |
 | Everything | No (optional) | Local file search | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP plugin](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
 | qBittorrent | No (optional) | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
-
-### Cloudflare 403 Issue
-
-If JavDB returns HTTP 403, it's likely due to a Cloudflare challenge. JavManager uses standard HTTP requests (no browser automation). If you see 403, try a different mirror URL or check if your IP is blocked.
-
-### JavDB Domain API
-
-The Cloudflare Worker provides an API endpoint to get the latest JavDB domain from the official site:
-
-**Endpoint:** `GET /api/javdb-domain`
-
-**Example Request:**
-```bash
-curl https://your-worker-url/api/javdb-domain
-```
-
-**Example Response:**
-```json
-{
-  "success": true,
-  "domains": ["javdb565.com"]
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "error": "Failed to fetch domain from javdb.com",
-  "message": "Could not extract latest domain from javdb.com"
-}
-```
-
-This API fetches the latest JavDB domain from `https://javdb.com/` in real-time. The API includes a 10-second timeout and proper error handling.
 
 ### Backend Worker APIs (Optional)
 
@@ -179,8 +145,8 @@ Configuration reference:
 | QBittorrent | `BaseUrl` | No (optional) | _(empty)_ | qBittorrent WebUI base URL (include port if needed). If unavailable/auth fails, JavManager prints magnet links without adding to download queue. |
 | QBittorrent | `UserName` | No (optional) | _(empty)_ | WebUI user name. |
 | QBittorrent | `Password` | No (optional) | _(empty)_ | WebUI password. |
-| JavDb | `BaseUrl` | Yes | `https://javdb.com` | Primary JavDB base URL. |
-| JavDb | `MirrorUrls` | No (optional) | `[]` | Additional mirror URLs (array). |
+| JavDb | `BaseUrl` | Yes | `https://apidd.btyjscl.com` | Primary JavDB App API base URL. |
+| JavDb | `MirrorUrls` | No (optional) | `[]` | Additional App API base URLs for fallback. |
 | JavDb | `RequestTimeout` | No (optional) | `30000` | Request timeout in milliseconds. |
 | JavDb | `UserAgent` | No (optional) | _(empty)_ | Custom User-Agent string for JavDB requests. |
 | Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |

@@ -77,14 +77,14 @@ test("process does not fetch detail just for telemetry reporting", async () => {
   cached.releaseDate = "";
   cached.actors = [];
   cached.categories = [];
-  cached.detailUrl = "https://javdb.com/v/abc";
+  cached.detailUrl = "https://apidd.btyjscl.com/api/v4/movies/abc";
 
   const detail = {
     ...cached,
     releaseDate: "2026-02-06",
     actors: ["Actor A"],
     categories: ["Drama"],
-    detailUrl: "https://javdb.com/v/abc",
+    detailUrl: "https://apidd.btyjscl.com/api/v4/movies/abc",
   };
 
   const svc = new JavSearchService(

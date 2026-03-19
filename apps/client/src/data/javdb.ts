@@ -1,32 +1,85 @@
-import * as cheerio from "cheerio";
+import crypto from "node:crypto";
 import { JavDbConfig } from "../config";
 import { IJavDbDataProvider, IHealthChecker } from "../../../../packages/shared/src/interfaces";
 import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../../../../packages/shared/src/models";
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../../../../packages/shared/src/utils/torrentNameParser";
 import { splitTitleVariants } from "../../../../packages/shared/src/utils/titleVariants";
-import { isCloudflareChallengeHtml } from "../../../../packages/shared/src/utils/cloudflare";
 
-const MaxAttemptsPerUrl = 4;
-const MaxUrlCycles = 2;
-const RetryBaseDelayMs = 1000;
-const PreferredLocale = "zh";
+const DefaultAppApiBaseUrl = "https://apidd.btyjscl.com";
+const FallbackAppApiBaseUrl = "https://api.btyjscl.com";
+const DefaultUserAgent = "JavDB-App/1.0";
+const DefaultAppSecret =
+  "71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa";
+const DefaultAppSalt = "lpw6vgqzsp";
 
-type FetchResult = { status: number; body: string; error?: string };
+type FetchLike = typeof fetch;
 
-export type CloudflareChallengeCallback = (url: string) => Promise<Record<string, string> | null>;
+type AppApiEnvelope<T> = {
+  success?: number;
+  action?: string | null;
+  message?: string | null;
+  data?: T;
+};
 
-export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
+type SearchMovie = {
+  id?: string;
+  number?: string;
+  title?: string;
+  origin_title?: string;
+  thumb_url?: string;
+  cover_url?: string;
+  duration?: number;
+  release_date?: string;
+};
+
+type SearchResponse = {
+  movies?: SearchMovie[];
+};
+
+type DetailMovie = {
+  id?: string;
+  number?: string;
+  title?: string;
+  origin_title?: string;
+  thumb_url?: string;
+  cover_url?: string;
+  duration?: number;
+  release_date?: string;
+  director_name?: string | null;
+  maker_name?: string | null;
+  publisher_name?: string | null;
+  series_name?: string | null;
+  tags?: Array<{ name?: string | null }>;
+  actors?: Array<{ name?: string | null }>;
+};
+
+type DetailResponse = {
+  movie?: DetailMovie;
+};
+
+type MagnetRecord = {
+  name?: string;
+  hash?: string;
+  size?: number;
+  cnsub?: boolean;
+  hd?: boolean;
+};
+
+type MagnetsResponse = {
+  magnets?: MagnetRecord[];
+};
+
+export class JavDbApiClient implements IJavDbDataProvider, IHealthChecker {
   private config: JavDbConfig;
-  private cookieJar = new Map<string, Map<string, string>>();
-  private onCfChallenge: CloudflareChallengeCallback | null;
+  private fetchImpl: FetchLike;
 
-  constructor(config: JavDbConfig, onCfChallenge?: CloudflareChallengeCallback) {
+  constructor(config: JavDbConfig, fetchImpl: FetchLike = fetch) {
     this.config = config;
-    this.onCfChallenge = onCfChallenge ?? null;
+    this.fetchImpl = fetchImpl;
   }
 
   get serviceName(): string {
-    return "JavDB";
+    return "JavDB App API";
   }
 
   async search(javId: string): Promise<JavSearchResult> {
@@ -43,538 +96,333 @@ export class JavDbWebScraper implements IJavDbDataProvider, IHealthChecker {
   }
 
   async searchCandidates(javId: string): Promise<JavSearchResult[]> {
-    const urls = buildBaseUrls(this.config);
+    const normalizedJavId = normalizeJavId(javId);
+    const path = `/api/v2/search?q=${encodeURIComponent(normalizedJavId)}&type=movie`;
     let lastError = "";
 
-    for (let cycle = 0; cycle < MaxUrlCycles; cycle += 1) {
-      for (const baseUrl of urls) {
-        const trimmed = baseUrl.replace(/\/+$/, "");
-        this.seedCookiesForUrl(trimmed);
-
-        const homeUrl = withLocale(trimmed, PreferredLocale);
-        const home = await this.getWithRetry(homeUrl, null, MaxAttemptsPerUrl);
-        if (!isSuccessStatus(home.status)) {
-          lastError = home.error ?? `HTTP ${home.status}`;
-          continue;
-        }
-
-        const searchUrl = withLocale(`${trimmed}/search?q=${encodeURIComponent(javId)}&f=all`, PreferredLocale);
-        const search = await this.getWithRetry(searchUrl, homeUrl, MaxAttemptsPerUrl);
-        if (!isSuccessStatus(search.status)) {
-          lastError = search.error ?? `HTTP ${search.status}`;
-          continue;
-        }
-
-        const results = parseSearchResults(search.body);
-        for (const result of results) {
-          if (result.detailUrl && !/^https?:\/\//i.test(result.detailUrl)) {
-            result.detailUrl = `${trimmed}${result.detailUrl}`;
-          }
-        }
-
-        const deduped = dedupeResults(results);
-        if (deduped.length === 0) {
-          return [];
-        }
-
-        return deduped;
+    for (const baseUrl of buildApiBaseUrls(this.config)) {
+      try {
+        const payload = await this.requestJson<SearchResponse>(baseUrl, path);
+        const results = (payload.data?.movies ?? [])
+          .map((movie) => toSearchCandidate(movie, baseUrl))
+          .filter((item) => !!item.detailUrl);
+        return dedupeResults(results);
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
       }
     }
 
-    throw new Error(`JavDB request failed: ${lastError}`);
+    throw new Error(`JavDB App API request failed: ${lastError || "No available endpoint"}`);
   }
 
   async getDetail(detailUrl: string): Promise<JavSearchResult> {
-    const baseUrl = this.config.baseUrl.replace(/\/+$/, "");
-    let url = detailUrl;
-    if (!/^https?:\/\//i.test(url)) {
-      url = `${baseUrl}${detailUrl}`;
-    }
-    url = withLocale(url, PreferredLocale);
+    const target = parseMovieReference(detailUrl, this.config);
+    let lastError = "";
 
-    const referer = url.startsWith(baseUrl) ? withLocale(baseUrl, PreferredLocale) : withLocale(new URL(url).origin, PreferredLocale);
-    this.seedCookiesForUrl(referer);
-    const response = await this.getWithRetry(url, referer, MaxAttemptsPerUrl);
-    if (!isSuccessStatus(response.status)) {
-      throw new Error(response.error ?? `HTTP ${response.status}`);
+    for (const baseUrl of buildDetailBaseUrls(this.config, target.baseUrl)) {
+      try {
+        const [detailPayload, magnetsPayload] = await Promise.all([
+          this.requestJson<DetailResponse>(baseUrl, `/api/v4/movies/${encodeURIComponent(target.movieId)}`),
+          this.requestJson<MagnetsResponse>(baseUrl, `/api/v1/movies/${encodeURIComponent(target.movieId)}/magnets`).catch(() => null),
+        ]);
+
+        const movie = detailPayload.data?.movie;
+        if (!movie?.id) {
+          throw new Error("Movie detail payload is empty");
+        }
+
+        const result = toDetailResult(movie, baseUrl);
+        result.detailUrl = buildMovieDetailUrl(baseUrl, movie.id);
+        result.torrents = dedupeTorrents((magnetsPayload?.data?.magnets ?? []).map(toTorrentInfo));
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+      }
     }
 
-    const detail = parseDetailPage(response.body);
-    detail.detailUrl = url;
-    detail.torrents = parseTorrentLinks(response.body);
-    return detail;
+    throw new Error(`JavDB App API detail request failed: ${lastError || "No available endpoint"}`);
   }
 
   async checkHealth(): Promise<{ serviceName: string; isHealthy: boolean; message: string; url?: string }> {
-    const urls = buildBaseUrls(this.config);
-    if (urls.length === 0) {
-      return { serviceName: this.serviceName, isHealthy: false, message: "No JavDB base URL configured" };
-    }
-
-    for (const url of urls) {
-      const trimmed = url.replace(/\/+$/, "");
-      this.seedCookiesForUrl(trimmed);
-      const response = await this.getWithRetry(trimmed, null, 2, 3000);
-      if (isSuccessStatus(response.status)) {
-        return { serviceName: this.serviceName, isHealthy: true, message: "OK", url: trimmed };
-      }
-    }
-
-    return { serviceName: this.serviceName, isHealthy: false, message: "JavDB unreachable", url: this.config.baseUrl };
-  }
-
-  private async getWithRetry(url: string, referer: string | null, maxAttempts: number, timeoutMs?: number): Promise<FetchResult> {
     let lastError = "";
-    let cfChallengeHandled = false;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      if (attempt > 0) {
-        await delay(getRetryDelay(attempt));
-      } else {
-        await delay(100 + Math.floor(Math.random() * 300));
-      }
-
+    for (const baseUrl of buildApiBaseUrls(this.config)) {
       try {
-        const result = await this.sendRequest(url, referer, attempt, timeoutMs);
-        if (isSuccessStatus(result.status)) {
-          return result;
-        }
-
-        if (result.status === 403 && isCloudflareChallengeHtml(result.body) && !cfChallengeHandled && this.onCfChallenge) {
-          cfChallengeHandled = true;
-          const cookies = await this.onCfChallenge(url);
-          if (cookies && Object.keys(cookies).length > 0) {
-            const host = new URL(url).host;
-            const jar = this.cookieJar.get(host) ?? new Map<string, string>();
-            for (const [k, v] of Object.entries(cookies)) {
-              jar.set(k, v);
-            }
-            this.cookieJar.set(host, jar);
-            attempt -= 1;
-            continue;
-          }
-        }
-
-        lastError = result.error ?? `HTTP ${result.status}`;
-        if (!isRetryableStatus(result.status)) {
-          return { ...result, error: lastError };
-        }
+        await this.requestJson<SearchResponse>(baseUrl, "/api/v1/movies/latest", 5000);
+        return { serviceName: this.serviceName, isHealthy: true, message: "OK", url: baseUrl };
       } catch (error) {
-        lastError = error instanceof Error ? error.message : "Unknown error";
+        lastError = error instanceof Error ? error.message : String(error);
       }
     }
-    return { status: 0, body: "", error: lastError };
+
+    return {
+      serviceName: this.serviceName,
+      isHealthy: false,
+      message: lastError || "JavDB App API unreachable",
+      url: normalizeApiBaseUrl(this.config.baseUrl) ?? DefaultAppApiBaseUrl,
+    };
   }
 
-  private async sendRequest(url: string, referer: string | null, _attemptIndex: number, timeoutMs?: number): Promise<FetchResult> {
-    const cookieHeader = this.getCookieHeader(url);
-    const timeout = timeoutMs ?? this.config.requestTimeout;
-    return this.httpGet(url, referer, cookieHeader, timeout);
-  }
-
-  private async httpGet(
-    url: string,
-    referer: string | null,
-    cookieHeader: string | null,
-    timeoutMs: number,
-  ): Promise<FetchResult> {
+  private async requestJson<T>(baseUrl: string, path: string, timeoutMs?: number): Promise<AppApiEnvelope<T>> {
+    const url = new URL(buildApiPath(baseUrl, path), `${baseUrl}/`).toString();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
+    const timer = setTimeout(() => controller.abort(), Math.max(1, timeoutMs ?? this.config.requestTimeout));
 
     try {
-      const headers: Record<string, string> = {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        "Upgrade-Insecure-Requests": "1",
-      };
-      const ua = String(this.config.userAgent ?? "").trim();
-      if (ua) {
-        headers["User-Agent"] = ua;
-      }
-      if (referer) {
-        headers["Referer"] = referer;
-      }
-      if (cookieHeader) {
-        headers["Cookie"] = cookieHeader;
-      }
-
-      const res = await fetch(url, {
+      const res = await this.fetchImpl(url, {
         method: "GET",
-        headers,
-        redirect: "follow",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": normalizeUserAgent(this.config.userAgent),
+          jdsignature: generateJdSignature(),
+        },
         signal: controller.signal,
       });
 
-      const body = await res.text();
-      this.mergeSetCookies(url, res);
-      return { status: res.status, body };
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.name === "AbortError"
-            ? `Request timeout after ${timeoutMs}ms`
-            : err.message
-          : String(err);
-      return { status: 0, body: "", error: msg };
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}${text ? `: ${truncateText(text, 160)}` : ""}`);
+      }
+
+      const payload = JSON.parse(text) as AppApiEnvelope<T>;
+      if (payload.success !== 1) {
+        throw new Error(payload.message || payload.action || "Unknown API error");
+      }
+      return payload;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Request timeout after ${timeoutMs ?? this.config.requestTimeout}ms`);
+      }
+      throw error;
     } finally {
       clearTimeout(timer);
     }
   }
+}
 
-  private mergeSetCookies(url: string, res: Response): void {
-    const host = (() => {
-      try { return new URL(url).host; } catch { return ""; }
-    })();
-    if (!host) return;
+function normalizeUserAgent(value: string): string {
+  const trimmed = String(value ?? "").trim();
+  return trimmed || DefaultUserAgent;
+}
 
-    const jar = this.cookieJar.get(host) ?? new Map<string, string>();
-    const setCookieValues = getSetCookieValues(res);
-    for (const raw of setCookieValues) {
-      const pair = raw.split(";")[0] ?? "";
-      const idx = pair.indexOf("=");
-      if (idx < 1) continue;
-      const key = pair.slice(0, idx).trim();
-      const value = pair.slice(idx + 1).trim();
-      if (key) jar.set(key, value);
-    }
-    this.cookieJar.set(host, jar);
+function truncateText(value: string, maxLen: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > maxLen ? `${normalized.slice(0, maxLen)}...` : normalized;
+}
+
+function buildApiBaseUrls(config: JavDbConfig): string[] {
+  const candidates = [
+    normalizeApiBaseUrl(config.baseUrl),
+    ...config.mirrorUrls.map((item) => normalizeApiBaseUrl(item)),
+    DefaultAppApiBaseUrl,
+    FallbackAppApiBaseUrl,
+  ].filter((item): item is string => !!item);
+
+  return Array.from(new Set(candidates));
+}
+
+function isDirectAppApiBase(baseUrl: string): boolean {
+  try {
+    const { host } = new URL(baseUrl);
+    return host === "apidd.btyjscl.com" || host === "api.btyjscl.com";
+  } catch {
+    return false;
+  }
+}
+
+function buildApiPath(baseUrl: string, path: string): string {
+  return isDirectAppApiBase(baseUrl) ? path : `/api/javdb/app${path}`;
+}
+
+function buildDetailBaseUrls(config: JavDbConfig, preferredBaseUrl: string | null): string[] {
+  const bases = [
+    normalizeApiBaseUrl(preferredBaseUrl ?? ""),
+    ...buildApiBaseUrls(config),
+  ].filter((item): item is string => !!item);
+
+  return Array.from(new Set(bases));
+}
+
+function normalizeApiBaseUrl(value: string): string | null {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
   }
 
-  private seedCookiesForUrl(baseUrl: string): void {
-    if (!baseUrl) {
-      return;
-    }
-    const host = new URL(baseUrl).host;
-    const jar = this.cookieJar.get(host) ?? new Map<string, string>();
-    jar.set("over18", "1");
-    jar.set("locale", "zh");
-    this.cookieJar.set(host, jar);
-  }
-
-  private getCookieHeader(url: string): string | null {
-    const host = new URL(url).host;
-    const jar = this.cookieJar.get(host);
-    if (!jar || jar.size === 0) {
+  try {
+    const url = new URL(trimmed);
+    if (isLegacyJavDbWebHost(url.host)) {
       return null;
     }
-    return Array.from(jar.entries())
-      .map(([key, value]) => `${key}=${value}`)
-      .join("; ");
-  }
-
-}
-
-function getSetCookieValues(res: Response): string[] {
-  const headers = res.headers as unknown as { getSetCookie?: () => string[]; get?: (name: string) => string | null };
-  if (headers && typeof headers.getSetCookie === "function") {
-    try {
-      const values = headers.getSetCookie();
-      if (Array.isArray(values)) return values.filter((v) => typeof v === "string");
-    } catch {
-      // ignore
-    }
-  }
-
-  const single = res.headers.get("set-cookie");
-  return single ? [single] : [];
-}
-
-function buildBaseUrls(config: JavDbConfig): string[] {
-  const urls = [config.baseUrl, ...config.mirrorUrls]
-    .map((url) => url.trim())
-    .filter((url) => url.length > 0);
-  return Array.from(new Set(urls));
-}
-
-function isSuccessStatus(status: number): boolean {
-  return status >= 200 && status < 300;
-}
-
-function isRetryableStatus(status: number): boolean {
-  return [0, 403, 408, 425, 429, 500, 502, 503, 520, 522, 524].includes(status);
-}
-
-function getRetryDelay(attemptIndex: number): number {
-  const base = RetryBaseDelayMs * Math.pow(1.5, attemptIndex);
-  const jitter = Math.floor(Math.random() * 800) - 300;
-  return Math.max(500, base + jitter);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function withLocale(url: string, locale: string): string {
-  try {
-    const u = new URL(url);
-    if (!u.searchParams.has("locale")) {
-      u.searchParams.set("locale", locale);
-    }
-    return u.toString();
+    url.pathname = url.pathname.replace(/\/api\/?$/i, "/").replace(/\/+$/, "");
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
   } catch {
-    return url;
+    return null;
   }
 }
 
-function parseSearchResults(html: string): JavSearchResult[] {
-  const results: JavSearchResult[] = [];
-  const $ = cheerio.load(html);
-  const items = $("div.item").has("a.box");
+function isLegacyJavDbWebHost(host: string): boolean {
+  return /(^|\.)(javdb\d*\.com)$/i.test(host);
+}
 
-  items.each((_, element) => {
-    const link = $(element).find("a.box").first();
-    if (!link.length) {
-      return;
+function generateJdSignature(): string {
+  const ts = Math.floor(Date.now() / 1000);
+  const hash = crypto.createHash("md5").update(`${ts}${DefaultAppSecret}`).digest("hex");
+  return `${ts}.${DefaultAppSalt}.${hash}`;
+}
+
+function parseMovieReference(detailUrl: string, config: JavDbConfig): { movieId: string; baseUrl: string | null } {
+  const raw = String(detailUrl ?? "").trim();
+  if (!raw) {
+    throw new Error("Detail URL is empty");
+  }
+
+  const legacyMatch = raw.match(/\/v\/([A-Za-z0-9]+)/i);
+  if (legacyMatch?.[1]) {
+    return { movieId: legacyMatch[1], baseUrl: normalizeApiBaseUrl(config.baseUrl) };
+  }
+
+  try {
+    const url = new URL(raw);
+    const apiMatch = url.pathname.match(/\/api\/v4\/movies\/([A-Za-z0-9]+)/i);
+    if (apiMatch?.[1]) {
+      return {
+        movieId: apiMatch[1],
+        baseUrl: normalizeApiBaseUrl(`${url.protocol}//${url.host}`),
+      };
     }
-
-    const detailUrl = link.attr("href") ?? "";
-    const titleAttr = link.attr("title") ?? "";
-    const titleText = normalizeInlineText(link.text());
-    const titleRaw = titleAttr || titleText;
-    const { title, titleZh } = splitTitleVariants(titleRaw);
-
-    const coverNode = $(element).find("img.video-cover").first();
-    const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
-
-    const idNode = $(element).find(".uid, .video-id, .video-uid, .video_id").first();
-    const idFromNode = extractJavIdFromText(normalizeInlineText(idNode.text()));
-    const idFromText = extractJavIdFromText(normalizeInlineText($(element).text()));
-    const idFromTitle = extractJavIdFromText(title);
-    const javId = idFromNode ?? idFromText ?? idFromTitle ?? "";
-
-    results.push({
-      javId,
-      title,
-      titleZh,
-      coverUrl,
-      detailUrl,
-      releaseDate: undefined,
-      duration: 0,
-      director: "",
-      maker: "",
-      publisher: "",
-      series: "",
-      actors: [],
-      categories: [],
-      torrents: [],
-      dataSource: "Remote",
-      cachedAt: undefined,
-    });
-  });
-
-  return results;
-}
-
-function parseDetailPage(html: string): JavSearchResult {
-  const $ = cheerio.load(html);
-  const titleRaw = normalizeInlineText($("h2.title").first().text());
-  const { title, titleZh } = splitTitleVariants(titleRaw);
-  let javId = normalizeInlineText($("span.current-title").first().text());
-  if (!javId) {
-    javId = extractJavIdFromText(title) ?? "";
+  } catch {
+    // ignore
   }
 
-  const coverNode = $("img.video-cover").first();
-  const coverUrl = coverNode.attr("data-src") || coverNode.attr("src") || "";
-  const releaseDate = parseMetaField($, ["發行日期", "发行日期", "發布日期", "発売日", "Released Date", "Release Date", "日期"]);
-  const duration = parseDuration(parseMetaField($, ["時長", "时长", "片長", "片长", "収録時間", "Duration"]));
-  const director = parseMetaField($, ["導演", "导演", "監督", "Director"]);
-  const maker = parseMetaField($, ["片商", "製作商", "制作商", "メーカー", "Maker", "Studio"]);
-  const publisher = parseMetaField($, ["發行", "发行", "レーベル", "Publisher", "Label"]);
-  const series = parseMetaField($, ["系列", "シリーズ", "Series"]);
-  const actors = parseList($, [
-    "div.video-meta-panel strong:contains('演員') ~ span a",
-    "div.video-meta-panel strong:contains('演员') ~ span a",
-    "div.video-meta-panel strong:contains('出演者') ~ span a",
-    "div.panel-block strong:contains('演員') ~ span a",
-    "div.panel-block strong:contains('演员') ~ span a",
-    "div.panel-block strong:contains('出演者') ~ span a",
-    "div.panel-block strong:contains('演員') ~ a",
-    "div.panel-block strong:contains('演员') ~ a",
-    "div.panel-block strong:contains('出演者') ~ a",
-    "div.panel-block a[href*='/actors/']",
-  ]);
-  const categories = parseList($, [
-    "div.video-meta-panel strong:contains('Tags') ~ span a",
-    "div.panel-block strong:contains('Tags') ~ span a",
-    "div.video-meta-panel strong:contains('類別') ~ span a",
-    "div.video-meta-panel strong:contains('类别') ~ span a",
-    "div.video-meta-panel strong:contains('ジャンル') ~ span a",
-    "div.panel-block strong:contains('類別') ~ span a",
-    "div.panel-block strong:contains('类别') ~ span a",
-    "div.panel-block strong:contains('ジャンル') ~ span a",
-    "div.panel-block strong:contains('類別') ~ a",
-    "div.panel-block strong:contains('类别') ~ a",
-    "div.panel-block strong:contains('ジャンル') ~ a",
-    "div.video-meta-panel a[href^='/tags']",
-    "div.panel-block a[href^='/tags']",
-  ]);
+  return {
+    movieId: raw,
+    baseUrl: normalizeApiBaseUrl(config.baseUrl),
+  };
+}
+
+function buildMovieDetailUrl(baseUrl: string, movieId: string): string {
+  return new URL(buildApiPath(baseUrl, `/api/v4/movies/${encodeURIComponent(movieId)}`), `${baseUrl}/`).toString();
+}
+
+function toSearchCandidate(movie: SearchMovie, baseUrl: string): JavSearchResult {
+  const titles = resolveMovieTitles(movie.title, movie.origin_title);
+  const javId = normalizeJavId(movie.number ?? "");
 
   return {
     javId,
-    title,
-    titleZh,
-    coverUrl,
-    releaseDate: releaseDate || undefined,
-    duration,
-    director,
-    maker,
-    publisher,
-    series,
-    actors,
-    categories,
+    title: titles.title,
+    titleZh: titles.titleZh,
+    coverUrl: normalizeText(movie.cover_url) ?? normalizeText(movie.thumb_url) ?? "",
+    releaseDate: normalizeText(movie.release_date) ?? undefined,
+    duration: numberOrZero(movie.duration),
+    director: "",
+    maker: "",
+    publisher: "",
+    series: "",
+    actors: [],
+    categories: [],
     torrents: [],
-    detailUrl: "",
+    detailUrl: movie.id ? buildMovieDetailUrl(baseUrl, movie.id) : "",
     dataSource: "Remote",
     cachedAt: undefined,
   };
 }
 
-function parseMetaField($: cheerio.CheerioAPI, keywords: string[]): string {
-  for (const keyword of keywords) {
-    const selectors = [
-      `div.video-meta-panel strong:contains('${keyword}') ~ span`,
-      `div.video-meta-panel span:contains('${keyword}') ~ span`,
-      `div.video-meta-panel span:contains('${keyword}') ~ a`,
-      `div.panel-block strong:contains('${keyword}') ~ span`,
-      `div.panel-block strong:contains('${keyword}') ~ a`,
-    ];
+function toDetailResult(movie: DetailMovie, baseUrl: string): JavSearchResult {
+  const titles = resolveMovieTitles(movie.title, movie.origin_title);
 
-    for (const selector of selectors) {
-      const nodes = $(selector);
-      for (const node of nodes.toArray()) {
-        const text = normalizeInlineText($(node).text());
-        if (isMeaningfulMetaText(text)) {
-          return text;
-        }
-      }
-    }
-  }
-  return "";
+  return {
+    javId: normalizeJavId(movie.number ?? ""),
+    title: titles.title,
+    titleZh: titles.titleZh,
+    coverUrl: normalizeText(movie.cover_url) ?? normalizeText(movie.thumb_url) ?? "",
+    releaseDate: normalizeText(movie.release_date) ?? undefined,
+    duration: numberOrZero(movie.duration),
+    director: normalizeText(movie.director_name) ?? "",
+    maker: normalizeText(movie.maker_name) ?? "",
+    publisher: normalizeText(movie.publisher_name) ?? "",
+    series: normalizeText(movie.series_name) ?? "",
+    actors: dedupeStrings((movie.actors ?? []).map((item) => item?.name ?? "")),
+    categories: dedupeStrings((movie.tags ?? []).map((item) => item?.name ?? "")),
+    torrents: [],
+    detailUrl: movie.id ? buildMovieDetailUrl(baseUrl, movie.id) : "",
+    dataSource: "Remote",
+    cachedAt: undefined,
+  };
 }
 
-function isMeaningfulMetaText(text: string): boolean {
-  if (!text) {
-    return false;
+function resolveMovieTitles(title?: string, originTitle?: string): { title: string; titleZh?: string } {
+  const normalizedTitle = normalizeText(title);
+  const normalizedOriginTitle = normalizeText(originTitle);
+
+  if (normalizedOriginTitle && normalizedTitle && normalizedOriginTitle !== normalizedTitle) {
+    return {
+      title: normalizedOriginTitle,
+      titleZh: normalizedTitle,
+    };
   }
-  const normalized = text.trim().toLowerCase();
-  return normalized !== "n/a" && normalized !== "-" && normalized !== "--";
+
+  const fallback = normalizedOriginTitle ?? normalizedTitle ?? "";
+  const split = splitTitleVariants(fallback);
+  return {
+    title: normalizeText(split.title) ?? "",
+    titleZh: normalizeText(split.titleZh) ?? undefined,
+  };
 }
 
-function parseDuration(text: string): number {
-  if (!text) {
+function toTorrentInfo(item: MagnetRecord): TorrentInfo {
+  const title = normalizeText(item.name) ?? "";
+  const hash = normalizeText(item.hash)?.toLowerCase() ?? "";
+  const hasUncensored = /无码|無碼|破解|uncensored/i.test(title) || parseTorrentName(title).uncensoredType !== UncensoredMarkerType.None;
+  const hasSubtitle = Boolean(item.cnsub) || /字幕|中字|sub/i.test(title);
+  const hasHd = Boolean(item.hd) || /(?:^|[^a-z])(?:hd|4k|1080|720)(?:[^a-z]|$)/i.test(title);
+  const uncensoredMarkerType = hasUncensored
+    ? hasSubtitle
+      ? UncensoredMarkerType.UC
+      : UncensoredMarkerType.U
+    : UncensoredMarkerType.None;
+
+  return {
+    title,
+    magnetLink: hash ? `magnet:?xt=urn:btih:${hash}` : "",
+    size: normalizeMagnetSize(item.size),
+    hasUncensoredMarker: hasUncensored,
+    uncensoredMarkerType,
+    hasSubtitle,
+    hasHd,
+    seeders: 0,
+    leechers: 0,
+    sourceSite: "JavDB",
+    dlSpeed: 0,
+    eta: 0,
+    weightScore: 0,
+  };
+}
+
+function normalizeMagnetSize(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     return 0;
   }
-  const match = text.match(/(\d+)\s*(?:分鐘|分钟|min)/i);
-  if (match) {
-    return Number(match[1]);
+  return Math.floor(value * 1024 * 1024);
+}
+
+function dedupeTorrents(torrents: TorrentInfo[]): TorrentInfo[] {
+  const seen = new Set<string>();
+  const result: TorrentInfo[] = [];
+
+  for (const torrent of torrents) {
+    const key = extractMagnetHash(torrent.magnetLink) || torrent.title;
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(torrent);
   }
-  const asNumber = Number(text.trim());
-  return Number.isNaN(asNumber) ? 0 : asNumber;
-}
 
-function parseList($: cheerio.CheerioAPI, selectors: string[]): string[] {
-  for (const selector of selectors) {
-    const nodes = $(selector);
-    if (nodes.length) {
-      const items: string[] = [];
-      nodes.each((_, element) => {
-        const text = normalizeInlineText($(element).text());
-        if (text && !items.includes(text)) {
-          items.push(text);
-        }
-      });
-      return items;
-    }
-  }
-  return [];
-}
-
-function parseTorrentLinks(html: string): TorrentInfo[] {
-  const $ = cheerio.load(html);
-  const torrents: TorrentInfo[] = [];
-  const seenMagnets = new Set<string>();
-
-  $("div.magnet-name").each((_, element) => {
-    const magnetNode = $(element).find("a[href^='magnet:']").first();
-    const magnetLink = magnetNode.attr("href") ?? "";
-    if (!magnetLink.startsWith("magnet:")) {
-      return;
-    }
-
-    const hash = extractMagnetHash(magnetLink);
-    if (hash && seenMagnets.has(hash)) {
-      return;
-    }
-    if (hash) {
-      seenMagnets.add(hash);
-    }
-
-    const title = normalizeInlineText($(element).find("span.name").first().text());
-    const meta = normalizeInlineText($(element).find("span.meta").first().text());
-
-    let size = extractSizeFromMagnet(magnetLink);
-    if (!size) {
-      size = parseSizeBytes(meta) ?? 0;
-    }
-
-    const tags = $(element).find("span.tag");
-    let hasSubtitle = false;
-    let hasUncensored = false;
-    let hasHd = false;
-
-    tags.each((_, tag) => {
-      const tagText = normalizeInlineText($(tag).text());
-      if (!tagText) {
-        return;
-      }
-      if (tagText.includes("字幕") || tagText.includes("中文") || tagText.includes("中文字幕")) {
-        hasSubtitle = true;
-      }
-      if (tagText.includes("無碼") || tagText.includes("无码") || tagText.includes("破解")) {
-        hasUncensored = true;
-      }
-      if (tagText.includes("高清") || /HD|1080|720|4K/i.test(tagText)) {
-        hasHd = true;
-      }
-    });
-
-    if (!hasHd && /HD|1080|720|4K/i.test(title)) {
-      hasHd = true;
-    }
-
-    const { uncensoredType } = parseTorrentName(title);
-    hasUncensored = hasUncensored || uncensoredType !== UncensoredMarkerType.None;
-    const uncensoredMarkerType = hasUncensored
-      ? hasSubtitle
-        ? UncensoredMarkerType.UC
-        : UncensoredMarkerType.U
-      : UncensoredMarkerType.None;
-
-    torrents.push({
-      title,
-      magnetLink,
-      size,
-      hasSubtitle,
-      hasUncensoredMarker: hasUncensored,
-      uncensoredMarkerType,
-      hasHd,
-      seeders: 0,
-      leechers: 0,
-      sourceSite: "JavDB",
-      progress: undefined,
-      state: undefined,
-      dlSpeed: 0,
-      eta: 0,
-      weightScore: 0,
-    });
-  });
-
-  return torrents;
-}
-
-function normalizeInlineText(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+  return result;
 }
 
 function extractMagnetHash(magnetLink: string): string {
@@ -582,56 +430,34 @@ function extractMagnetHash(magnetLink: string): string {
   return match?.[1]?.toLowerCase() ?? "";
 }
 
-function extractSizeFromMagnet(magnetLink: string): number | null {
-  const match = magnetLink.match(/[?&]xl=(\d+)/i);
-  if (!match) {
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") {
     return null;
   }
-  const value = Number(match[1]);
-  return Number.isNaN(value) ? null : value;
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  return trimmed || null;
 }
 
-function parseSizeBytes(text: string): number | null {
-  if (!text) {
-    return null;
-  }
-  const match = text.match(/(\d+(?:\.\d+)?)\s*(KiB|MiB|GiB|TiB|KB|MB|GB|TB|B)\b/i);
-  if (!match) {
-    return null;
-  }
-  const value = Number(match[1]);
-  if (Number.isNaN(value)) {
-    return null;
-  }
-  const unit = match[2].toUpperCase();
-  const multiplier: Record<string, number> = {
-    B: 1,
-    KB: 1024,
-    KIB: 1024,
-    MB: 1024 * 1024,
-    MIB: 1024 * 1024,
-    GB: 1024 * 1024 * 1024,
-    GIB: 1024 * 1024 * 1024,
-    TB: 1024 * 1024 * 1024 * 1024,
-    TIB: 1024 * 1024 * 1024 * 1024,
-  };
-  const factor = multiplier[unit];
-  return factor ? Math.floor(value * factor) : null;
+function numberOrZero(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function extractJavIdFromText(text: string): string | null {
-  if (!text) {
-    return null;
+function dedupeStrings(values: string[]): string[] {
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeText(value);
+    if (normalized && !result.includes(normalized)) {
+      result.push(normalized);
+    }
   }
-  const match = text.match(/([A-Z0-9]+-\d+)/i);
-  return match ? match[1].toUpperCase() : null;
+  return result;
 }
 
 function dedupeResults(results: JavSearchResult[]): JavSearchResult[] {
   const seen = new Set<string>();
   const deduped: JavSearchResult[] = [];
   for (const result of results) {
-    const key = result.detailUrl || `${result.title}|${result.javId}`;
+    const key = result.detailUrl || `${result.javId}|${result.title}`;
     if (seen.has(key)) {
       continue;
     }
