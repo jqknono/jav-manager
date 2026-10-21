@@ -5,9 +5,11 @@ import { JsonJavCacheProvider } from "./data/cache";
 import { EverythingHttpClient } from "./data/everything";
 import { JavDbApiClient } from "./data/javdb";
 import { QBittorrentApiClient } from "./data/qbittorrent";
+import { SubtitleCatClient } from "./data/subtitlecat";
+import { SubtitleIndexClient } from "./data/subtitleIndex";
 import { isLightweightCliCommand, runCli } from "./cli";
 import { startGuiServer } from "./gui";
-import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, TelemetryService, TorrentSelectionService } from "./services";
+import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, SubtitleSearchService, TelemetryService, TorrentSelectionService } from "./services";
 
 export async function runAutoEntry(rawArgs: string[] = process.argv.slice(2)): Promise<void> {
   const { overrides, remaining } = extractOverrides(rawArgs);
@@ -116,7 +118,18 @@ export function createAppContext(config: AppConfig, loc: LocalizationService): A
     loc,
     cacheProvider
   );
-  const healthCheckService = new HealthCheckService([everythingProvider, qbClient, javDbProvider], loc);
+  const subtitleCatClient = new SubtitleCatClient(config.subtitle);
+  const subtitleProviders = config.subtitle.enabled
+    ? [
+        subtitleCatClient,
+        ...config.subtitle.indexSites.map((site) => new SubtitleIndexClient(site, config.subtitle.requestTimeout, config.subtitle.userAgent)),
+      ]
+    : [];
+  const subtitleSearchService = new SubtitleSearchService(subtitleProviders, config.subtitle, config.download);
+  const healthCheckers = config.subtitle.enabled
+    ? [everythingProvider, qbClient, javDbProvider, subtitleCatClient]
+    : [everythingProvider, qbClient, javDbProvider];
+  const healthCheckService = new HealthCheckService(healthCheckers, loc);
 
   return {
     config,
@@ -131,6 +144,7 @@ export function createAppContext(config: AppConfig, loc: LocalizationService): A
       localFileCheckService,
       downloadService,
       javSearchService,
+      subtitleSearchService,
       healthCheckService,
       telemetryClient,
       telemetryService,

@@ -82,3 +82,30 @@ export interface HealthCheckResult {
   message: string;
   url?: string;
 }
+
+export interface SubtitleLanguageOption {
+  code: string;
+  label: string;
+  downloadUrl: string;
+  isOriginal: boolean;
+}
+
+export interface SubtitleSearchItem {
+  javId: string;
+  title: string;
+  source: string;
+  detailUrl: string;
+  size: number;
+  downloads: number;
+  languageCount: number;
+  sourceLanguage: string;
+  languages: SubtitleLanguageOption[];
+  originalDownloadUrl?: string;
+  matchScore: number;
+}
+
+export interface SubtitleSearchResult {
+  javId: string;
+  items: SubtitleSearchItem[];
+  messages: string[];
+}

@@ -28,6 +28,22 @@ export interface DownloadConfig {
   defaultTags: string;
 }
 
+export interface SubtitleIndexSiteConfig {
+  name: string;
+  baseUrl: string;
+  searchPath: string;
+}
+
+export interface SubtitleConfig {
+  enabled: boolean;
+  baseUrl: string;
+  requestTimeout: number;
+  userAgent: string;
+  savePath: string;
+  preferredLanguages: string[];
+  indexSites: SubtitleIndexSiteConfig[];
+}
+
 export interface LocalCacheConfig {
   enabled: boolean;
   databasePath: string;
@@ -55,6 +71,7 @@ export interface AppConfig {
   qBittorrent: QBittorrentConfig;
   javDb: JavDbConfig;
   download: DownloadConfig;
+  subtitle: SubtitleConfig;
   localCache: LocalCacheConfig;
   console: ConsoleConfig;
   telemetry: TelemetryConfig;
@@ -85,6 +102,18 @@ const defaultConfig: AppConfig = {
     defaultSavePath: "",
     defaultCategory: "jav",
     defaultTags: "jav-manager",
+  },
+  subtitle: {
+    enabled: true,
+    baseUrl: "https://www.subtitlecat.com",
+    requestTimeout: 30000,
+    userAgent: "",
+    savePath: "",
+    preferredLanguages: ["zh-CN", "zh", "zh-TW"],
+    indexSites: [
+      { name: "JavSubtitled", baseUrl: "https://javsubtitled.com", searchPath: "/?s={query}" },
+      { name: "Javzimu", baseUrl: "https://javzimu.com", searchPath: "/?s={query}" },
+    ],
   },
   localCache: {
     enabled: true,
@@ -159,6 +188,7 @@ export function extractOverrides(args: string[]): {
     "--qb-password": "qBittorrent.password",
 
     "--javdb-url": "javDb.baseUrl",
+    "--subtitle-url": "subtitle.baseUrl",
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -231,6 +261,7 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
   const javBackend = (raw.JavBackend as Record<string, unknown> | undefined)
     ?? (raw.JavDb as Record<string, unknown> | undefined);
   const download = raw.Download as Record<string, unknown> | undefined;
+  const subtitle = raw.Subtitle as Record<string, unknown> | undefined;
   const localCache = raw.LocalCache as Record<string, unknown> | undefined;
   const consoleConfig = raw.Console as Record<string, unknown> | undefined;
   const telemetry = raw.Telemetry as Record<string, unknown> | undefined;
@@ -256,6 +287,15 @@ function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unkno
       defaultSavePath: stringOrUndefined(download?.DefaultSavePath),
       defaultCategory: stringOrUndefined(download?.DefaultCategory),
       defaultTags: stringOrUndefined(download?.DefaultTags),
+    },
+    subtitle: {
+      enabled: booleanOrUndefined(subtitle?.Enabled),
+      baseUrl: stringOrUndefined(subtitle?.BaseUrl),
+      requestTimeout: numberOrUndefined(subtitle?.RequestTimeout),
+      userAgent: stringOrUndefined(subtitle?.UserAgent),
+      savePath: stringOrUndefined(subtitle?.SavePath),
+      preferredLanguages: arrayStringOrUndefined(subtitle?.PreferredLanguages),
+      indexSites: subtitleIndexSitesOrUndefined(subtitle?.IndexSites),
     },
     localCache: {
       enabled: booleanOrUndefined(localCache?.Enabled),
@@ -292,6 +332,58 @@ function numberOrUndefined(value: unknown): number | undefined {
 
 function booleanOrUndefined(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function subtitleIndexSitesOrUndefined(value: unknown): SubtitleIndexSiteConfig[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const sites: SubtitleIndexSiteConfig[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const record = item as Record<string, unknown>;
+    const name = typeof record.Name === "string" ? record.Name : (typeof record.name === "string" ? record.name : "");
+    const baseUrl = typeof record.BaseUrl === "string" ? record.BaseUrl : (typeof record.baseUrl === "string" ? record.baseUrl : "");
+    const searchPath = typeof record.SearchPath === "string" ? record.SearchPath : (typeof record.searchPath === "string" ? record.searchPath : "/?s={query}");
+    if (!name || !baseUrl) {
+      continue;
+    }
+    sites.push({ name, baseUrl, searchPath: searchPath || "/?s={query}" });
+  }
+  return sites.length ? sites : undefined;
+}
+
+function normalizePreferredLanguages(values: string[]): string[] {
+  const result: string[] = [];
+  for (const value of values ?? []) {
+    const normalized = String(value ?? "").trim();
+    if (!normalized || result.includes(normalized)) {
+      continue;
+    }
+    result.push(normalized);
+  }
+  return result.length ? result : ["zh-CN", "zh", "zh-TW"];
+}
+
+function normalizeSubtitleIndexSites(sites: SubtitleIndexSiteConfig[]): SubtitleIndexSiteConfig[] {
+  const result: SubtitleIndexSiteConfig[] = [];
+  const seen = new Set<string>();
+  for (const site of sites ?? []) {
+    const name = String(site?.name ?? "").trim();
+    const baseUrl = String(site?.baseUrl ?? "").trim().replace(/\/+$/, "");
+    if (!name || !baseUrl || seen.has(baseUrl.toLowerCase())) {
+      continue;
+    }
+    seen.add(baseUrl.toLowerCase());
+    result.push({
+      name,
+      baseUrl,
+      searchPath: String(site.searchPath ?? "/?s={query}").trim() || "/?s={query}",
+    });
+  }
+  return result;
 }
 
 function arrayStringOrUndefined(value: unknown): string[] | undefined {
@@ -332,6 +424,17 @@ function sanitizeConfig(config: AppConfig): AppConfig {
   config.telemetry = {
     ...config.telemetry,
     endpoint: nonEmptyOrDefault(config.telemetry.endpoint, defaultTelemetryEndpoint),
+  };
+
+  config.subtitle = {
+    ...config.subtitle,
+    enabled: config.subtitle.enabled !== false,
+    baseUrl: nonEmptyOrDefault(config.subtitle.baseUrl, "https://www.subtitlecat.com"),
+    requestTimeout: Number.isFinite(config.subtitle.requestTimeout) && config.subtitle.requestTimeout > 0
+      ? config.subtitle.requestTimeout
+      : 30000,
+    preferredLanguages: normalizePreferredLanguages(config.subtitle.preferredLanguages),
+    indexSites: normalizeSubtitleIndexSites(config.subtitle.indexSites),
   };
 
   if (!["en", "zh", "ja", "ko"].includes(config.console.language)) {
@@ -412,6 +515,19 @@ function toFileConfig(config: AppConfig): Record<string, unknown> {
       DefaultSavePath: config.download.defaultSavePath,
       DefaultCategory: config.download.defaultCategory,
       DefaultTags: config.download.defaultTags,
+    },
+    Subtitle: {
+      Enabled: config.subtitle.enabled,
+      BaseUrl: config.subtitle.baseUrl,
+      RequestTimeout: config.subtitle.requestTimeout,
+      UserAgent: config.subtitle.userAgent,
+      SavePath: config.subtitle.savePath,
+      PreferredLanguages: config.subtitle.preferredLanguages,
+      IndexSites: config.subtitle.indexSites.map((site) => ({
+        Name: site.name,
+        BaseUrl: site.baseUrl,
+        SearchPath: site.searchPath,
+      })),
     },
     LocalCache: {
       Enabled: config.localCache.enabled,

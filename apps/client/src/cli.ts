@@ -18,6 +18,7 @@ import {
   printDownloadList,
   printLocalFiles,
   printSearching,
+  printSubtitleList,
   printSuccess,
   printError,
   printWarning,
@@ -233,6 +234,16 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
     return;
   }
 
+  if (cmd === "sub" || cmd === "subtitle" || cmd === "zimu" || cmd === "zm") {
+    if (args.length < 2) {
+      printInfo(loc.get("help_subtitle"));
+      return;
+    }
+    const javId = normalizeJavId(args.slice(1).join(" "));
+    await handleSubtitleSearch(context, javId, autoConfirm);
+    return;
+  }
+
   if (cmd === "remote" || cmd === "r") {
     const javId = normalizeJavId(args.slice(1).join(" "));
     await handleSearch(context, javId, autoConfirm, true);
@@ -247,6 +258,65 @@ async function runCommand(context: AppContext, args: string[], autoConfirm: bool
 
   if (cmd) {
     await handleSearch(context, normalizeJavId(args.join(" ")), autoConfirm, false);
+  }
+}
+
+async function handleSubtitleSearch(context: AppContext, javId: string, autoConfirm: boolean): Promise<void> {
+  const { loc, services } = context;
+
+  if (!isValidJavId(javId)) {
+    printError(loc.getFormat("invalid_jav_id", javId));
+    return;
+  }
+
+  if (!context.config.subtitle.enabled) {
+    printWarning(loc.get("subtitle_disabled"));
+    return;
+  }
+
+  printSearching(javId);
+  let result;
+  try {
+    result = await services.subtitleSearchService.search(javId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    printError(message);
+    return;
+  }
+
+  if (result.items.length === 0) {
+    for (const message of result.messages) {
+      printWarning(message);
+    }
+    printWarning(loc.get("no_subtitles_found"));
+    return;
+  }
+
+  printSubtitleList(
+    result.javId,
+    result.items.map((item) => ({
+      title: item.title,
+      source: item.source,
+      size: item.size > 0 ? formatSize(item.size) : "-",
+      downloads: item.downloads > 0 ? String(item.downloads) : "-",
+      languages: item.languages.length
+        ? item.languages.map((language) => language.code).join(" ")
+        : (item.languageCount > 0 ? String(item.languageCount) : "-"),
+    })),
+  );
+
+  const selectedIndex = autoConfirm ? 1 : await promptIndex(result.items.length);
+  if (!selectedIndex) {
+    return;
+  }
+
+  const selected = result.items[selectedIndex - 1];
+  try {
+    const downloaded = await services.subtitleSearchService.downloadPreferred(selected, result.javId);
+    printSuccess(loc.getFormat("subtitle_downloaded", downloaded.savedPath));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    printError(message);
   }
 }
 
@@ -423,6 +493,7 @@ function showHelp(loc: LocalizationService): void {
     { cmd: "search <id> / s", desc: isZh ? "搜尋並下載" : "Search and download", category: isZh ? "搜尋" : "Search" },
     { cmd: "remote <id> / r", desc: isZh ? "僅遠端搜尋 (跳過快取)" : "Search JavDB only (skip cache)", category: isZh ? "搜尋" : "Search" },
     { cmd: "local <query> / l", desc: isZh ? "本地檔案搜尋" : "Search local files via Everything", category: isZh ? "搜尋" : "Search" },
+    { cmd: "sub <id> / zm", desc: isZh ? "搜尋並下載字幕" : "Search and download subtitles", category: isZh ? "搜尋" : "Search" },
 
     { cmd: "downloads / t", desc: isZh ? "下載列表" : "List all torrents", category: isZh ? "下載" : "Downloads" },
     { cmd: "downloading / d", desc: isZh ? "下載中列表" : "List active downloads only", category: isZh ? "下載" : "Downloads" },
@@ -614,6 +685,8 @@ async function handleConfigCommand(context: AppContext, args: string[]): Promise
       { section: "qBittorrent", key: "UserName", value: config.qBittorrent.userName ?? "-" },
       { section: "qBittorrent", key: "Password", value: maskSecret(config.qBittorrent.password), masked: true },
       { section: "JavBackend", key: "BaseUrl", value: config.javDb.baseUrl || "-" },
+      { section: "Subtitle", key: "BaseUrl", value: config.subtitle.baseUrl || "-" },
+      { section: "Subtitle", key: "SavePath", value: config.subtitle.savePath || "-" },
     ]);
     return;
   }

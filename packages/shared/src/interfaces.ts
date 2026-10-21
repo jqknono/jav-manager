@@ -1,4 +1,4 @@
-import { CacheStatistics, HealthCheckResult, JavSearchResult, LocalFileInfo, TorrentInfo } from "./models";
+import { CacheStatistics, HealthCheckResult, JavSearchResult, LocalFileInfo, SubtitleSearchItem, TorrentInfo } from "./models";
 
 export interface IJavDbDataProvider {
   search(javId: string): Promise<JavSearchResult>;
@@ -38,4 +38,11 @@ export interface IHealthChecker {
 
 export interface IHttpFetcher {
   get(url: string, referer: string | null, cookieHeader: string | null, timeoutMs: number): Promise<{ status: number; body: string; error?: string }>;
+}
+
+export interface ISubtitleSearchProvider {
+  readonly sourceName: string;
+  search(javId: string): Promise<SubtitleSearchItem[]>;
+  getDetail(item: SubtitleSearchItem): Promise<SubtitleSearchItem>;
+  download(url: string): Promise<{ fileName: string; content: Uint8Array }>;
 }

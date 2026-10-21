@@ -19,3 +19,4 @@ appsettings.*.local.json
 src/jav_cache.json
 dist/
 third_party/curl-impersonate/bin/
+*.apk

@@ -363,6 +363,62 @@ export function printTorrentList(
 }
 
 /**
+ * Display subtitle search results as a numbered table.
+ */
+export function printSubtitleList(
+  javId: string,
+  items: Array<{ title: string; source: string; size: string; downloads: string; languages: string }>,
+): void {
+  if (items.length === 0) return;
+
+  const totalWidth = getTermWidth();
+  let idxW = 3;
+  let sourceW = 12;
+  let sizeW = 8;
+  let downloadsW = 8;
+  let languagesW = 16;
+  const colCount = 6;
+  const baseOverhead = 2 + 1 + colCount * 2 + (colCount - 1) + 2;
+  let titleW = totalWidth - baseOverhead - idxW - sourceW - sizeW - downloadsW - languagesW;
+  if (titleW < 16) {
+    languagesW = 12;
+    titleW = totalWidth - baseOverhead - idxW - sourceW - sizeW - downloadsW - languagesW;
+  }
+  titleW = Math.max(14, titleW);
+
+  const top = c(
+    BOX.tl + BOX.h.repeat(idxW + 2) + BOX.tT + BOX.h.repeat(titleW + 2) + BOX.tT + BOX.h.repeat(sourceW + 2) + BOX.tT + BOX.h.repeat(sizeW + 2) + BOX.tT + BOX.h.repeat(downloadsW + 2) + BOX.tT + BOX.h.repeat(languagesW + 2) + BOX.tr,
+    FG_GRAY
+  );
+  const mid = c(
+    BOX.lT + BOX.h.repeat(idxW + 2) + BOX.cross + BOX.h.repeat(titleW + 2) + BOX.cross + BOX.h.repeat(sourceW + 2) + BOX.cross + BOX.h.repeat(sizeW + 2) + BOX.cross + BOX.h.repeat(downloadsW + 2) + BOX.cross + BOX.h.repeat(languagesW + 2) + BOX.rT,
+    FG_GRAY
+  );
+  const bot = c(
+    BOX.bl + BOX.h.repeat(idxW + 2) + BOX.bT + BOX.h.repeat(titleW + 2) + BOX.bT + BOX.h.repeat(sourceW + 2) + BOX.bT + BOX.h.repeat(sizeW + 2) + BOX.bT + BOX.h.repeat(downloadsW + 2) + BOX.bT + BOX.h.repeat(languagesW + 2) + BOX.br,
+    FG_GRAY
+  );
+
+  console.log("");
+  console.log(`  ${c("SUBTITLES", BOLD, FG_BRIGHT_WHITE)} ${c(`(${items.length})`, DIM, FG_GRAY)} ${c(`for ${javId}`, DIM, FG_GRAY)}`);
+  console.log(`  ${top}`);
+  console.log(
+    `  ${c(BOX.v, FG_GRAY)} ${padStart(c("#", BOLD, FG_BRIGHT_WHITE), idxW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Title", BOLD, FG_BRIGHT_WHITE), titleW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Source", BOLD, FG_BRIGHT_WHITE), sourceW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Size", BOLD, FG_BRIGHT_WHITE), sizeW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("DL", BOLD, FG_BRIGHT_WHITE), downloadsW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Lang", BOLD, FG_BRIGHT_WHITE), languagesW)} ${c(BOX.v, FG_GRAY)}`
+  );
+  console.log(`  ${mid}`);
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const idx = String(i + 1);
+    console.log(
+      `  ${c(BOX.v, FG_GRAY)} ${padStart(c(idx, FG_GRAY), idxW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(truncateText(item.title, titleW), FG_WHITE), titleW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(truncateText(item.source, sourceW), FG_CYAN), sourceW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(item.size, FG_BRIGHT_YELLOW), sizeW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(item.downloads, FG_WHITE), downloadsW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(truncateText(item.languages, languagesW), FG_WHITE), languagesW)} ${c(BOX.v, FG_GRAY)}`
+    );
+  }
+
+  console.log(`  ${bot}`);
+}
+
+/**
  * Display searchable candidate items before showing torrents.
  */
 export function printSearchResultList(

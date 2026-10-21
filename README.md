@@ -19,6 +19,9 @@ npx jav-manager STARS-001
 # Help / version
 npx jav-manager help
 npx jav-manager version
+
+# Subtitle search
+npx jav-manager sub STARS-001
 ```
 
 ## Repository Layout
@@ -47,6 +50,7 @@ Notes:
 - GUI (local web UI) and console mode (Node.js)
 - Multilingual UI (English, Chinese, Japanese, Korean)
 - Search JAV metadata and torrents/magnets from JavDB
+- Search external subtitles by JAV ID from SubtitleCat and optional index sites
 - Check local files via Everything search engine
 - Download via qBittorrent WebUI API
 - Local JSON cache for repeat searches
@@ -111,6 +115,7 @@ flowchart TD
 | Service | Required | Purpose | Link |
 |---------|----------|---------|------|
 | JavDB App API | Yes | Metadata & magnet links | [`doc/javdb-app-api/README.md`](doc/javdb-app-api/README.md) |
+| SubtitleCat | No (optional) | External subtitle search | [subtitlecat.com](https://www.subtitlecat.com/) |
 | Everything | No (optional) | Local file search | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP plugin](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
 | qBittorrent | No (optional) | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
@@ -152,6 +157,11 @@ Configuration reference:
 | Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |
 | Download | `DefaultCategory` | No (optional) | `jav` | Default category in qBittorrent. |
 | Download | `DefaultTags` | No (optional) | `jav-manager` | Default tags for created downloads. |
+| Subtitle | `Enabled` | No (optional) | `true` | Enable CLI subtitle search (`sub <id>`). |
+| Subtitle | `BaseUrl` | No (optional) | `https://www.subtitlecat.com` | SubtitleCat base URL. |
+| Subtitle | `SavePath` | No (optional) | _(empty)_ | Directory for downloaded `.srt` files. Falls back to `Download.DefaultSavePath`, then `subtitles/` in the config directory. |
+| Subtitle | `PreferredLanguages` | No (optional) | `zh-CN, zh, zh-TW` | Language preference when a subtitle has multiple ready downloads. |
+| Subtitle | `IndexSites` | No (optional) | JavSubtitled, Javzimu | Extra HTML index sites searched by JAV ID. Unreachable sites are skipped. |
 | LocalCache | `Enabled` | No (optional) | `true` | Enable or disable local cache storage. |
 | LocalCache | `DatabasePath` | No (optional) | _(empty)_ | JSON cache file path (leave empty for default `jav_cache.json` next to executable). |
 | LocalCache | `CacheExpirationDays` | No (optional) | `0` | Cache TTL in days (0 disables expiration). |

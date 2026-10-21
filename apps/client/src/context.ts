@@ -1,7 +1,7 @@
 import { AppConfig } from "./config";
 import { LocalizationService } from "./localization";
 import { IJavDbDataProvider, IEverythingSearchProvider, IJavLocalCacheProvider, IQBittorrentClient } from "../../../packages/shared/src/interfaces";
-import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, TelemetryService, TorrentSelectionService } from "./services";
+import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, SubtitleSearchService, TelemetryService, TorrentSelectionService } from "./services";
 
 export interface AppContext {
   config: AppConfig;
@@ -16,6 +16,7 @@ export interface AppContext {
     localFileCheckService: LocalFileCheckService;
     downloadService: DownloadService;
     javSearchService: JavSearchService;
+    subtitleSearchService: SubtitleSearchService;
     healthCheckService: HealthCheckService;
     telemetryClient: JavInfoTelemetryClient;
     telemetryService: TelemetryService;
