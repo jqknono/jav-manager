@@ -2,25 +2,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            // Use IntelliSense to find out which attributes exist for C# debugging
-            // Use hover for the description of the existing attributes
-            // For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
-            "name": ".NET Core Launch (console)",
-            "type": "coreclr",
+            "name": "CLI",
+            "type": "node",
             "request": "launch",
-            "preLaunchTask": "build",
-            // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/JavManager/bin/Debug/net10.0/JavManager.dll",
+            "preLaunchTask": "build:npm (tsc)",
+            "program": "${workspaceFolder}/apps/cli/dist/apps/cli/src/main.js",
             "args": [],
-            "cwd": "${workspaceFolder}/JavManager",
-            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
-            "console": "internalConsole",
-            "stopAtEntry": false
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         },
         {
-            "name": ".NET Core Attach",
-            "type": "coreclr",
-            "request": "attach"
+            "name": "GUI",
+            "type": "node",
+            "request": "launch",
+            "preLaunchTask": "build:npm (tsc)",
+            "program": "${workspaceFolder}/apps/gui/dist/apps/gui/src/main.js",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
     ]
 }

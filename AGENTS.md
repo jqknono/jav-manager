@@ -2,18 +2,17 @@
 
 ## Project Structure & Module Organization
 
-- `src/`: primary TypeScript codebase.
-  - `data/` (JavDB/Everything/qBittorrent/cache providers)
-  - `utils/` (CLI display, parsers, helpers)
-  - `cli.ts`, `gui.ts`, `index.ts` (entry and runtime flow)
-  - `services.ts`, `context.ts`, `interfaces.ts`, `models.ts`, `config.ts`
-- `dist/`: compiled JavaScript output from `tsc` (runtime entry is `dist/index.js`).
+- `apps/`: primary TypeScript packages.
+  - `client/` shared CLI/GUI runtime
+  - `cli/` CLI entrypoint
+  - `gui/` GUI entrypoint
+  - `backend-worker/` Cloudflare Worker for telemetry/JavInfo APIs
+- `packages/shared/`: cross-runtime shared types and utilities.
+- `src/`: compatibility TypeScript sources mirrored into `dist/`.
+- `dist/`: compiled JavaScript output (runtime entry is `dist/index.js`).
 - `test/`: Node test files (`*.test.js`).
-- `jav-worker/`: optional Cloudflare Worker for telemetry/JavInfo APIs.
-- `JavManager/` **(deprecated)**: legacy .NET implementation.
-- `JavManager.Tests/` **(deprecated)**: legacy xUnit tests for the .NET implementation.
 - `doc/`: reference docs for external service APIs.
-- `scripts/`: release/build helpers (mostly legacy .NET publish tooling).
+- `scripts/`: repo-level build, copy, and local-dev helpers.
 - `artifacts/`: build outputs (gitignored).
 
 ## Build, Test, and Development Commands
@@ -31,15 +30,10 @@ Requires Node.js (for the primary TypeScript project).
 - Tests: `npm test` (build + `node --test test/*.test.js`)
 - Dev CLI/GUI (ts-node): `npm run dev:cli` / `npm run dev:gui`
 
-Optional telemetry worker (`jav-worker/`):
-- Install deps: `cd jav-worker && npm install`
-- Local dev: `npm run dev`
-- Deploy: `npm run deploy`
-
-Legacy .NET commands (deprecated):
-- Build: `dotnet build JavManager/JavManager.csproj`
-- Tests: `dotnet test JavManager.Tests/JavManager.Tests.csproj`
-- Publish: `pwsh scripts/publish.ps1`
+Optional telemetry worker (`apps/backend-worker/`):
+- Install deps: `cd apps/backend-worker && npm install`
+- Local dev: `npm run dev:backend`
+- Deploy: `cd apps/backend-worker && npm run deploy`
 
 ## Documentation Guidelines
 
@@ -51,8 +45,8 @@ Legacy .NET commands (deprecated):
 - When updating UI text, update English strings first (`en` section) and `README.md` when needed.
 - Do **not** update non-English docs/readmes (`README.zh-CN.md`, `README.ja.md`, `README.ko.md`) unless explicitly requested.
 - Chinese strings in `src/localization.ts` should only be changed when explicitly requested.
-- Telemetry worker UI strings are stored as JSON in `jav-worker/src/locales/*.json`.
-  - Only `jav-worker/src/locales/en.json` is maintained in code changes.
+- Telemetry worker UI strings are stored as JSON in `apps/backend-worker/src/locales/*.json`.
+  - Only `apps/backend-worker/src/locales/en.json` is maintained in code changes.
   - Other locale files are translator-owned and may be partial; the worker falls back to English for missing keys.
 
 ## Coding Style & Naming Conventions
@@ -60,20 +54,17 @@ Legacy .NET commands (deprecated):
 - TypeScript uses existing repo formatting (2-space indentation in current files).
 - Naming: `PascalCase` for types/classes, `camelCase` for variables/functions, file names follow existing patterns.
 - Prefer `async`/`await` for I/O paths and keep provider/service boundaries clear.
-- Avoid broad refactors in deprecated C# code unless explicitly requested.
 
 ## Testing Guidelines
 
 - Primary framework: Node built-in test runner (`node --test`) with tests in `test/*.test.js`.
 - Keep tests deterministic (avoid real network calls; use stubs/mocks for providers).
 - If you change runtime TS logic, run `npm test` before submitting.
-- Legacy C# tests (`JavManager.Tests/`) are deprecated and should only be updated when explicitly requested.
 
 ## Commit & Pull Request Guidelines
 
 - Commit subjects: short, imperative, descriptive (e.g., “Add …”, “Refactor …”), no trailing period.
-- If `src/` changes affect runtime behavior, keep `dist/` in sync via `npm run build`.
-- Versioning/release automation for .NET artifacts is legacy/deprecated.
+- If `src/` or `apps/` changes affect runtime behavior, keep `dist/` in sync via `npm run build`.
 - PRs should include: summary, test evidence (`npm test`), and any config changes to `appsettings*.json`.
 
 ## Security & Configuration Tips

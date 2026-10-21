@@ -1,4 +1,4 @@
-// Generated from `JavManager/Assets/icon.ico`.
+// Generated from `assets/icon.ico`.
 // Keep this in sync with the desktop app icon so the UI looks consistent.
 
 // `atob` exists in Cloudflare Workers runtime, but isn't in our TS lib set.
