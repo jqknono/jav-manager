@@ -186,4 +186,7 @@ npm test
 - `GET /api/javdb-domain` 为独立公共接口，返回 `{ "success": true, "domains": ["最新域名"] }`，复用一小时内存缓存；上游读取失败时返回 HTTP 500。
 - `/api/javdb` 及其 `/` 子路径由代理模块处理，并保持原有代理认证；域名查询及其 OPTIONS 使用通用 CORS。
 - 根工作区和 `apps/backend-worker` 使用独立锁文件，分别运行 `npm audit` 与 `npm --prefix apps/backend-worker audit`。
+- GitHub Actions 工作流 [依赖安全审计](.github/workflows/dependency-audit.yml) 在 push、PR、每周一 UTC 03:17 和手动触发时运行。`audit-root` 与 `audit-worker` 独立审计两份锁文件，包含开发依赖；低危及以上漏洞或审计请求失败均使检查失败，JSON 报告保留 14 天。
+- 本地复现 CI：在根目录运行 `npm audit --package-lock-only --include=dev --audit-level=low`，并运行 `npm --prefix apps/backend-worker audit --package-lock-only --include=dev --audit-level=low`。工作流直接审计锁文件，无需安装依赖或执行安装脚本。
+- 启用合并门禁时，在仓库分支保护或 ruleset 中将 `audit-root`、`audit-worker` 都设为必需检查；定时与手动运行使用默认分支上的工作流。
 - 升级 Wrangler 时同步满足 `@cloudflare/workers-types` 的 peer 版本要求，并执行 Worker 构建、离线契约测试及 `wrangler deploy --dry-run` 本地打包校验。

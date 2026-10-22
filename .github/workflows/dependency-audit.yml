@@ -1,0 +1,55 @@
+name: 依赖安全审计
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # 每周一 UTC 03:17，覆盖代码未变但新增安全公告的情况。
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: audit-${{ matrix.scope }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      # 两份独立锁文件分别报告结果，一个失败时另一个继续执行。
+      fail-fast: false
+      matrix:
+        include:
+          - scope: root
+            directory: .
+          - scope: worker
+            directory: apps/backend-worker
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: 审计锁文件（含开发依赖）
+        # 直接读取已提交的锁文件，覆盖尚未安装的 Worker 工具链；审计只读运行。
+        # pipefail 保留 npm 的失败退出码，同时输出日志和独立 JSON 报告。
+        run: |
+          set -euo pipefail
+          npm audit --package-lock-only --include=dev --audit-level=low --json | tee audit-report.json
+
+      - name: 保存审计报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-${{ matrix.scope }}
+          path: ${{ matrix.directory }}/audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
