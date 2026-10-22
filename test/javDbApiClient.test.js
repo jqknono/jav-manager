@@ -6,7 +6,7 @@ const { JavDbApiClient } = require("../apps/cli/dist/apps/client/src/data/javdb.
 function createClient(fetchImpl) {
   return new JavDbApiClient(
     {
-      baseUrl: "https://apidd.btyjscl.com",
+      baseUrl: "https://apidd.spthgb.com",
       mirrorUrls: [],
       requestTimeout: 1000,
       userAgent: "",
@@ -38,10 +38,10 @@ test("JavDbApiClient.searchCandidates uses app api payload", async () => {
   });
 
   const results = await client.searchCandidates("STARS-804");
-  assert.equal(calls[0], "https://apidd.btyjscl.com/api/v2/search?q=STARS-804&type=movie");
+  assert.equal(calls[0], "https://apidd.spthgb.com/api/v2/search?q=STARS-804&type=movie");
   assert.equal(results.length, 1);
   assert.equal(results[0].javId, "STARS-804");
-  assert.equal(results[0].detailUrl, "https://apidd.btyjscl.com/api/v4/movies/qDYQzM");
+  assert.equal(results[0].detailUrl, "https://apidd.spthgb.com/api/v4/movies/qDYQzM");
   assert.equal(results[0].coverUrl, "https://tp.cmastd.com/cover.jpg");
 });
 
@@ -128,8 +128,8 @@ test("JavDbApiClient.getDetail maps legacy javdb url to app api without requesti
 
   const detail = await client.getDetail("https://javdb.com/v/qDYQzM");
   assert.deepEqual(calls, [
-    "https://apidd.btyjscl.com/api/v4/movies/qDYQzM",
-    "https://apidd.btyjscl.com/api/v1/movies/qDYQzM/magnets",
+    "https://apidd.spthgb.com/api/v4/movies/qDYQzM",
+    "https://apidd.spthgb.com/api/v1/movies/qDYQzM/magnets",
   ]);
   assert.equal(detail.javId, "STARS-804");
   assert.equal(detail.director, "チク兄");

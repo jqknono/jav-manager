@@ -20,3 +20,4 @@ src/jav_cache.json
 dist/
 third_party/curl-impersonate/bin/
 *.apk
+jav_cache.json

@@ -14,9 +14,10 @@ JavDB 官方 Android App (代号 `astarte`) 是一个 Flutter 应用，通过 `/
 
 | 域名 | 用途 | 状态 |
 |------|------|------|
-| `apidd.btyjscl.com` | App API 后端 (主) | 活跃，`X-Powered-By: Javdb` |
-| `api.btyjscl.com` | App API 后端 (备) | 活跃，同上 |
-| `btyjscl.com` | App 落地页 (重定向 `/lander`) | 活跃 |
+| `apidd.spthgb.com` | App API 后端 (主) | 来自远程 `ds_store` 权威配置 |
+| `apidd.czssdgz.com` | App API 后端 (备) | 来自远程 `ds_store` 权威配置 |
+| `apidd.btyjscl.com` | App API 后端 (历史主站) | APK 内置快照；可能已过期 |
+| `api.btyjscl.com` | App API 后端 (历史备站) | 旧文档值；当前远程配置未包含 |
 | `tp.cmastd.com` | 图片 CDN (封面/缩略图/预览) | 活跃 |
 | `jdforrepam.com` | 视频预览 CDN (m3u8) | 活跃 |
 
@@ -80,7 +81,7 @@ def generate_jdsignature() -> str:
 ### 示例请求
 
 ```bash
-curl -s 'https://apidd.btyjscl.com/api/v2/search?q=STARS-804&type=movie' \
+curl -s 'https://apidd.spthgb.com/api/v2/search?q=STARS-804&type=movie' \
   -H 'User-Agent: JavDB-App/1.0' \
   -H 'Accept: application/json' \
   -H 'jdsignature: 1773826819.lpw6vgqzsp.51ed600308da9d9d3f178eeb1a55b820'

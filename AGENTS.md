@@ -71,5 +71,5 @@ Optional telemetry worker (`apps/backend-worker/`):
 
 - Runtime config is loaded from `appsettings.json` and optional `appsettings.Development.json`.
 - CLI arg overrides are supported for selected keys (see `src/config.ts` `extractOverrides`).
-- Do not commit secrets (qBittorrent/Everything credentials, API keys, local URLs); prefer local `appsettings.Development.json`.
+- Do not commit secrets (API keys, credentials, local URLs); prefer local `appsettings.Development.json`.
 - JavDB access is implemented via HTTP + HTML parsing; avoid introducing browser automation (e.g., Playwright) unless explicitly required.

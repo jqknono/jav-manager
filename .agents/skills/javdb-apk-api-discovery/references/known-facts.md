@@ -52,7 +52,7 @@ JSON object
 }
 ```
 
-### 远程 `ds_store`（校验脚本时更新后的内容）
+### 远程 `ds_store`（当前权威，已同步进仓库默认值）
 
 ```json
 {
@@ -74,6 +74,7 @@ JSON object
 说明：
 
 - 远程备份可热更新；**以远程为准**，APK 内置只是打包时快照。
+- 仓库已同步：`apps/client/src/data/javdb.ts`、`apps/backend-worker/src/index.ts`、`appsettings.json`。
 - 预览 CDN：`https://jdforrepam.com`（`libapp.so` 明文）
 - 残留 staging：`https://staging.letidi.com`（不像主 API）
 - 旧文档备站 `https://api.btyjscl.com` **未出现在**上述 `apiUrls`

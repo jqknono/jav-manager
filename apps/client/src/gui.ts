@@ -3,12 +3,11 @@ import os from "node:os";
 import { AppContext } from "./context";
 import { saveConfig } from "./config";
 import { LocalizationService } from "./localization";
-import { JavSearchResult, LocalFileInfo, TorrentInfo, UncensoredMarkerType } from "../../../packages/shared/src/models";
-import { EverythingHttpClient } from "./data/everything";
+import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../../../packages/shared/src/models";
+import { IHealthChecker } from "../../../packages/shared/src/interfaces";
 import { JavDbApiClient } from "./data/javdb";
-import { QBittorrentApiClient } from "./data/qbittorrent";
+import { SubtitleCatClient } from "./data/subtitlecat";
 import { normalizeJavId } from "../../../packages/shared/src/utils/torrentNameParser";
-import { openContainingFolder } from "./utils/platformShell";
 
 const defaultPort = 4860;
 const defaultHost = "0.0.0.0";
@@ -21,55 +20,36 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
 
   app.get("/", async (req, res) => {
     const query = typeof req.query.q === "string" ? req.query.q : "";
-    const searchLocal = req.query.local !== "0";
-    const searchRemote = req.query.remote !== "0";
     const status = "";
-    res.send(renderSearchPage(context.loc, externalLinks, { query, searchLocal, searchRemote, status }));
+    res.send(renderSearchPage(context.loc, externalLinks, { query, status }));
   });
 
   app.post("/search", async (req, res) => {
     const query = String(req.body.query ?? "");
-    const searchLocal = Boolean(req.body.searchLocal);
-    const searchRemote = Boolean(req.body.searchRemote);
     const normalized = normalizeJavId(query);
 
-    let localFiles: LocalFileInfo[] = [];
     let candidates: JavSearchResult[] = [];
     const warnings: string[] = [];
 
     if (normalized) {
       context.services.telemetryService.trackSearch(normalized);
 
-      if (searchLocal) {
-        try {
-          localFiles = await context.services.localFileCheckService.checkLocalFiles(normalized);
-        } catch (error) {
-          warnings.push(formatLocalSearchError(context.loc, error));
-        }
-      }
-
-      if (searchRemote) {
-        try {
-          candidates = await context.services.javDbProvider.searchCandidates(normalized);
-        } catch (error) {
-          warnings.push(formatRemoteSearchError(context.loc, error));
-        }
+      try {
+        candidates = await context.services.javDbProvider.searchCandidates(normalized);
+      } catch (error) {
+        warnings.push(formatRemoteSearchError(context.loc, error));
       }
     }
 
     const status = warnings.length
       ? warnings.join("; ")
-      : buildCompletionStatus(context.loc, searchLocal, searchRemote);
+      : context.loc.get("gui_status_remote_search_complete");
 
     res.send(
       renderSearchPage(context.loc, externalLinks, {
         query,
-        searchLocal,
-        searchRemote,
         status,
-        localFiles,
         candidates,
-        javId: normalized,
       })
     );
   });
@@ -78,8 +58,6 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
     const detailUrl = typeof req.query.url === "string" ? req.query.url : "";
     const javId = typeof req.query.javId === "string" ? req.query.javId : "";
     const query = typeof req.query.q === "string" ? req.query.q : "";
-    const searchLocal = req.query.local !== "0";
-    const searchRemote = req.query.remote !== "0";
 
     if (!detailUrl) {
       res.redirect("/");
@@ -111,73 +89,12 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
     res.send(
       renderDetailPage(context.loc, externalLinks, {
         query,
-        searchLocal,
-        searchRemote,
         status,
         detail,
         torrents,
         javId: javId || detail?.javId || "",
       })
     );
-  });
-
-  app.post("/download", async (req, res) => {
-    const javId = String(req.body.javId ?? "");
-    const title = String(req.body.title ?? "");
-    const magnetLink = String(req.body.magnetLink ?? "");
-    const size = Number(req.body.size ?? 0);
-    const hasHd = req.body.hasHd === "1";
-    const hasSubtitle = req.body.hasSubtitle === "1";
-    const hasUncensored = req.body.hasUncensoredMarker === "1";
-
-    let status = context.loc.get("gui_status_download_failed");
-    if (magnetLink) {
-      try {
-        const torrent: TorrentInfo = {
-          title,
-          magnetLink,
-          size,
-          hasHd,
-          hasSubtitle,
-          hasUncensoredMarker: hasUncensored,
-          uncensoredMarkerType: hasUncensored
-            ? hasSubtitle
-              ? UncensoredMarkerType.UC
-              : UncensoredMarkerType.U
-            : UncensoredMarkerType.None,
-          seeders: 0,
-          leechers: 0,
-          sourceSite: "JavDB",
-          dlSpeed: 0,
-          eta: 0,
-          weightScore: 0,
-        };
-
-        await context.services.downloadService.addDownload(torrent);
-        context.services.telemetryService.trackDownload(javId || normalizeJavId(title));
-        status = context.loc.get("gui_status_download_added");
-      } catch (error) {
-        status = error instanceof Error ? error.message : context.loc.get("gui_status_download_failed");
-      }
-    }
-
-    const next = javId ? `/?q=${encodeURIComponent(javId)}` : "/";
-    res.redirect(next);
-  });
-
-  // Render downloads page immediately, then load qBittorrent data asynchronously on the client.
-  // This avoids UI jank when switching to the "Downloads" tab.
-  app.get("/downloads", (_, res) => {
-    res.send(renderDownloadsPage(context.loc, externalLinks));
-  });
-
-  app.get("/api/downloads", async (_, res) => {
-    try {
-      const torrents = await context.services.downloadService.getDownloads();
-      res.json({ ok: true, torrents });
-    } catch (error) {
-      res.json({ ok: false, torrents: [], error: formatDownloadsError(context.loc, error) });
-    }
   });
 
   app.get("/settings", (_, res) => {
@@ -192,32 +109,16 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
 
   app.post("/api/test-all", async (req, res) => {
     try {
-      const toNullable = (v: unknown): string | null => {
-        const s = String(v ?? "").trim();
-        return s ? s : null;
-      };
-
-      const everythingCfg = {
-        baseUrl: String(req.body?.everythingBaseUrl ?? ""),
-        userName: toNullable(req.body?.everythingUserName),
-        password: toNullable(req.body?.everythingPassword),
-      };
-      const qbCfg = {
-        baseUrl: String(req.body?.qbBaseUrl ?? ""),
-        userName: toNullable(req.body?.qbUserName),
-        password: toNullable(req.body?.qbPassword),
-      };
       const javDbBaseUrl = String(req.body?.javDbBaseUrl ?? "");
       const javDbCfg = {
         ...context.config.javDb,
         baseUrl: javDbBaseUrl,
       };
 
-      const checkers = [
-        new EverythingHttpClient(everythingCfg),
-        new QBittorrentApiClient(qbCfg),
-        new JavDbApiClient(javDbCfg),
-      ];
+      const checkers: IHealthChecker[] = [new JavDbApiClient(javDbCfg)];
+      if (context.config.subtitle.enabled) {
+        checkers.push(new SubtitleCatClient(context.config.subtitle));
+      }
 
       const results = await Promise.all(checkers.map((c) => c.checkHealth()));
       context.services.serviceAvailability.updateFrom(results);
@@ -233,35 +134,6 @@ export function startGuiServer(context: AppContext, port: number = defaultPort, 
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       res.json({ results: [], error: message });
-    }
-  });
-
-  app.post("/api/open-file", async (req, res) => {
-    const filePath = String(req.body.path ?? "");
-    if (!filePath) {
-      res.json({ ok: false });
-      return;
-    }
-    try {
-      const open = (await import("open")).default;
-      await open(filePath);
-      res.json({ ok: true });
-    } catch {
-      res.json({ ok: false });
-    }
-  });
-
-  app.post("/api/open-folder", async (req, res) => {
-    const filePath = String(req.body.path ?? "");
-    if (!filePath) {
-      res.json({ ok: false });
-      return;
-    }
-    try {
-      await openContainingFolder(filePath);
-      res.json({ ok: true });
-    } catch {
-      res.json({ ok: false });
     }
   });
 
@@ -311,8 +183,6 @@ type GuiExternalLinks = {
   repoUrl: string;
   cloudflareUiUrl: string;
   javDbUrl: string;
-  everythingUrl: string;
-  qBittorrentUrl: string;
 };
 
 function getGuiExternalLinks(context: AppContext): GuiExternalLinks {
@@ -323,16 +193,7 @@ function getGuiExternalLinks(context: AppContext): GuiExternalLinks {
     repoUrl,
     cloudflareUiUrl,
     javDbUrl: "https://btyjscl.com/lander",
-    everythingUrl: context.loc.get("gui_link_everything"),
-    qBittorrentUrl: context.loc.get("gui_link_qbittorrent"),
   };
-}
-
-function buildCompletionStatus(loc: LocalizationService, searchLocal: boolean, searchRemote: boolean): string {
-  if (searchLocal && searchRemote) return loc.get("gui_status_local_and_remote_complete");
-  if (searchLocal) return loc.get("gui_status_local_search_complete");
-  if (searchRemote) return loc.get("gui_status_remote_search_complete");
-  return loc.get("gui_status_search_complete");
 }
 
 function renderSearchPage(
@@ -340,35 +201,11 @@ function renderSearchPage(
   links: GuiExternalLinks,
   data: {
     query: string;
-    searchLocal: boolean;
-    searchRemote: boolean;
     status: string;
-    localFiles?: LocalFileInfo[];
     candidates?: JavSearchResult[];
-    javId?: string;
   }
 ): string {
-  const localFiles = data.localFiles ?? [];
   const candidates = data.candidates ?? [];
-
-  const localSection = localFiles.length
-    ? renderCard(
-        loc.get("gui_section_local_files"),
-        `<ul class="file-list">${localFiles
-          .map(
-            (file) =>
-              `<li class="file-item">
-                <span class="file-info">${escapeHtml(file.fileName)} <code class="file-size">${formatSize(file.size)}</code></span>
-                <span class="file-path">${escapeHtml(file.fullPath)}</span>
-                <span class="file-actions">
-                  <button class="btn-sm" onclick="openFile('${escapeJs(file.fullPath)}')">${escapeHtml(loc.get("gui_open_file"))}</button>
-                  <button class="btn-sm btn-secondary" onclick="openFolder('${escapeJs(file.fullPath)}')">${escapeHtml(loc.get("gui_open_folder"))}</button>
-                </span>
-              </li>`
-          )
-          .join("")}</ul>`
-      )
-    : "";
 
   const candidateRows = candidates
     .map((item, idx) => {
@@ -413,17 +250,12 @@ function renderSearchPage(
             ${inputField(loc.get("gui_label_jav_id"), "query", data.query, loc.get("gui_placeholder_jav_id"))}
             ${button(loc.get("gui_search_button"), "submit")}
           </div>
-          <div class="row">
-            ${checkbox(loc.get("gui_label_search_local"), "searchLocal", data.searchLocal)}
-            ${checkbox(loc.get("gui_label_search_remote"), "searchRemote", data.searchRemote)}
-          </div>
         </form>`
       )}
       <div id="searchSpinner" class="spinner-wrap" style="display:none;">
         <div class="spinner"></div>
         <span class="spinner-text">${escapeHtml(loc.get("gui_status_searching"))}</span>
       </div>
-      ${localSection}
       ${candidateSection}
     `,
     "/",
@@ -436,8 +268,6 @@ function renderDetailPage(
   links: GuiExternalLinks,
   data: {
     query: string;
-    searchLocal: boolean;
-    searchRemote: boolean;
     status: string;
     detail: JavSearchResult | null;
     torrents: TorrentInfo[];
@@ -488,16 +318,8 @@ function renderDetailPage(
         </td>
         <td class="td-size"><code>${formatSize(torrent.size)}</code></td>
         <td class="td-action">
-          <form method="post" action="/download">
-            ${hidden("javId", data.javId)}
-            ${hidden("title", torrent.title)}
-            ${hidden("magnetLink", torrent.magnetLink)}
-            ${hidden("size", String(torrent.size))}
-            ${hidden("hasHd", torrent.hasHd ? "1" : "0")}
-            ${hidden("hasSubtitle", torrent.hasSubtitle ? "1" : "0")}
-            ${hidden("hasUncensoredMarker", torrent.hasUncensoredMarker ? "1" : "0")}
-            ${button(loc.get("gui_download_button"), "submit")}
-          </form>
+          <a class="button" href="${escapeHtml(torrent.magnetLink)}">${escapeHtml(loc.get("gui_download_button"))}</a>
+          <button class="button btn-secondary" type="button" data-magnet="${escapeHtml(torrent.magnetLink)}" onclick="copyMagnet(this)">${escapeHtml(loc.get("gui_copy_magnet"))}</button>
         </td>
       </tr>`;
     })
@@ -526,52 +348,6 @@ function renderDetailPage(
   );
 }
 
-function renderDownloadsPage(loc: LocalizationService, links: GuiExternalLinks, status?: string): string {
-  const statusHtml = status ? renderStatus(loc, status) : "";
-  const content = `
-    <div id="downloadsRoot">
-      <div id="downloadsStatus" aria-live="polite">${statusHtml}</div>
-      ${renderCard(
-        `${loc.get("gui_nav_downloads")} <span id="downloadsCount" class="count" style="display:none;"></span>`,
-        `
-          <div id="downloadsLoading" class="spinner-wrap" aria-hidden="true">
-            <div class="spinner" title="Loading"></div>
-          </div>
-          <div class="table-wrap" id="downloadsTableWrap" style="display:none;">
-            <table>${tableHeader([
-              loc.get("gui_table_name"),
-              loc.get("gui_table_state"),
-              loc.get("gui_table_size"),
-            ])}<tbody id="downloadsTbody"></tbody></table>
-          </div>
-        `,
-        false
-      )}
-    </div>
-  `;
-
-  return renderLayout(loc, loc.get("gui_nav_downloads"), content, "/downloads", links);
-}
-
-function formatDownloadsError(loc: LocalizationService, error: unknown): string {
-  const message = error instanceof Error ? error.message : loc.get("gui_status_download_failed");
-  // Convert common config errors into actionable UI hints.
-  if (/qBittorrent\.BaseUrl\s+is\s+empty/i.test(message)) {
-    const settingsLabel = loc.get("gui_nav_settings");
-    return `${loc.get("gui_status_download_failed")}: ${loc.getFormat("gui_error_qb_not_configured", settingsLabel)}`;
-  }
-  return `${loc.get("gui_status_download_failed")}: ${message}`;
-}
-
-function formatLocalSearchError(loc: LocalizationService, error: unknown): string {
-  const message = error instanceof Error ? error.message : "Unknown error";
-  if (/Everything\.BaseUrl\s+is\s+empty/i.test(message)) {
-    const settingsLabel = loc.get("gui_nav_settings");
-    return loc.getFormat("gui_error_everything_not_configured", settingsLabel);
-  }
-  return loc.getFormat("gui_error_local_search", message);
-}
-
 function formatRemoteSearchError(loc: LocalizationService, error: unknown): string {
   const message = error instanceof Error ? error.message : "Unknown error";
   return loc.getFormat("gui_error_remote_search", message);
@@ -591,28 +367,12 @@ function renderSettingsPage(loc: LocalizationService, links: GuiExternalLinks, c
       <div id="testResults" class="test-results" style="display:none;"></div>
       <form method="post" action="/settings" class="settings-grid">
         ${renderCard(
-          `${loc.get("gui_settings_section_everything")} ${extLink(links.everythingUrl, loc.get("gui_nav_everything"))}`,
-          `${inputField(loc.get("gui_field_base_url"), "everythingBaseUrl", cfg.everything.baseUrl)}
-          ${inputField(loc.get("gui_field_username"), "everythingUserName", cfg.everything.userName ?? "")}
-          ${inputField(loc.get("gui_field_password"), "everythingPassword", cfg.everything.password ?? "", "", "password")}`,
-          false
-        )}
-        ${renderCard(
-          `${loc.get("gui_settings_section_qbittorrent")} ${extLink(links.qBittorrentUrl, loc.get("gui_nav_qbittorrent"))}`,
-          `${inputField(loc.get("gui_field_base_url"), "qbBaseUrl", cfg.qBittorrent.baseUrl)}
-          ${inputField(loc.get("gui_field_username"), "qbUserName", cfg.qBittorrent.userName ?? "")}
-          ${inputField(loc.get("gui_field_password"), "qbPassword", cfg.qBittorrent.password ?? "", "", "password")}`,
-          false
-        )}
-        ${renderCard(
           `${loc.get("gui_settings_section_javdb")} ${extLink(links.javDbUrl, loc.get("gui_nav_javdb"))}`,
           `${inputField(loc.get("gui_field_base_url"), "javDbBaseUrl", cfg.javDb.baseUrl)}`,
           false
         )}
-        ${renderCard(loc.get("gui_settings_section_download"), `
-          ${inputField(loc.get("gui_field_default_save_path"), "defaultSavePath", cfg.download.defaultSavePath)}
-          ${inputField(loc.get("gui_field_default_category"), "defaultCategory", cfg.download.defaultCategory)}
-          ${inputField(loc.get("gui_field_default_tags"), "defaultTags", cfg.download.defaultTags)}
+        ${renderCard(loc.get("gui_settings_section_subtitle"), `
+          ${inputField(loc.get("gui_field_subtitle_save_path"), "subtitleSavePath", cfg.subtitle.savePath)}
         `)}
         ${renderCard(loc.get("gui_settings_section_language"), `
           ${selectField("", "language", cfg.console.language, [
@@ -635,20 +395,9 @@ function renderSettingsPage(loc: LocalizationService, links: GuiExternalLinks, c
 
 function applySettings(context: AppContext, body: Record<string, string>): void {
   const cfg = context.config;
-  cfg.everything.baseUrl = String(body.everythingBaseUrl ?? cfg.everything.baseUrl);
-  cfg.everything.userName = body.everythingUserName ? String(body.everythingUserName) : null;
-  cfg.everything.password = body.everythingPassword ? String(body.everythingPassword) : null;
-
-  cfg.qBittorrent.baseUrl = String(body.qbBaseUrl ?? cfg.qBittorrent.baseUrl);
-  cfg.qBittorrent.userName = body.qbUserName ? String(body.qbUserName) : null;
-  cfg.qBittorrent.password = body.qbPassword ? String(body.qbPassword) : null;
-
   cfg.javDb.baseUrl = String(body.javDbBaseUrl ?? cfg.javDb.baseUrl);
   cfg.javDb.mirrorUrls = [];
-
-  cfg.download.defaultSavePath = String(body.defaultSavePath ?? cfg.download.defaultSavePath);
-  cfg.download.defaultCategory = String(body.defaultCategory ?? cfg.download.defaultCategory);
-  cfg.download.defaultTags = String(body.defaultTags ?? cfg.download.defaultTags);
+  cfg.subtitle.savePath = String(body.subtitleSavePath ?? cfg.subtitle.savePath);
 
   const language = body.language === "zh" ? "zh" : body.language === "ja" ? "ja" : body.language === "ko" ? "ko" : "en";
   cfg.console.language = language;
@@ -664,7 +413,6 @@ function renderLayout(
 ): string {
   const navItems = [
     { href: "/", label: loc.get("gui_nav_search"), icon: "&#9906;" },
-    { href: "/downloads", label: loc.get("gui_nav_downloads"), icon: "&#8615;" },
     { href: "/settings", label: loc.get("gui_nav_settings"), icon: "&#9881;" },
   ];
   const navLinks = navItems
@@ -737,9 +485,7 @@ function renderStatus(loc: LocalizationService, status: string): string {
   }
   const completionKeys = [
     "gui_status_search_complete",
-    "gui_status_local_search_complete",
     "gui_status_remote_search_complete",
-    "gui_status_local_and_remote_complete",
     "gui_status_searching",
   ];
   const isOk = completionKeys.some((k) => status === loc.get(k));
@@ -755,15 +501,6 @@ function inputField(label: string, name: string, value: string, placeholder = ""
       <input type="${type}" name="${escapeHtml(name)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(
     placeholder
   )}" />
-    </label>
-  `;
-}
-
-function checkbox(label: string, name: string, checked: boolean): string {
-  return `
-    <label class="checkbox">
-      <input type="checkbox" name="${escapeHtml(name)}" ${checked ? "checked" : ""} />
-      <span>${escapeHtml(label)}</span>
     </label>
   `;
 }
@@ -794,10 +531,6 @@ function tableHeader(headers: string[]): string {
   return `<thead><tr>${cols}</tr></thead>`;
 }
 
-function hidden(name: string, value: string): string {
-  return `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}" />`;
-}
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -821,7 +554,7 @@ function formatSize(bytes: number): string {
 function clientScript(loc: LocalizationService): string {
   const themeDark = escapeJs(loc.get("gui_theme_dark"));
   const themeLight = escapeJs(loc.get("gui_theme_light"));
-  const downloadFailed = escapeJs(loc.get("gui_status_download_failed"));
+  const magnetCopied = escapeJs(loc.get("gui_magnet_copied"));
   return `
     function ready(fn) {
       if (document.readyState !== 'loading') fn();
@@ -831,7 +564,7 @@ function clientScript(loc: LocalizationService): string {
     // Theme
     var THEME_LABEL_DARK = '${themeDark}';
     var THEME_LABEL_LIGHT = '${themeLight}';
-    var DL_FAILED = '${downloadFailed}';
+    var MAGNET_COPIED = '${magnetCopied}';
     function updateThemeToggle(theme) {
       var btn = document.getElementById('themeToggle');
       if (!btn) return;
@@ -864,22 +597,6 @@ function clientScript(loc: LocalizationService): string {
       applyTheme(current === 'light' ? 'dark' : 'light');
     }
 
-    // Persist checkbox state in session
-    function bindCheckbox(name, storageKey) {
-      var el = document.querySelector('input[type=checkbox][name=\"' + name + '\"]');
-      if (!el) return;
-      var stored = null;
-      try { stored = sessionStorage.getItem(storageKey); } catch (e) {}
-      if (stored === '1' || stored === '0') {
-        el.checked = stored === '1';
-      } else {
-        try { sessionStorage.setItem(storageKey, el.checked ? '1' : '0'); } catch (e) {}
-      }
-      el.addEventListener('change', function() {
-        try { sessionStorage.setItem(storageKey, el.checked ? '1' : '0'); } catch (e) {}
-      });
-    }
-
     function escapeHtml(s) {
       return String(s || '')
         .replace(/&/g, '&amp;')
@@ -889,83 +606,9 @@ function clientScript(loc: LocalizationService): string {
         .replace(/'/g, '&#39;');
     }
 
-    function formatSize(bytes) {
-      bytes = Number(bytes) || 0;
-      if (bytes <= 0) return '-';
-      if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
-      if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-      return (bytes / 1024).toFixed(2) + ' KB';
-    }
-
-    function showDownloadsError(message) {
-      var container = document.getElementById('downloadsStatus');
-      if (!container) return;
-      container.innerHTML = '<div class=\"status status-warn\">' + escapeHtml(message) + '</div>';
-    }
-
-    function clearDownloadsStatus() {
-      var container = document.getElementById('downloadsStatus');
-      if (!container) return;
-      container.innerHTML = '';
-    }
-
-    function loadDownloads() {
-      var root = document.getElementById('downloadsRoot');
-      if (!root) return;
-
-      var loading = document.getElementById('downloadsLoading');
-      var tableWrap = document.getElementById('downloadsTableWrap');
-      if (loading) loading.style.display = 'flex';
-      if (tableWrap) tableWrap.style.display = 'none';
-
-      fetch('/api/downloads', { cache: 'no-store' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (!data || !data.ok) {
-            showDownloadsError((data && data.error) ? data.error : DL_FAILED);
-            return;
-          }
-
-          clearDownloadsStatus();
-
-          var torrents = data.torrents || [];
-          var countEl = document.getElementById('downloadsCount');
-          if (countEl) {
-            countEl.textContent = String(torrents.length || 0);
-            countEl.style.display = torrents.length ? 'inline-flex' : 'none';
-          }
-
-          var body = document.getElementById('downloadsTbody');
-          if (body) {
-            var html = '';
-            for (var i = 0; i < torrents.length; i++) {
-              var t = torrents[i] || {};
-              var name = t.name || t.title || '';
-              var state = t.state || '-';
-              html += '<tr>'
-                + '<td class=\"td-title\">' + escapeHtml(name) + '</td>'
-                + '<td><code>' + escapeHtml(state) + '</code></td>'
-                + '<td class=\"td-size\"><code>' + escapeHtml(formatSize(t.size)) + '</code></td>'
-                + '</tr>';
-            }
-            body.innerHTML = html;
-          }
-
-          if (tableWrap) tableWrap.style.display = 'block';
-        })
-        .catch(function() {
-          showDownloadsError(DL_FAILED);
-        })
-        .finally(function() {
-          if (loading) loading.style.display = 'none';
-        });
-    }
-
     // Search spinner + init hooks
     ready(function() {
       initTheme();
-      bindCheckbox('searchLocal', 'gui.searchLocal');
-      bindCheckbox('searchRemote', 'gui.searchRemote');
 
       var form = document.getElementById('searchForm');
       if (form) {
@@ -973,11 +616,6 @@ function clientScript(loc: LocalizationService): string {
           var spinner = document.getElementById('searchSpinner');
           if (spinner) spinner.style.display = 'flex';
         });
-      }
-
-      // Defer downloads loading so the tab/page can render first.
-      if (document.getElementById('downloadsRoot')) {
-        setTimeout(loadDownloads, 0);
       }
     });
 
@@ -995,12 +633,6 @@ function clientScript(loc: LocalizationService): string {
         return el && typeof el.value === 'string' ? el.value : '';
       };
       var payload = {
-        everythingBaseUrl: getValue('everythingBaseUrl'),
-        everythingUserName: getValue('everythingUserName'),
-        everythingPassword: getValue('everythingPassword'),
-        qbBaseUrl: getValue('qbBaseUrl'),
-        qbUserName: getValue('qbUserName'),
-        qbPassword: getValue('qbPassword'),
         javDbBaseUrl: getValue('javDbBaseUrl'),
       };
 
@@ -1024,7 +656,7 @@ function clientScript(loc: LocalizationService): string {
           var cls = r.ok ? 'test-ok' : 'test-fail';
           var icon = r.ok ? '✓' : '✗';
           var msg = r.message || (r.ok ? 'OK' : 'Failed');
-          html += '<div class="test-item ' + cls + '"><span class="test-icon">' + icon + '</span><strong>' + r.name + '</strong> <span class="test-msg">' + msg + '</span></div>';
+          html += '<div class="test-item ' + cls + '"><span class="test-icon">' + icon + '</span><strong>' + escapeHtml(r.name) + '</strong> <span class="test-msg">' + escapeHtml(msg) + '</span></div>';
         }
         container.innerHTML = html;
         container.style.display = 'block';
@@ -1037,20 +669,29 @@ function clientScript(loc: LocalizationService): string {
       });
     }
 
-    // Open file / folder
-    function openFile(filePath) {
-      fetch('/api/open-file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath })
-      }).catch(function(){});
-    }
-    function openFolder(filePath) {
-      fetch('/api/open-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath })
-      }).catch(function(){});
+    function copyMagnet(button) {
+      var magnet = button.getAttribute('data-magnet') || '';
+      if (!magnet) return;
+      var original = button.textContent;
+      var done = function() {
+        button.textContent = MAGNET_COPIED;
+        window.setTimeout(function() { button.textContent = original; }, 1500);
+      };
+      var fallback = function() {
+        var field = document.createElement('textarea');
+        field.value = magnet;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        try { if (document.execCommand('copy')) done(); } catch (e) {}
+        document.body.removeChild(field);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(magnet).then(done).catch(fallback);
+      } else {
+        fallback();
+      }
     }
   `;
 }

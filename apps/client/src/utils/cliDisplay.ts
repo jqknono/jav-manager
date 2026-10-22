@@ -21,7 +21,6 @@ const R = (): string => esc("0");
 const BOLD = (): string => esc("1");
 const DIM = (): string => esc("2");
 const ITALIC = (): string => esc("3");
-const UNDERLINE = (): string => esc("4");
 
 // Foreground colors
 const FG_BLACK = (): string => esc("30");
@@ -574,105 +573,6 @@ export function printCacheStats(totalJav: number, totalTorrents: number, sizeByt
   console.log("");
 }
 
-/**
- * Print a download list.
- */
-export function printDownloadList(downloads: Array<{ name: string; size: string; state: string }>): void {
-  if (downloads.length === 0) {
-    printInfo("No active downloads");
-    return;
-  }
-
-  const w = clampWidth(80);
-  const line = c(BOX.h.repeat(w), FG_GRAY);
-
-  console.log("");
-  console.log(`  ${c("DOWNLOADS", BOLD, FG_BRIGHT_WHITE)} ${c(`(${downloads.length})`, DIM, FG_GRAY)}`);
-  console.log(line);
-
-  for (const d of downloads) {
-    const stateColor = getStateColor(d.state);
-    const icon = getStateIcon(d.state);
-    const name = c(d.name, FG_WHITE);
-    const size = c(d.size, FG_BRIGHT_YELLOW);
-    const state = c(d.state, ...stateColor);
-
-    console.log(`  ${icon} ${name}`);
-    console.log(`       ${size}  ${state}`);
-  }
-
-  console.log(line);
-  console.log("");
-}
-
-/**
- * Print local file results.
- */
-export function printLocalFiles(
-  files: Array<{ name: string; size: string; path: string }>,
-  options?: { startIndex?: number; totalCount?: number; page?: number; totalPages?: number },
-): void {
-  if (files.length === 0) return;
-
-  const startIndex = options?.startIndex ?? 0;
-  const totalCount = options?.totalCount ?? files.length;
-  const page = options?.page;
-  const totalPages = options?.totalPages;
-
-  const totalWidth = getTermWidth();
-  let idxW = 3;
-  let nameW = 24;
-  let sizeW = 10;
-  const colCount = 4;
-  const baseOverhead = 2 + 1 + colCount * 2 + (colCount - 1) + 2; // indent + borders/padding
-  let pathW = totalWidth - baseOverhead - idxW - nameW - sizeW;
-  if (pathW < 20) {
-    nameW = 18;
-    pathW = totalWidth - baseOverhead - idxW - nameW - sizeW;
-  }
-  if (pathW < 16) {
-    sizeW = 8;
-    pathW = totalWidth - baseOverhead - idxW - nameW - sizeW;
-  }
-  pathW = Math.max(16, pathW);
-
-  const top = c(
-    BOX.tl + BOX.h.repeat(idxW + 2) + BOX.tT + BOX.h.repeat(nameW + 2) + BOX.tT + BOX.h.repeat(sizeW + 2) + BOX.tT + BOX.h.repeat(pathW + 2) + BOX.tr,
-    FG_GRAY
-  );
-  const mid = c(
-    BOX.lT + BOX.h.repeat(idxW + 2) + BOX.cross + BOX.h.repeat(nameW + 2) + BOX.cross + BOX.h.repeat(sizeW + 2) + BOX.cross + BOX.h.repeat(pathW + 2) + BOX.rT,
-    FG_GRAY
-  );
-  const bot = c(
-    BOX.bl + BOX.h.repeat(idxW + 2) + BOX.bT + BOX.h.repeat(nameW + 2) + BOX.bT + BOX.h.repeat(sizeW + 2) + BOX.bT + BOX.h.repeat(pathW + 2) + BOX.br,
-    FG_GRAY
-  );
-
-  console.log("");
-  const pageText = page && totalPages ? ` ${c(`Page ${page}/${totalPages}`, DIM, FG_GRAY)}` : "";
-  console.log(`  ${c("LOCAL FILES", BOLD, FG_BRIGHT_WHITE)} ${c(`(${totalCount})`, DIM, FG_GRAY)}${pageText}`);
-  console.log(`  ${top}`);
-  console.log(
-    `  ${c(BOX.v, FG_GRAY)} ${padStart(c("#", BOLD, FG_BRIGHT_WHITE), idxW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Name", BOLD, FG_BRIGHT_WHITE), nameW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Size", BOLD, FG_BRIGHT_WHITE), sizeW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c("Path", BOLD, FG_BRIGHT_WHITE), pathW)} ${c(BOX.v, FG_GRAY)}`
-  );
-  console.log(`  ${mid}`);
-
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const idx = String(startIndex + i + 1);
-    const name = truncateText(f.name || "-", nameW);
-    const size = f.size || "-";
-    const path = truncateText(f.path || "-", pathW);
-    console.log(
-      `  ${c(BOX.v, FG_GRAY)} ${padStart(c(idx, FG_GRAY), idxW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(name, FG_WHITE), nameW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(size, FG_BRIGHT_YELLOW), sizeW)} ${c(BOX.v, FG_GRAY)} ${padEnd(c(path, DIM, FG_GRAY), pathW)} ${c(BOX.v, FG_GRAY)}`
-    );
-  }
-
-  console.log(`  ${bot}`);
-  console.log("");
-}
-
 // ─── Status messages ────────────────────────────────────────────────
 
 export function printSearching(javId: string): void {
@@ -695,11 +595,6 @@ export function printInfo(msg: string): void {
   console.log(`  ${c("\u2022", FG_CYAN)} ${c(msg, FG_WHITE)}`);
 }
 
-export function printMagnetLink(msg: string, link: string): void {
-  console.log(`  ${c("\u26A0", FG_BRIGHT_YELLOW)} ${c(msg, FG_YELLOW)}`);
-  console.log(`  ${c(link, FG_BRIGHT_CYAN, BOLD, UNDERLINE)}`);
-}
-
 /**
  * Styled prompt string for readline.
  */
@@ -717,23 +612,3 @@ function formatBytes(bytes: number): string {
 }
 
 export { formatBytes as formatSize };
-
-function getStateColor(state: string): Array<() => string> {
-  const lower = state.toLowerCase();
-  if (/download|metadl/i.test(lower)) return [FG_BRIGHT_CYAN, BOLD];
-  if (/stalled/i.test(lower)) return [FG_BRIGHT_YELLOW];
-  if (/upload|seed/i.test(lower)) return [FG_BRIGHT_GREEN];
-  if (/pause/i.test(lower)) return [FG_GRAY];
-  if (/error|missing/i.test(lower)) return [FG_BRIGHT_RED];
-  return [FG_WHITE];
-}
-
-function getStateIcon(state: string): string {
-  const lower = state.toLowerCase();
-  if (/download|metadl/i.test(lower)) return c("\u25BC", FG_BRIGHT_CYAN);  // ▼
-  if (/stalled/i.test(lower)) return c("\u25AC", FG_BRIGHT_YELLOW);        // ▬
-  if (/upload|seed/i.test(lower)) return c("\u25B2", FG_BRIGHT_GREEN);     // ▲
-  if (/pause/i.test(lower)) return c("\u25A0", FG_GRAY);                    // ■
-  if (/error|missing/i.test(lower)) return c("\u25CF", FG_BRIGHT_RED);     // ●
-  return c("\u25CB", FG_WHITE);                                              // ○
-}

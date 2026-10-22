@@ -1,6 +1,6 @@
 # JavManager
 
-A lightweight GUI + CLI tool for automated JAV content management with fast repeat searches, torrent search, and optional qBittorrent integration.
+A lightweight GUI + CLI tool for searching JAV metadata and torrents, then opening or copying magnet links.
 
 [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -41,9 +41,8 @@ test/               Node test suite
 ```
 
 Notes:
-- Everything (local search) and qBittorrent (download) are optional integrations. JavManager works without them (it can still search JavDB and output magnet links).
 - Replace `npx jav-manager` with `jav-manager` if you installed it globally (`npm install -g jav-manager`).
-- If you need support for other tools with HTTP APIs (e.g., other search engines or download clients), please [create an issue](../../issues/new).
+- Torrent clients can open a magnet link from the GUI or CLI output.
 
 ## Features
 
@@ -51,40 +50,9 @@ Notes:
 - Multilingual UI (English, Chinese, Japanese, Korean)
 - Search JAV metadata and torrents/magnets from JavDB
 - Search external subtitles by JAV ID from SubtitleCat and optional index sites
-- Check local files via Everything search engine
-- Download via qBittorrent WebUI API
+- Open or copy selected magnet links
 - Local JSON cache for repeat searches
 - Smart torrent selection with weight-based ranking (markers + weights)
-
-## Screenshots
-
-### CLI
-
-<p align="center">
-  <img src="assets/cli-help.png" alt="CLI help — available commands" width="700" />
-</p>
-
-<p align="center"><em>Interactive CLI — available commands and keyboard shortcuts</em></p>
-
-<p align="center">
-  <img src="assets/cli-search.png" alt="CLI search results and torrent selection" width="700" />
-</p>
-
-<p align="center"><em>Search results table and torrent selection with tags (HD / SUB / UC)</em></p>
-
-### GUI
-
-<p align="center">
-  <img src="assets/gui-search.png" alt="GUI search page (dark mode)" width="800" />
-</p>
-
-<p align="center"><em>Web UI — search page with JAV ID input and filter options</em></p>
-
-<p align="center">
-  <img src="assets/gui-settings.png" alt="GUI settings page" width="800" />
-</p>
-
-<p align="center"><em>Web UI — settings page with service configuration and language selector</em></p>
 
 ## Workflow
 
@@ -95,11 +63,9 @@ flowchart TD
     B -->|No| D[Fetch from JavDB]
     C --> E[Rank torrents]
     D --> E
-    E --> F{Local file exists?}
-    F -->|Yes| G[Show options]
-    F -->|No| H[Add to downloader]
-    G --> H
-    H --> I[Done]
+    E --> F[Select torrent]
+    F --> G[Open or copy magnet link]
+    G --> H[Done]
 
     classDef primary fill:#2563eb,stroke:#1d4ed8,color:#ffffff;
     classDef decision fill:#f59e0b,stroke:#d97706,color:#111827;
@@ -116,8 +82,6 @@ flowchart TD
 |---------|----------|---------|------|
 | JavDB App API | Yes | Metadata & magnet links | [`doc/javdb-app-api/README.md`](doc/javdb-app-api/README.md) |
 | SubtitleCat | No (optional) | External subtitle search | [subtitlecat.com](https://www.subtitlecat.com/) |
-| Everything | No (optional) | Local file search | [voidtools.com](https://www.voidtools.com/everything-1.5a/) ([HTTP plugin](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9799)) |
-| qBittorrent | No (optional) | Torrent download | [qBittorrent](https://github.com/qbittorrent/qBittorrent) |
 
 ### Backend Worker APIs (Optional)
 
@@ -144,22 +108,13 @@ Configuration reference:
 
 | Section | Key | Required | Default | Description |
 |---------|-----|----------|---------|-------------|
-| Everything | `BaseUrl` | No (optional) | _(empty)_ | Everything HTTP server base URL (include scheme and host). If unavailable, local dedup is skipped. |
-| Everything | `UserName` | No (optional) | _(empty)_ | Basic auth user name. |
-| Everything | `Password` | No (optional) | _(empty)_ | Basic auth password. |
-| QBittorrent | `BaseUrl` | No (optional) | _(empty)_ | qBittorrent WebUI base URL (include port if needed). If unavailable/auth fails, JavManager prints magnet links without adding to download queue. |
-| QBittorrent | `UserName` | No (optional) | _(empty)_ | WebUI user name. |
-| QBittorrent | `Password` | No (optional) | _(empty)_ | WebUI password. |
-| JavDb | `BaseUrl` | Yes | `https://apidd.btyjscl.com` | Primary JavDB App API base URL. |
+| JavBackend | `BaseUrl` | Yes | `https://apidd.spthgb.com` | Primary JavDB App API base URL (or backend worker base URL). |
 | JavDb | `MirrorUrls` | No (optional) | `[]` | Additional App API base URLs for fallback. |
 | JavDb | `RequestTimeout` | No (optional) | `30000` | Request timeout in milliseconds. |
 | JavDb | `UserAgent` | No (optional) | _(empty)_ | Custom User-Agent string for JavDB requests. |
-| Download | `DefaultSavePath` | No (optional) | _(empty)_ | Default download path when adding torrents to qBittorrent. |
-| Download | `DefaultCategory` | No (optional) | `jav` | Default category in qBittorrent. |
-| Download | `DefaultTags` | No (optional) | `jav-manager` | Default tags for created downloads. |
 | Subtitle | `Enabled` | No (optional) | `true` | Enable CLI subtitle search (`sub <id>`). |
 | Subtitle | `BaseUrl` | No (optional) | `https://www.subtitlecat.com` | SubtitleCat base URL. |
-| Subtitle | `SavePath` | No (optional) | _(empty)_ | Directory for downloaded `.srt` files. Falls back to `Download.DefaultSavePath`, then `subtitles/` in the config directory. |
+| Subtitle | `SavePath` | No (optional) | _(empty)_ | Directory for downloaded `.srt` files. Falls back to `subtitles/` in the config directory. |
 | Subtitle | `PreferredLanguages` | No (optional) | `zh-CN, zh, zh-TW` | Language preference when a subtitle has multiple ready downloads. |
 | Subtitle | `IndexSites` | No (optional) | JavSubtitled, Javzimu | Extra HTML index sites searched by JAV ID. Unreachable sites are skipped. |
 | LocalCache | `Enabled` | No (optional) | `true` | Enable or disable local cache storage. |

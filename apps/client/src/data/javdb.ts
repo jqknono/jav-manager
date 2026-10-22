@@ -5,8 +5,8 @@ import { JavSearchResult, TorrentInfo, UncensoredMarkerType } from "../../../../
 import { normalizeJavId, parseTorrentName, isValidJavId } from "../../../../packages/shared/src/utils/torrentNameParser";
 import { splitTitleVariants } from "../../../../packages/shared/src/utils/titleVariants";
 
-const DefaultAppApiBaseUrl = "https://apidd.btyjscl.com";
-const FallbackAppApiBaseUrl = "https://api.btyjscl.com";
+const DefaultAppApiBaseUrl = "https://apidd.spthgb.com";
+const FallbackAppApiBaseUrl = "https://apidd.czssdgz.com";
 const DefaultUserAgent = "JavDB-App/1.0";
 const DefaultAppSecret =
   "71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa";
@@ -224,7 +224,12 @@ function buildApiBaseUrls(config: JavDbConfig): string[] {
 function isDirectAppApiBase(baseUrl: string): boolean {
   try {
     const { host } = new URL(baseUrl);
-    return host === "apidd.btyjscl.com" || host === "api.btyjscl.com";
+    return (
+      host === "apidd.spthgb.com"
+      || host === "apidd.czssdgz.com"
+      || host === "apidd.btyjscl.com"
+      || host === "api.btyjscl.com"
+    );
   } catch {
     return false;
   }

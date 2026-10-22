@@ -4,12 +4,6 @@ export enum UncensoredMarkerType {
   U = "U",
 }
 
-export enum FileType {
-  Video = "Video",
-  Folder = "Folder",
-  Torrent = "Torrent",
-}
-
 export interface TorrentInfo {
   title: string;
   magnetLink: string;
@@ -49,14 +43,6 @@ export interface JavSearchResult {
   cachedAt?: string;
 }
 
-export interface LocalFileInfo {
-  fileName: string;
-  fullPath: string;
-  size: number;
-  modifiedDate: string;
-  fileType: FileType;
-}
-
 export interface UserSelectionOption<T = unknown> {
   index: number;
   description: string;
@@ -66,7 +52,6 @@ export interface UserSelectionOption<T = unknown> {
 export interface UserSelectionResult {
   selectedIndex: number;
   isCancelled: boolean;
-  forceDownload: boolean;
 }
 
 export interface CacheStatistics {

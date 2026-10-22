@@ -62,7 +62,7 @@ test("loadConfig reads JavBackend section and still filters legacy javdb mirror 
     configPath,
     JSON.stringify(
       {
-        JavBackend: { BaseUrl: "https://backend.example.com", MirrorUrls: ["https://javdb571.com", "https://api.btyjscl.com"] },
+        JavBackend: { BaseUrl: "https://backend.example.com", MirrorUrls: ["https://javdb571.com", "https://apidd.czssdgz.com"] },
       },
       null,
       2
@@ -75,7 +75,7 @@ test("loadConfig reads JavBackend section and still filters legacy javdb mirror 
     delete process.env.JAVMANAGER_BACKEND_ENDPOINT;
     const config = loadConfig();
     assert.equal(config.javDb.baseUrl, "https://backend.example.com");
-    assert.deepEqual(config.javDb.mirrorUrls, ["https://api.btyjscl.com"]);
+    assert.deepEqual(config.javDb.mirrorUrls, ["https://apidd.czssdgz.com"]);
     assert.equal(config.subtitle.enabled, true);
     assert.equal(config.subtitle.baseUrl, "https://www.subtitlecat.com");
   } finally {

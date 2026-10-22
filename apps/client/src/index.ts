@@ -2,14 +2,12 @@ import { AppConfig, extractOverrides, loadConfig } from "./config";
 import { AppContext } from "./context";
 import { LocalizationService } from "./localization";
 import { JsonJavCacheProvider } from "./data/cache";
-import { EverythingHttpClient } from "./data/everything";
 import { JavDbApiClient } from "./data/javdb";
-import { QBittorrentApiClient } from "./data/qbittorrent";
 import { SubtitleCatClient } from "./data/subtitlecat";
 import { SubtitleIndexClient } from "./data/subtitleIndex";
 import { isLightweightCliCommand, runCli } from "./cli";
 import { startGuiServer } from "./gui";
-import { DownloadService, HealthCheckService, JavInfoTelemetryClient, JavSearchService, LocalFileCheckService, ServiceAvailability, SubtitleSearchService, TelemetryService, TorrentSelectionService } from "./services";
+import { HealthCheckService, JavInfoTelemetryClient, JavSearchService, ServiceAvailability, SubtitleSearchService, TelemetryService, TorrentSelectionService } from "./services";
 
 export async function runAutoEntry(rawArgs: string[] = process.argv.slice(2)): Promise<void> {
   const { overrides, remaining } = extractOverrides(rawArgs);
@@ -100,20 +98,14 @@ function parseGuiArgs(args: string[]): { host: string; port: number } {
 
 export function createAppContext(config: AppConfig, loc: LocalizationService): AppContext {
   const javDbProvider = new JavDbApiClient(config.javDb);
-  const everythingProvider = new EverythingHttpClient(config.everything);
-  const qbClient = new QBittorrentApiClient(config.qBittorrent);
   const cacheProvider = config.localCache.enabled ? new JsonJavCacheProvider(config.localCache) : null;
   const serviceAvailability = new ServiceAvailability();
   const torrentSelectionService = new TorrentSelectionService(config.console.hideOtherTorrents);
-  const localFileCheckService = new LocalFileCheckService(everythingProvider);
-  const downloadService = new DownloadService(qbClient, config.download);
   const telemetryClient = new JavInfoTelemetryClient(config.telemetry);
   const telemetryService = new TelemetryService(config.telemetry);
   const javSearchService = new JavSearchService(
     javDbProvider,
     torrentSelectionService,
-    localFileCheckService,
-    downloadService,
     serviceAvailability,
     loc,
     cacheProvider
@@ -125,10 +117,10 @@ export function createAppContext(config: AppConfig, loc: LocalizationService): A
         ...config.subtitle.indexSites.map((site) => new SubtitleIndexClient(site, config.subtitle.requestTimeout, config.subtitle.userAgent)),
       ]
     : [];
-  const subtitleSearchService = new SubtitleSearchService(subtitleProviders, config.subtitle, config.download);
+  const subtitleSearchService = new SubtitleSearchService(subtitleProviders, config.subtitle);
   const healthCheckers = config.subtitle.enabled
-    ? [everythingProvider, qbClient, javDbProvider, subtitleCatClient]
-    : [everythingProvider, qbClient, javDbProvider];
+    ? [javDbProvider, subtitleCatClient]
+    : [javDbProvider];
   const healthCheckService = new HealthCheckService(healthCheckers, loc);
 
   return {
@@ -136,13 +128,9 @@ export function createAppContext(config: AppConfig, loc: LocalizationService): A
     loc,
     services: {
       javDbProvider,
-      everythingProvider,
-      qbClient,
       cacheProvider,
       serviceAvailability,
       torrentSelectionService,
-      localFileCheckService,
-      downloadService,
       javSearchService,
       subtitleSearchService,
       healthCheckService,

@@ -54,12 +54,6 @@ test("searchOnly does not report javinfo telemetry during search", async () => {
     {
       getSortedTorrents: (torrents) => torrents,
     },
-    {
-      checkLocalFiles: async () => [],
-    },
-    {
-      addDownload: async () => true,
-    },
     new ServiceAvailability(),
     makeLoc(),
     null,
@@ -99,12 +93,6 @@ test("process does not fetch detail just for telemetry reporting", async () => {
       selectBest: (torrents) => torrents[0] ?? null,
       getSortedTorrents: (torrents) => torrents,
     },
-    {
-      checkLocalFiles: async () => [],
-    },
-    {
-      addDownload: async () => true,
-    },
     new ServiceAvailability(),
     makeLoc(),
     {
@@ -118,8 +106,8 @@ test("process does not fetch detail just for telemetry reporting", async () => {
     },
   );
 
-  const result = await svc.process("MIAA-711", true, false);
+  const result = await svc.process("MIAA-711", true);
   assert.equal(result.success, true);
-  assert.equal(result.downloaded, true);
+  assert.equal(result.magnetLink, "magnet:?xt=urn:btih:deadbeef");
   assert.equal(detailCalls, 0);
 });

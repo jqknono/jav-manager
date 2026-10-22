@@ -1,9 +1,9 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { DownloadConfig, SubtitleConfig, TelemetryConfig } from "./config";
-import { IEverythingSearchProvider, IHealthChecker, IJavDbDataProvider, IJavLocalCacheProvider, IQBittorrentClient, ISubtitleSearchProvider } from "../../../packages/shared/src/interfaces";
-import { CacheStatistics, FileType, HealthCheckResult, JavSearchResult, LocalFileInfo, SubtitleLanguageOption, SubtitleSearchItem, SubtitleSearchResult, TorrentInfo } from "../../../packages/shared/src/models";
+import { SubtitleConfig, TelemetryConfig } from "./config";
+import { IHealthChecker, IJavDbDataProvider, IJavLocalCacheProvider, ISubtitleSearchProvider } from "../../../packages/shared/src/interfaces";
+import { CacheStatistics, HealthCheckResult, JavSearchResult, SubtitleLanguageOption, SubtitleSearchItem, SubtitleSearchResult, TorrentInfo } from "../../../packages/shared/src/models";
 import { LocalizationService } from "./localization";
 import { calculateAndSort } from "../../../packages/shared/src/utils/weightCalculator";
 import { normalizeJavId } from "../../../packages/shared/src/utils/torrentNameParser";
@@ -20,43 +20,22 @@ import {
 } from "../../../packages/shared/src/utils/subtitleSearch";
 
 export class ServiceAvailability {
-  private lock = new Object();
-  everythingKnown = false;
-  everythingHealthy = false;
-  qBittorrentKnown = false;
-  qBittorrentHealthy = false;
   javDbKnown = false;
   javDbHealthy = false;
   subtitleKnown = false;
   subtitleHealthy = false;
 
-  get localDedupAvailable(): boolean {
-    return !this.everythingKnown || this.everythingHealthy;
-  }
-
-  get downloadQueueAvailable(): boolean {
-    return !this.qBittorrentKnown || this.qBittorrentHealthy;
-  }
-
   get remoteSearchAvailable(): boolean {
     return !this.javDbKnown || this.javDbHealthy;
+  }
+
+  get subtitleAvailable(): boolean {
+    return !this.subtitleKnown || this.subtitleHealthy;
   }
 
   updateFrom(results: HealthCheckResult[]): void {
     if (!results) {
       return;
-    }
-
-    const everything = results.find((r) => r.serviceName.toLowerCase().includes("everything"));
-    if (everything) {
-      this.everythingKnown = true;
-      this.everythingHealthy = everything.isHealthy;
-    }
-
-    const qb = results.find((r) => r.serviceName.toLowerCase().includes("qbittorrent"));
-    if (qb) {
-      this.qBittorrentKnown = true;
-      this.qBittorrentHealthy = qb.isHealthy;
     }
 
     const javDb = results.find((r) => r.serviceName.toLowerCase().includes("javdb"));
@@ -121,46 +100,6 @@ export class TorrentSelectionService {
   }
 }
 
-export class LocalFileCheckService {
-  private searchProvider: IEverythingSearchProvider;
-
-  constructor(searchProvider: IEverythingSearchProvider) {
-    this.searchProvider = searchProvider;
-  }
-
-  async checkLocalFiles(javId: string): Promise<LocalFileInfo[]> {
-    const normalized = normalizeJavId(javId);
-    const results = await this.searchProvider.search(normalized);
-    return results.filter((file) => file.fileType === FileType.Video);
-  }
-
-  async fileExists(javId: string): Promise<boolean> {
-    const files = await this.checkLocalFiles(javId);
-    return files.length > 0;
-  }
-}
-
-export class DownloadService {
-  private qbClient: IQBittorrentClient;
-  private config: DownloadConfig;
-
-  constructor(qbClient: IQBittorrentClient, config: DownloadConfig) {
-    this.qbClient = qbClient;
-    this.config = config;
-  }
-
-  async addDownload(torrent: TorrentInfo, savePath?: string, category?: string, tags?: string): Promise<boolean> {
-    const normalizedPath = normalizeExistingDirectoryPath(savePath ?? this.config.defaultSavePath);
-    const finalCategory = category ?? this.config.defaultCategory;
-    const finalTags = tags ?? this.config.defaultTags;
-    return this.qbClient.addTorrent(torrent.magnetLink, normalizedPath ?? undefined, finalCategory, finalTags);
-  }
-
-  async getDownloads(): Promise<TorrentInfo[]> {
-    return this.qbClient.getTorrents();
-  }
-}
-
 export interface SubtitleDownloadResult {
   javId: string;
   savedPath: string;
@@ -172,12 +111,10 @@ export interface SubtitleDownloadResult {
 export class SubtitleSearchService {
   private providers: ISubtitleSearchProvider[];
   private config: SubtitleConfig;
-  private downloadConfig: DownloadConfig;
 
-  constructor(providers: ISubtitleSearchProvider[], config: SubtitleConfig, downloadConfig: DownloadConfig) {
+  constructor(providers: ISubtitleSearchProvider[], config: SubtitleConfig) {
     this.providers = providers;
     this.config = config;
-    this.downloadConfig = downloadConfig;
   }
 
   async search(javId: string): Promise<SubtitleSearchResult> {
@@ -258,10 +195,6 @@ export class SubtitleSearchService {
     if (configured) {
       return configured;
     }
-    const downloadPath = String(this.downloadConfig.defaultSavePath ?? "").trim();
-    if (downloadPath) {
-      return downloadPath;
-    }
     return path.join(getPreferredConfigDirectory(), "subtitles");
   }
 }
@@ -290,13 +223,8 @@ function dedupeSubtitleItems(items: SubtitleSearchItem[]): SubtitleSearchItem[] 
 export interface JavSearchProcessResult {
   javId: string;
   success: boolean;
-  downloaded: boolean;
-  localFilesFound: boolean;
-  localDedupSkipped: boolean;
   selectedTorrent?: TorrentInfo;
-  downloadQueueSkipped: boolean;
   magnetLink?: string;
-  localFiles: LocalFileInfo[];
   availableTorrents: TorrentInfo[];
   searchResult?: JavSearchResult;
   messages: string[];
@@ -386,10 +314,6 @@ export class TelemetryService {
 
   trackSearch(searchTerm?: string): void {
     this.sendEvent("search", searchTerm ? `term:${searchTerm}` : null);
-  }
-
-  trackDownload(javId?: string): void {
-    this.sendEvent("download", javId ? `jav:${javId}` : null);
   }
 
   trackEvent(eventType: string, eventData?: string | null): void {
@@ -529,37 +453,30 @@ export class JavSearchService {
   private javDbProvider: IJavDbDataProvider;
   private cacheProvider: IJavLocalCacheProvider | null;
   private selectionService: TorrentSelectionService;
-  private localFileService: LocalFileCheckService;
-  private downloadService: DownloadService;
   private serviceAvailability: ServiceAvailability;
   private loc: LocalizationService;
 
   constructor(
     javDbProvider: IJavDbDataProvider,
     selectionService: TorrentSelectionService,
-    localFileService: LocalFileCheckService,
-    downloadService: DownloadService,
     serviceAvailability: ServiceAvailability,
     loc: LocalizationService,
     cacheProvider?: IJavLocalCacheProvider | null
   ) {
     this.javDbProvider = javDbProvider;
     this.selectionService = selectionService;
-    this.localFileService = localFileService;
-    this.downloadService = downloadService;
     this.serviceAvailability = serviceAvailability;
     this.loc = loc;
     this.cacheProvider = cacheProvider ?? null;
   }
 
-  async process(javId: string, forceDownload = false, forceRemote = false): Promise<JavSearchProcessResult> {
+  async process(javId: string, forceRemote = false): Promise<JavSearchProcessResult> {
     const result = createProcessResult(javId);
     let searchResult: JavSearchResult | null = null;
 
     if (!forceRemote && this.cacheProvider) {
       searchResult = await this.cacheProvider.get(javId);
-      if (searchResult?.torrents?.length) {
-      } else {
+      if (!searchResult?.torrents?.length) {
         searchResult = null;
       }
     }
@@ -589,109 +506,13 @@ export class JavSearchService {
       result.messages.push(this.loc.get("no_torrents_found"));
       return result;
     }
-    result.selectedTorrent = selectedTorrent;
 
-    if (!forceDownload) {
-      if (!this.serviceAvailability.localDedupAvailable) {
-        result.localDedupSkipped = true;
-      } else {
-        try {
-          const localFiles = await this.localFileService.checkLocalFiles(javId);
-          if (localFiles.length) {
-            result.localFilesFound = true;
-            result.localFiles = localFiles;
-            result.success = true;
-            return result;
-          }
-        } catch {
-          result.localDedupSkipped = true;
-        }
-      }
-    }
-
-    if (!this.serviceAvailability.downloadQueueAvailable) {
-      result.downloadQueueSkipped = true;
-      result.magnetLink = selectedTorrent.magnetLink;
-      result.success = true;
-      result.messages.push(this.loc.get("downloader_unavailable"));
-      return result;
-    }
-
-    try {
-      const downloadSuccess = await this.downloadService.addDownload(selectedTorrent);
-      if (downloadSuccess) {
-        result.success = true;
-        result.downloaded = true;
-        result.messages.push(this.loc.get("download_added"));
-        return result;
-      }
-    } catch {
-      // Treat downloader errors as "skipped" and show magnet link for manual use.
-      result.success = true;
-      result.downloadQueueSkipped = true;
-      result.magnetLink = selectedTorrent.magnetLink;
-      result.messages.push(this.loc.get("download_failed"));
-      return result;
-    }
-
-    result.success = true;
-    result.downloadQueueSkipped = true;
-    result.magnetLink = selectedTorrent.magnetLink;
-    result.messages.push(this.loc.get("download_failed"));
-    return result;
+    return this.applySelectedTorrent(result, selectedTorrent);
   }
 
-  async processSelectedTorrent(javId: string, selectedTorrent: TorrentInfo, forceDownload = false): Promise<JavSearchProcessResult> {
+  async processSelectedTorrent(javId: string, selectedTorrent: TorrentInfo): Promise<JavSearchProcessResult> {
     const result = createProcessResult(javId);
-    result.selectedTorrent = selectedTorrent;
-
-    if (!forceDownload) {
-      if (!this.serviceAvailability.localDedupAvailable) {
-        result.localDedupSkipped = true;
-      } else {
-        try {
-          const localFiles = await this.localFileService.checkLocalFiles(javId);
-          if (localFiles.length) {
-            result.localFilesFound = true;
-            result.localFiles = localFiles;
-            result.success = true;
-            return result;
-          }
-        } catch {
-          result.localDedupSkipped = true;
-        }
-      }
-    }
-
-    if (!this.serviceAvailability.downloadQueueAvailable) {
-      result.downloadQueueSkipped = true;
-      result.magnetLink = selectedTorrent.magnetLink;
-      result.success = true;
-      result.messages.push(this.loc.get("downloader_unavailable"));
-      return result;
-    }
-
-    try {
-      const downloadSuccess = await this.downloadService.addDownload(selectedTorrent);
-      if (downloadSuccess) {
-        result.success = true;
-        result.downloaded = true;
-        result.messages.push(this.loc.get("download_added"));
-        return result;
-      }
-    } catch {
-      result.success = true;
-      result.downloadQueueSkipped = true;
-      result.magnetLink = selectedTorrent.magnetLink;
-      result.messages.push(this.loc.get("download_failed"));
-      return result;
-    }
-
-    result.success = true;
-    result.downloadQueueSkipped = true;
-    result.magnetLink = selectedTorrent.magnetLink;
-    result.messages.push(this.loc.get("download_failed"));
-    return result;
+    return this.applySelectedTorrent(result, selectedTorrent);
   }
 
   async searchOnly(javId: string, forceRemote = false): Promise<JavSearchProcessResult> {
@@ -731,33 +552,20 @@ export class JavSearchService {
     }
     return this.cacheProvider.getStatistics();
   }
-}
 
-function normalizeExistingDirectoryPath(pathValue?: string): string | null {
-  if (!pathValue) {
-    return null;
+  private applySelectedTorrent(result: JavSearchProcessResult, selectedTorrent: TorrentInfo): JavSearchProcessResult {
+    result.selectedTorrent = selectedTorrent;
+    result.magnetLink = selectedTorrent.magnetLink;
+    result.success = true;
+    result.messages.push(this.loc.get("magnet_ready"));
+    return result;
   }
-  const expanded = pathValue.trim();
-  if (!expanded) {
-    return null;
-  }
-  const resolved = expanded.replace(/%([^%]+)%/g, (_, name) => process.env[name] ?? "");
-  if (!fs.existsSync(resolved)) {
-    return null;
-  }
-  const stat = fs.statSync(resolved);
-  return stat.isDirectory() ? resolved : null;
 }
 
 function createProcessResult(javId: string): JavSearchProcessResult {
   return {
     javId,
     success: false,
-    downloaded: false,
-    localFilesFound: false,
-    localDedupSkipped: false,
-    downloadQueueSkipped: false,
-    localFiles: [],
     availableTorrents: [],
     messages: [],
   };

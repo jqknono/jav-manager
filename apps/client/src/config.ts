@@ -3,29 +3,11 @@ import path from "path";
 import { getPreferredConfigDirectory } from "./utils/appPaths";
 import { getBaseEndpoint } from "../../../packages/shared/src/utils/backendEndpoints";
 
-export interface EverythingConfig {
-  baseUrl: string;
-  userName: string | null;
-  password: string | null;
-}
-
-export interface QBittorrentConfig {
-  baseUrl: string;
-  userName: string | null;
-  password: string | null;
-}
-
 export interface JavDbConfig {
   baseUrl: string;
   mirrorUrls: string[];
   requestTimeout: number;
   userAgent: string;
-}
-
-export interface DownloadConfig {
-  defaultSavePath: string;
-  defaultCategory: string;
-  defaultTags: string;
 }
 
 export interface SubtitleIndexSiteConfig {
@@ -67,10 +49,7 @@ export interface UpdateConfig {
 }
 
 export interface AppConfig {
-  everything: EverythingConfig;
-  qBittorrent: QBittorrentConfig;
   javDb: JavDbConfig;
-  download: DownloadConfig;
   subtitle: SubtitleConfig;
   localCache: LocalCacheConfig;
   console: ConsoleConfig;
@@ -82,26 +61,11 @@ const defaultJavDbBaseUrl = "";
 const defaultTelemetryEndpoint = "https://jav-manager.techfetch.dev";
 
 const defaultConfig: AppConfig = {
-  everything: {
-    baseUrl: "",
-    userName: null,
-    password: null,
-  },
-  qBittorrent: {
-    baseUrl: "",
-    userName: null,
-    password: null,
-  },
   javDb: {
     baseUrl: defaultJavDbBaseUrl,
     mirrorUrls: [],
     requestTimeout: 30000,
     userAgent: "",
-  },
-  download: {
-    defaultSavePath: "",
-    defaultCategory: "jav",
-    defaultTags: "jav-manager",
   },
   subtitle: {
     enabled: true,
@@ -175,18 +139,6 @@ export function extractOverrides(args: string[]): {
     "--lang": "console.language",
     "--language": "console.language",
 
-    "--everything-url": "everything.baseUrl",
-    "--everything-user": "everything.userName",
-    "--everything-username": "everything.userName",
-    "--everything-pass": "everything.password",
-    "--everything-password": "everything.password",
-
-    "--qb-url": "qBittorrent.baseUrl",
-    "--qb-user": "qBittorrent.userName",
-    "--qb-username": "qBittorrent.userName",
-    "--qb-pass": "qBittorrent.password",
-    "--qb-password": "qBittorrent.password",
-
     "--javdb-url": "javDb.baseUrl",
     "--subtitle-url": "subtitle.baseUrl",
   };
@@ -256,37 +208,19 @@ function mergeRecord(target: Record<string, unknown>, source: Record<string, unk
 }
 
 function normalizeFileConfig(raw: Record<string, unknown>): Record<string, unknown> {
-  const everything = raw.Everything as Record<string, unknown> | undefined;
-  const qb = raw.QBittorrent as Record<string, unknown> | undefined;
   const javBackend = (raw.JavBackend as Record<string, unknown> | undefined)
     ?? (raw.JavDb as Record<string, unknown> | undefined);
-  const download = raw.Download as Record<string, unknown> | undefined;
   const subtitle = raw.Subtitle as Record<string, unknown> | undefined;
   const localCache = raw.LocalCache as Record<string, unknown> | undefined;
   const consoleConfig = raw.Console as Record<string, unknown> | undefined;
   const telemetry = raw.Telemetry as Record<string, unknown> | undefined;
   const update = raw.Update as Record<string, unknown> | undefined;
   return {
-    everything: {
-      baseUrl: stringOrUndefined(everything?.BaseUrl),
-      userName: nullableStringOrUndefined(everything?.UserName),
-      password: nullableStringOrUndefined(everything?.Password),
-    },
-    qBittorrent: {
-      baseUrl: stringOrUndefined(qb?.BaseUrl),
-      userName: nullableStringOrUndefined(qb?.UserName),
-      password: nullableStringOrUndefined(qb?.Password),
-    },
     javDb: {
       baseUrl: stringOrUndefined(javBackend?.BaseUrl),
       mirrorUrls: arrayStringOrUndefined(javBackend?.MirrorUrls),
       requestTimeout: numberOrUndefined(javBackend?.RequestTimeout),
       userAgent: stringOrUndefined(javBackend?.UserAgent),
-    },
-    download: {
-      defaultSavePath: stringOrUndefined(download?.DefaultSavePath),
-      defaultCategory: stringOrUndefined(download?.DefaultCategory),
-      defaultTags: stringOrUndefined(download?.DefaultTags),
     },
     subtitle: {
       enabled: booleanOrUndefined(subtitle?.Enabled),
@@ -495,26 +429,11 @@ function setConfigValue(config: AppConfig, key: string, value: string): void {
 
 function toFileConfig(config: AppConfig): Record<string, unknown> {
   return {
-    Everything: {
-      BaseUrl: config.everything.baseUrl,
-      UserName: config.everything.userName,
-      Password: config.everything.password,
-    },
-    QBittorrent: {
-      BaseUrl: config.qBittorrent.baseUrl,
-      UserName: config.qBittorrent.userName,
-      Password: config.qBittorrent.password,
-    },
     JavBackend: {
       BaseUrl: config.javDb.baseUrl,
       MirrorUrls: config.javDb.mirrorUrls,
       RequestTimeout: config.javDb.requestTimeout,
       UserAgent: config.javDb.userAgent,
-    },
-    Download: {
-      DefaultSavePath: config.download.defaultSavePath,
-      DefaultCategory: config.download.defaultCategory,
-      DefaultTags: config.download.defaultTags,
     },
     Subtitle: {
       Enabled: config.subtitle.enabled,

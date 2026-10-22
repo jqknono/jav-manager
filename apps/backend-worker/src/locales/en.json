@@ -5,7 +5,7 @@
   "navUser": "Users",
   "navJav": "Trends",
   "homeTitle": "JavManager",
-  "homeIntro": "A lightweight GUI + CLI tool for fast repeat searches, torrent selection, and optional qBittorrent integration.",
+  "homeIntro": "A lightweight GUI + CLI tool for searching JAV metadata and torrents, then opening or copying magnet links.",
   "homeUsageTitle": "How to use",
   "homeUsageItems": [
     "Try without installing: `npx jav-manager -- help`",
@@ -18,8 +18,7 @@
     "Search JAV metadata and magnets from JavDB (HTML parsing).",
     "Smart local JSON cache for repeat searches.",
     "Weight-based torrent sorting (UC/SUB/HD markers).",
-    "Optional: Everything integration (local file search).",
-    "Optional: qBittorrent integration (add downloads via WebUI API)."
+    "Open or copy selected magnet links."
   ],
   "homePagesTitle": "Commands",
   "homePagesItems": [

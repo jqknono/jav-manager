@@ -80,8 +80,8 @@ const LOCAL_DEV_ADMIN_PASSWORD = 'test';
 const SUPPORTED_LANGS = new Set<string>(PAGE_LANGS as unknown as string[]);
 
 // JavDB App API / CDN proxy settings
-const JAVDB_APP_API_HOST_PRIMARY = 'apidd.btyjscl.com';
-const JAVDB_APP_API_HOST_FALLBACK = 'api.btyjscl.com';
+const JAVDB_APP_API_HOST_PRIMARY = 'apidd.spthgb.com';
+const JAVDB_APP_API_HOST_FALLBACK = 'apidd.czssdgz.com';
 const JAVDB_IMG_HOST = 'tp.cmastd.com';
 const JAVDB_PREVIEW_HOST = 'jdforrepam.com';
 
