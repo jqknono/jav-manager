@@ -29,11 +29,12 @@ npx jav-manager sub STARS-001
 ```text
 apps/
   backend-worker/   Cloudflare backend worker
-  cli/              CLI entrypoint
-  client/           Shared client runtime used by CLI / GUI
-  gui/              GUI entrypoint
+  cli/              CLI entrypoint + console UI
+  gui/              GUI entrypoint + local web UI
 packages/
-  shared/           Cross-runtime shared types and pure utilities
+  domain/           Shared models and interfaces
+  shared-utils/     Pure helper utilities
+  core/             Shared Node runtime (config/services/data/i18n)
 scripts/            Repo-level dev/build helpers
 bin/                Published CLI launcher
 doc/                External API notes
@@ -134,6 +135,8 @@ Notes:
 
 ## Development
 
+Worker 开发工具链使用 Wrangler 4.152+，需要 Node.js 22 或更新版本；建议仓库开发统一使用 Node.js 24。
+
 ```bash
 # Install deps
 npm install
@@ -146,7 +149,7 @@ npm run gui
 npm run cli
 
 # Local development
-npm run backend:dev
+npm run dev:backend
 npm run dev:cli
 npm run dev:gui
 
@@ -156,13 +159,31 @@ npm test
 
 ### Local Backend Wiring
 
-- `npm run backend:dev` starts the Cloudflare Worker locally on `http://127.0.0.1:8788`
+- `npm run dev:backend` starts the Cloudflare Worker locally on `http://127.0.0.1:8788`
 - `npm run dev:cli` and `npm run dev:gui` default to `JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788`
 - Override the backend explicitly with `JAVMANAGER_BACKEND_ENDPOINT` or `JAVMANAGER_BACKEND_URL`
 
 ### Build Boundaries
 
-- `npm run build:shared` builds `packages/shared`
-- `npm run build:cli` builds `apps/cli` and the shared client runtime it imports
-- `npm run build:gui` builds `apps/gui` and the shared client runtime it imports
+- `npm run build:domain` builds `packages/domain`
+- `npm run build:shared-utils` builds `packages/shared-utils`
+- `npm run build:core` builds `packages/core`
+- `npm run build:cli` builds `apps/cli`
+- `npm run build:gui` builds `apps/gui`
 - `npm run build:backend` builds `apps/backend-worker`
+- `npm run build:runtime` bundles the internal client packages into `runtime/*.cjs`
+
+### 模块职责与发布
+
+- `packages/core/src/services.ts` 保持公共导出兼容；实现按健康检查、选种、字幕、搜索、JavInfo 上报和事件遥测拆入 `services/`。
+- `apps/backend-worker/src/index.ts` 负责公共上下文和路由分派；管理员会话、遥测、JavInfo、JavDB 代理与存储分别在对应模块维护。
+- `npm pack` 的 `prepack` 执行完整构建。发布包只包含 `runtime/*.cjs`、启动器、许可证和 README；内部 workspace 与语言 JSON 内联到运行脚本，第三方依赖由 npm 安装。
+- `.d.ts` 仍由开发构建生成供包间类型检查使用，npm 应用发行包仅提供运行时 API；`require("jav-manager")` 加载 core 导出。
+- `npm test` 包括 Worker 离线契约、core 服务和真实 tarball 隔离运行测试；单独运行 `npm run test:package` 前执行 `npm run build`。
+
+### Worker 域名接口与依赖审计
+
+- `GET /api/javdb-domain` 为独立公共接口，返回 `{ "success": true, "domains": ["最新域名"] }`，复用一小时内存缓存；上游读取失败时返回 HTTP 500。
+- `/api/javdb` 及其 `/` 子路径由代理模块处理，并保持原有代理认证；域名查询及其 OPTIONS 使用通用 CORS。
+- 根工作区和 `apps/backend-worker` 使用独立锁文件，分别运行 `npm audit` 与 `npm --prefix apps/backend-worker audit`。
+- 升级 Wrangler 时同步满足 `@cloudflare/workers-types` 的 peer 版本要求，并执行 Worker 构建、离线契约测试及 `wrangler deploy --dry-run` 本地打包校验。

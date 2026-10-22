@@ -15,8 +15,8 @@
     "db:init-local": "wrangler d1 execute jav-manager-telemetry --local --file=./schema.sql"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240117.0",
+    "@cloudflare/workers-types": "^5.20261022.1",
     "typescript": "^5.3.3",
-    "wrangler": "^4.64.0"
+    "wrangler": "^4.152.0"
   }
 }

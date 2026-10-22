@@ -6,7 +6,7 @@
             "type": "node",
             "request": "launch",
             "preLaunchTask": "build:npm (tsc)",
-            "program": "${workspaceFolder}/apps/cli/dist/apps/cli/src/main.js",
+            "program": "${workspaceFolder}/apps/cli/dist/main.js",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
@@ -16,7 +16,7 @@
             "type": "node",
             "request": "launch",
             "preLaunchTask": "build:npm (tsc)",
-            "program": "${workspaceFolder}/apps/gui/dist/apps/gui/src/main.js",
+            "program": "${workspaceFolder}/apps/gui/dist/main.js",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { JavInfoTelemetryClient } = require("../dist/services");
+const { JavInfoTelemetryClient } = require("../packages/core/dist/services");
 
 test("JavInfoTelemetryClient sends normalized javinfo payload", async () => {
   const calls = [];

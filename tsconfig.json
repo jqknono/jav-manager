@@ -1,7 +1,9 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/shared" },
+    { "path": "./packages/domain" },
+    { "path": "./packages/shared-utils" },
+    { "path": "./packages/core" },
     { "path": "./apps/cli" },
     { "path": "./apps/gui" },
     { "path": "./apps/backend-worker" }

@@ -1,0 +1,66 @@
+{
+  "name": "@jav-manager/core",
+  "version": "0.1.5",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "default": "./dist/context.js"
+    },
+    "./services": {
+      "types": "./dist/services.d.ts",
+      "default": "./dist/services.js"
+    },
+    "./localization": {
+      "types": "./dist/localization.d.ts",
+      "default": "./dist/localization.js"
+    },
+    "./data/cache": {
+      "types": "./dist/data/cache.d.ts",
+      "default": "./dist/data/cache.js"
+    },
+    "./data/javdb": {
+      "types": "./dist/data/javdb.d.ts",
+      "default": "./dist/data/javdb.js"
+    },
+    "./data/subtitlecat": {
+      "types": "./dist/data/subtitlecat.d.ts",
+      "default": "./dist/data/subtitlecat.js"
+    },
+    "./data/subtitleIndex": {
+      "types": "./dist/data/subtitleIndex.d.ts",
+      "default": "./dist/data/subtitleIndex.js"
+    },
+    "./utils/appInfo": {
+      "types": "./dist/utils/appInfo.d.ts",
+      "default": "./dist/utils/appInfo.js"
+    },
+    "./utils/appPaths": {
+      "types": "./dist/utils/appPaths.d.ts",
+      "default": "./dist/utils/appPaths.js"
+    },
+    "./utils/httpHelper": {
+      "types": "./dist/utils/httpHelper.d.ts",
+      "default": "./dist/utils/httpHelper.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json && node ../../scripts/copy-core-assets.js",
+    "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jav-manager/domain": "0.1.5",
+    "@jav-manager/shared-utils": "0.1.5",
+    "cheerio": "^1.2.0"
+  }
+}

@@ -6,7 +6,7 @@ const {
   getTelemetryPostUrl,
   getJavInfoPostUrl,
   normalizeBaseEndpointOrNull,
-} = require("../dist/utils/telemetryEndpoints");
+} = require("../packages/shared-utils/dist/utils/backendEndpoints");
 
 test("normalizeBaseEndpointOrNull trims /api/telemetry", () => {
   assert.equal(

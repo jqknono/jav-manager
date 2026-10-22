@@ -1,8 +1,15 @@
 {
-  "name": "jav-manager-cli",
+  "name": "@jav-manager/cli",
+  "version": "0.1.5",
   "private": true,
+  "main": "./dist/main.js",
   "scripts": {
-    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json && node ../../scripts/copy-client-assets.js cli",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
     "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jav-manager/core": "0.1.5",
+    "@jav-manager/domain": "0.1.5",
+    "@jav-manager/shared-utils": "0.1.5"
   }
 }

@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { loadConfig } = require("../dist/config");
+const { loadConfig } = require("../packages/core/dist/config");
 
 test("loadConfig accepts Console.Language ja/ko", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "jav-manager-config-lang-"));

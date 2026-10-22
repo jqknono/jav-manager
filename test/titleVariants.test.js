@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { splitTitleVariants } = require('../dist/utils/titleVariants');
+const { splitTitleVariants } = require('../packages/shared-utils/dist/utils/titleVariants');
 
 test('splitTitleVariants splits zh + original title using marker', () => {
   const raw = '中文标题 顯示原標題 【FANZA限定】性欲が強すぎる僕の彼女がまさかの浮気！？';

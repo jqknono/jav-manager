@@ -10,7 +10,7 @@
                 "deploy"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/telemetry-worker"
+                "cwd": "${workspaceFolder}/apps/backend-worker"
             },
             "problemMatcher": []
         },
@@ -28,7 +28,7 @@
                 "--ip=0.0.0.0"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/telemetry-worker"
+                "cwd": "${workspaceFolder}/apps/backend-worker"
             },
             "problemMatcher": []
         },

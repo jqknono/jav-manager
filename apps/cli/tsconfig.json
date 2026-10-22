@@ -3,16 +3,26 @@
     "target": "ES2022",
     "module": "CommonJS",
     "outDir": "dist",
-    "rootDir": "../..",
+    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "moduleResolution": "Node"
   },
+  "references": [
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/shared-utils"
+    },
+    {
+      "path": "../../packages/core"
+    }
+  ],
   "include": [
-    "src/**/*.ts",
-    "../client/src/**/*.ts",
-    "../../packages/shared/src/**/*.ts"
+    "src/**/*.ts"
   ]
 }

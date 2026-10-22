@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { printSearchResultList } = require('../dist/utils/cliDisplay');
+const { printSearchResultList } = require('../apps/cli/dist/utils/cliDisplay');
 
 test('printSearchResultList shows full title (no ellipsis)', () => {
   const oldNoColor = process.env.NO_COLOR;

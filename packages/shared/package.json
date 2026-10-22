@@ -1,8 +1,0 @@
-{
-  "name": "jav-manager-shared",
-  "private": true,
-  "scripts": {
-    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
-    "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
-  }
-}

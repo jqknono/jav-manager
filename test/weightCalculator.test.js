@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { calculateWeight, calculateAndSort } = require("../dist/utils/weightCalculator");
-const { UncensoredMarkerType } = require("../dist/models");
+const { calculateWeight, calculateAndSort } = require("../packages/shared-utils/dist/utils/weightCalculator");
+const { UncensoredMarkerType } = require("../packages/domain/dist/models");
 
 function createTorrent(overrides = {}) {
   return {

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { JavDbApiClient } = require("../apps/cli/dist/apps/client/src/data/javdb.js");
+const { JavDbApiClient } = require("../packages/core/dist/data/javdb.js");
 
 function createClient(fetchImpl) {
   return new JavDbApiClient(

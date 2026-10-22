@@ -3,31 +3,34 @@
   "version": "0.1.5",
   "private": false,
   "description": "TypeScript rewrite of JavManager",
-  "main": "apps/cli/dist/apps/cli/src/main.js",
+  "main": "runtime/core.cjs",
   "bin": {
     "jav-manager": "bin/jav-manager.js"
   },
   "files": [
-    "apps",
-    "bin",
-    "dist",
-    "packages",
+    "runtime/*.cjs",
+    "bin/jav-manager.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build:shared": "npm --prefix packages/shared run build",
-    "build:cli": "npm --prefix apps/cli run build",
-    "build:gui": "npm --prefix apps/gui run build",
+    "build:domain": "npm --workspace @jav-manager/domain run build",
+    "build:shared-utils": "npm --workspace @jav-manager/shared-utils run build",
+    "build:core": "npm --workspace @jav-manager/core run build",
+    "build:cli": "npm --workspace @jav-manager/cli run build",
+    "build:gui": "npm --workspace @jav-manager/gui run build",
     "build:backend": "npm --prefix apps/backend-worker run build",
-    "build": "npm run build:shared && npm run build:cli && npm run build:gui && npm run build:backend && node scripts/sync-root-dist.js",
-    "cli": "npm run build && node apps/cli/dist/apps/cli/src/main.js",
-    "gui": "npm run build && node apps/gui/dist/apps/gui/src/main.js",
+    "build": "npm run build:domain && npm run build:shared-utils && npm run build:core && npm run build:cli && npm run build:gui && npm run build:backend && npm run build:runtime",
+    "cli": "npm run build:domain && npm run build:shared-utils && npm run build:core && npm run build:cli && node apps/cli/dist/main.js",
+    "gui": "npm run build:domain && npm run build:shared-utils && npm run build:core && npm run build:gui && node apps/gui/dist/main.js",
     "dev:cli": "JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788 node scripts/dev-cli.js",
     "dev:gui": "JAVMANAGER_BACKEND_ENDPOINT=http://127.0.0.1:8788 node scripts/dev-gui.js",
     "dev:backend": "JAV_WORKER_PORT=8788 node scripts/worker-dev.js",
-    "lint": "npm --prefix packages/shared run lint && npm --prefix apps/cli run lint && npm --prefix apps/gui run lint && npm --prefix apps/backend-worker run build",
-    "test": "npm run build && node --test test/*.test.js"
+    "lint": "npm --workspace @jav-manager/domain run lint && npm --workspace @jav-manager/shared-utils run lint && npm --workspace @jav-manager/core run lint && npm --workspace @jav-manager/cli run lint && npm --workspace @jav-manager/gui run lint && npm run build:backend",
+    "test": "npm run build && node --test test/*.test.js",
+    "build:runtime": "node scripts/build-runtime.js",
+    "prepack": "npm run build",
+    "test:package": "node --test test/packageRuntime.test.js"
   },
   "keywords": [],
   "author": "",
@@ -39,10 +42,17 @@
     "open": "^11.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240117.0",
+    "@cloudflare/workers-types": "^5.20261022.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.2.0",
+    "esbuild": "^0.28.2",
+    "tar": "^7.5.22",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/cli",
+    "apps/gui"
+  ]
 }

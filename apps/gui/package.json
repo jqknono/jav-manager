@@ -1,8 +1,17 @@
 {
-  "name": "jav-manager-gui",
+  "name": "@jav-manager/gui",
+  "version": "0.1.5",
   "private": true,
+  "main": "./dist/main.js",
   "scripts": {
-    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json && node ../../scripts/copy-client-assets.js gui",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
     "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jav-manager/core": "0.1.5",
+    "@jav-manager/domain": "0.1.5",
+    "@jav-manager/shared-utils": "0.1.5",
+    "express": "^5.2.1",
+    "open": "^11.0.0"
   }
 }

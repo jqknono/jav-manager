@@ -1,0 +1,44 @@
+{
+  "name": "@jav-manager/shared-utils",
+  "version": "0.1.5",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./utils/backendEndpoints": {
+      "types": "./dist/utils/backendEndpoints.d.ts",
+      "default": "./dist/utils/backendEndpoints.js"
+    },
+    "./utils/sizeParser": {
+      "types": "./dist/utils/sizeParser.d.ts",
+      "default": "./dist/utils/sizeParser.js"
+    },
+    "./utils/subtitleSearch": {
+      "types": "./dist/utils/subtitleSearch.d.ts",
+      "default": "./dist/utils/subtitleSearch.js"
+    },
+    "./utils/titleVariants": {
+      "types": "./dist/utils/titleVariants.d.ts",
+      "default": "./dist/utils/titleVariants.js"
+    },
+    "./utils/torrentNameParser": {
+      "types": "./dist/utils/torrentNameParser.d.ts",
+      "default": "./dist/utils/torrentNameParser.js"
+    },
+    "./utils/weightCalculator": {
+      "types": "./dist/utils/weightCalculator.d.ts",
+      "default": "./dist/utils/weightCalculator.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "lint": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jav-manager/domain": "0.1.5"
+  }
+}

@@ -4,14 +4,14 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { parseSearchResults, parseDetailPage } = require("../apps/cli/dist/apps/client/src/data/subtitlecat.js");
-const { parseIndexSearchResults } = require("../apps/cli/dist/apps/client/src/data/subtitleIndex.js");
-const { SubtitleSearchService } = require("../dist/services");
+const { parseSearchResults, parseDetailPage } = require("../packages/core/dist/data/subtitlecat.js");
+const { parseIndexSearchResults } = require("../packages/core/dist/data/subtitleIndex.js");
+const { SubtitleSearchService } = require("../packages/core/dist/services");
 const {
   pickPreferredLanguage,
   scoreSubtitleMatch,
   sortSubtitleItems,
-} = require("../dist/utils/subtitleSearch");
+} = require("../packages/shared-utils/dist/utils/subtitleSearch");
 
 const sampleSearchHtml = `
 <table class="table sub-table">

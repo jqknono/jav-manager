@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "composite": true,
+    "moduleResolution": "Node"
+  },
+  "references": [
+    {
+      "path": "../domain"
+    },
+    {
+      "path": "../shared-utils"
+    }
+  ],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json"
+  ]
+}

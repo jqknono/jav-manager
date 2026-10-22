@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { parseTorrentName } = require("../dist/utils/torrentNameParser");
-const { UncensoredMarkerType } = require("../dist/models");
+const { parseTorrentName } = require("../packages/shared-utils/dist/utils/torrentNameParser");
+const { UncensoredMarkerType } = require("../packages/domain/dist/models");
 
 test("parseTorrentName marks -U suffix as uncensored", () => {
   const parsed = parseTorrentName("STARS-001-U");

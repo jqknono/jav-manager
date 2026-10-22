@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { JavSearchService, ServiceAvailability } = require("../dist/services");
+const { JavSearchService, ServiceAvailability } = require("../packages/core/dist/services");
 
 function makeLoc() {
   return {
